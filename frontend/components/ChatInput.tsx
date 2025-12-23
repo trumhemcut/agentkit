@@ -50,7 +50,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
   };
 
   return (
-    <div className="border-t bg-background p-4">
+    <div className="bg-background p-4">
       <div className="flex gap-2">
         <Textarea
           ref={textareaRef}

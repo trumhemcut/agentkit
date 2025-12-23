@@ -141,26 +141,28 @@ export function Sidebar({
         </>
       )}
 
-      {/* Thread List */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {threads.length === 0 && !isCollapsed ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center px-4 h-full">
-            <MessageSquare className="mb-2 h-8 w-8 text-gray-400" />
-            <p className="text-sm text-gray-600">No chats yet</p>
-            <p className="text-xs text-gray-500">Start a new conversation</p>
-          </div>
-        ) : (
-          <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-thin">
-            <ChatHistory
-              threads={threads}
-              currentThreadId={currentThreadId}
-              isCollapsed={isCollapsed}
-              onSelectThread={onSelectThread}
-              onDeleteThread={onDeleteThread}
-            />
-          </div>
-        )}
-      </div>
+      {/* Thread List - Hidden when collapsed */}
+      {!isCollapsed && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {threads.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center px-4 h-full">
+              <MessageSquare className="mb-2 h-8 w-8 text-gray-400" />
+              <p className="text-sm text-gray-600">No chats yet</p>
+              <p className="text-xs text-gray-500">Start a new conversation</p>
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-thin">
+              <ChatHistory
+                threads={threads}
+                currentThreadId={currentThreadId}
+                isCollapsed={isCollapsed}
+                onSelectThread={onSelectThread}
+                onDeleteThread={onDeleteThread}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

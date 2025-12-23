@@ -1,6 +1,5 @@
 'use client';
 
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageBubble } from './MessageBubble';
 import { Message } from '@/types/chat';
 import { MessageSquare } from 'lucide-react';
@@ -30,12 +29,12 @@ export function MessageHistory({ messages, scrollRef }: MessageHistoryProps) {
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div ref={scrollRef}>
+    <div className="h-full overflow-y-auto">
+      <div ref={scrollRef} className="p-4 space-y-4">
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
