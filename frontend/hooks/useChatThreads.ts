@@ -1,0 +1,98 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Thread } from '@/types/chat';
+import { StorageService } from '@/services/storage';
+
+/**
+ * Hook for managing chat threads
+ * 
+ * Provides thread CRUD operations and state management
+ */
+export function useChatThreads() {
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load threads from localStorage on mount
+  useEffect(() => {
+    const loadedThreads = StorageService.getThreads();
+    setThreads(loadedThreads);
+    setIsLoading(false);
+  }, []);
+
+  /**
+   * Create a new thread
+   */
+  const createThread = useCallback(() => {
+    const newThread: Thread = {
+      id: `thread-${Date.now()}`,
+      title: 'New Chat',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    StorageService.saveThread(newThread);
+    setThreads(prev => [newThread, ...prev]);
+    setCurrentThreadId(newThread.id);
+    
+    return newThread;
+  }, []);
+
+  /**
+   * Delete a thread
+   */
+  const deleteThread = useCallback((threadId: string) => {
+    StorageService.deleteThread(threadId);
+    setThreads(prev => prev.filter(t => t.id !== threadId));
+    
+    if (currentThreadId === threadId) {
+      setCurrentThreadId(null);
+    }
+  }, [currentThreadId]);
+
+  /**
+   * Select a thread
+   */
+  const selectThread = useCallback((threadId: string) => {
+    setCurrentThreadId(threadId);
+  }, []);
+
+  /**
+   * Update thread title
+   */
+  const updateThreadTitle = useCallback((threadId: string, title: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    if (thread) {
+      const updatedThread = { ...thread, title, updatedAt: Date.now() };
+      StorageService.saveThread(updatedThread);
+      setThreads(prev => prev.map(t => t.id === threadId ? updatedThread : t));
+    }
+  }, [threads]);
+
+  /**
+   * Get current thread
+   */
+  const currentThread = threads.find(t => t.id === currentThreadId) || null;
+
+  /**
+   * Refresh threads from storage
+   */
+  const refreshThreads = useCallback(() => {
+    const loadedThreads = StorageService.getThreads();
+    setThreads(loadedThreads);
+  }, []);
+
+  return {
+    threads,
+    currentThread,
+    currentThreadId,
+    isLoading,
+    createThread,
+    deleteThread,
+    selectThread,
+    updateThreadTitle,
+    refreshThreads,
+  };
+}
