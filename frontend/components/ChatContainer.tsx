@@ -5,6 +5,7 @@ import { MessageHistory } from './MessageHistory';
 import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
+import { useModelSelection } from '@/hooks/useModelSelection';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
@@ -28,6 +29,7 @@ export interface ChatContainerRef {
 export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads }, ref) {
   const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
+  const { selectedModel } = useModelSelection();
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
@@ -231,6 +233,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         apiMessages,
         threadId,
         runId,
+        selectedModel || undefined,
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);

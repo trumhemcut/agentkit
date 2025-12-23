@@ -5,8 +5,19 @@ from ag_ui.encoder import EventEncoder
 from api.models import RunAgentInput, CanvasMessageRequest, ArtifactUpdate
 from graphs.chat_graph import create_chat_graph
 from graphs.canvas_graph import create_canvas_graph
+from llm.ollama_client import ollama_client
 
 router = APIRouter()
+
+
+@router.get("/models")
+async def list_models():
+    """List available Ollama models"""
+    try:
+        models_data = await ollama_client.list_available_models()
+        return models_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
 
 
 @router.post("/chat")
@@ -26,9 +37,9 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
         )
         
         try:
-            # Create chat agent directly for streaming
+            # Create chat agent directly for streaming with optional model
             from agents.chat_agent import ChatAgent
-            chat_agent = ChatAgent()
+            chat_agent = ChatAgent(model=input_data.model)
             
             state = {
                 "messages": [msg.model_dump() for msg in input_data.messages],
@@ -107,7 +118,7 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
                 # Use canvas agent for streaming
                 try:
                     from agents.canvas_agent import CanvasAgent
-                    canvas_agent = CanvasAgent()
+                    canvas_agent = CanvasAgent(model=input_data.model)
                     
                     async for event in canvas_agent.run(state):
                         yield encoder.encode(event)
@@ -115,14 +126,14 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
                     print(f"[Canvas] Error in canvas agent, falling back to chat: {e}")
                     # Fall back to chat agent
                     from agents.chat_agent import ChatAgent
-                    chat_agent = ChatAgent()
+                    chat_agent = ChatAgent(model=input_data.model)
                     
                     async for event in chat_agent.run(state):
                         yield encoder.encode(event)
             else:
                 # Use regular chat agent
                 from agents.chat_agent import ChatAgent
-                chat_agent = ChatAgent()
+                chat_agent = ChatAgent(model=input_data.model)
                 
                 async for event in chat_agent.run(state):
                     yield encoder.encode(event)

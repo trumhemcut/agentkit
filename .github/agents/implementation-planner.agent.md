@@ -3,6 +3,7 @@ description: 'Implementation planner for multi-agent AI applications with LangGr
 name: Implementation Planner
 model: Claude Sonnet 4.5 (copilot)
 ---
+**use context7**
 
 ## What This Agent Does
 

@@ -6,6 +6,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { useCanvas } from '@/contexts/CanvasContext';
+import { useModelSelection } from '@/hooks/useModelSelection';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendCanvasMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
@@ -24,6 +25,7 @@ interface CanvasChatContainerProps {
 export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
   const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
+  const { selectedModel } = useModelSelection();
   const { 
     artifact, 
     setArtifact, 
@@ -268,6 +270,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
         artifact || undefined,
         undefined, // selectedText - can be added later
         undefined, // action - let backend determine
+        selectedModel || undefined,
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);

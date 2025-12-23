@@ -1,0 +1,2 @@
+- Backend nên hỗ trợ API để hiển thị các model đang có sẵn. Hiện tại chỉ hỗ trợ 2 model là qwen-4b và qwen-7b từ Ollama
+- Frontend sẽ chọn dùng 1 trong các model này lúc chat. Vị trí hiển thị của Models giống như giao diện ChatGPT (ở top của trang)

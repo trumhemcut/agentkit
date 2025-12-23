@@ -26,3 +26,16 @@ export interface ConversationState {
   isLoading: boolean;
   error: string | null;
 }
+
+// LLM Model types
+export interface LLMModel {
+  id: string;
+  name: string;
+  size: string;
+  available: boolean;
+}
+
+export interface ModelsResponse {
+  models: LLMModel[];
+  default: string;
+}

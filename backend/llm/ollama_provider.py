@@ -3,10 +3,17 @@ from config import settings
 
 
 class OllamaProvider:
-    def __init__(self):
+    def __init__(self, model: str = None):
+        """
+        Initialize Ollama provider with optional model parameter
+        
+        Args:
+            model: Model name to use (e.g., "qwen:7b", "qwen:4b")
+                   Falls back to settings.OLLAMA_MODEL if not provided
+        """
         self.model = ChatOllama(
             base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
+            model=model or settings.OLLAMA_MODEL,
             streaming=True
         )
     

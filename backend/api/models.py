@@ -12,6 +12,7 @@ class RunAgentInput(BaseModel):
     thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     messages: List[Message]
+    model: Optional[str] = None  # Optional model selection
 
 
 # Canvas-specific models
@@ -54,6 +55,7 @@ class CanvasMessageRequest(BaseModel):
     artifact: Optional[ArtifactV3] = None
     selectedText: Optional[SelectedText] = None
     action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
+    model: Optional[str] = None  # Optional model selection
 
 
 class ArtifactUpdate(BaseModel):

@@ -3,7 +3,17 @@ from llm.ollama_provider import OllamaProvider
 
 class LLMProviderFactory:
     @staticmethod
-    def get_provider(provider_type: str = "ollama"):
+    def get_provider(provider_type: str = "ollama", model: str = None):
+        """
+        Get LLM provider instance
+        
+        Args:
+            provider_type: Type of provider ("ollama" supported currently)
+            model: Optional model name to use with the provider
+        
+        Returns:
+            Provider instance
+        """
         if provider_type == "ollama":
-            return OllamaProvider()
+            return OllamaProvider(model=model)
         raise ValueError(f"Unknown provider: {provider_type}")

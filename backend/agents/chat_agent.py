@@ -6,8 +6,15 @@ from llm.provider_factory import LLMProviderFactory
 
 
 class ChatAgent(BaseAgent):
-    def __init__(self):
-        provider = LLMProviderFactory.get_provider("ollama")
+    def __init__(self, model: str = None):
+        """
+        Initialize ChatAgent with optional model parameter
+        
+        Args:
+            model: Model name to use (e.g., "qwen:7b", "qwen:4b")
+                   Falls back to default if not provided
+        """
+        provider = LLMProviderFactory.get_provider("ollama", model=model)
         self.llm = provider.get_model()
     
     async def run(self, state: AgentState) -> AsyncGenerator[BaseEvent, None]:

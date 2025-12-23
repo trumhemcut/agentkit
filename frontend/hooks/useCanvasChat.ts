@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from "react"
 import { useCanvas } from "@/contexts/CanvasContext"
+import { useModelSelection } from "@/hooks/useModelSelection"
 import { sendCanvasMessage } from "@/services/api"
 import { getAGUIClient } from "@/services/agui-client"
 import { Message } from "@/types/chat"
@@ -13,6 +14,7 @@ import { v4 as uuidv4 } from "uuid"
  */
 export function useCanvasChat(threadId: string) {
   const { artifact } = useCanvas()
+  const { selectedModel } = useModelSelection()
   const aguiClientRef = useRef(getAGUIClient())
   
   const sendMessage = useCallback(async (messages: Message[]) => {
@@ -34,11 +36,12 @@ export function useCanvasChat(threadId: string) {
       artifact || undefined,
       undefined, // selectedText - can be added later
       undefined, // action - let backend determine
+      selectedModel || undefined,
       (event) => {
         aguiClientRef.current.processEvent(event)
       }
     )
-  }, [threadId, artifact])
+  }, [threadId, artifact, selectedModel])
   
   return { sendMessage }
 }

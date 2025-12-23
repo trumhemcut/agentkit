@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { ModelSelector } from "@/components/ModelSelector"
 import { ChevronLeft, ChevronRight, Download, Copy } from "lucide-react"
 
 interface ArtifactHeaderProps {
@@ -28,6 +29,9 @@ export function ArtifactHeader({
       <h2 className="text-lg font-semibold truncate flex-1">{title || "Untitled"}</h2>
       
       <div className="flex items-center gap-2">
+        {/* Model Selector */}
+        <ModelSelector />
+        
         {/* Action Buttons */}
         {onCopy && (
           <Button

@@ -6,6 +6,7 @@
  */
 
 import { ArtifactV3, SelectedText } from '@/types/canvas';
+import { LLMModel, ModelsResponse } from '@/types/chat';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -18,6 +19,7 @@ export interface ChatRequest {
   thread_id: string;
   run_id: string;
   messages: Message[];
+  model?: string;
 }
 
 export interface AgentStatusResponse {
@@ -35,12 +37,14 @@ export interface AgentStatusResponse {
  * @param messages - Array of messages in the conversation
  * @param threadId - Unique identifier for the conversation thread
  * @param runId - Unique identifier for this agent run
+ * @param model - Optional LLM model ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
  */
 export async function sendChatMessage(
   messages: Message[],
   threadId: string,
   runId: string,
+  model: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
@@ -48,9 +52,10 @@ export async function sendChatMessage(
       thread_id: threadId,
       run_id: runId,
       messages: messages,
+      model: model,
     };
 
-    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length });
+    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model });
 
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -153,6 +158,7 @@ export interface CanvasRequest {
   artifact?: ArtifactV3;
   selectedText?: SelectedText;
   action?: "create" | "update" | "rewrite" | "chat";
+  model?: string;
 }
 
 /**
@@ -167,6 +173,7 @@ export interface CanvasRequest {
  * @param artifact - Current artifact state (if any)
  * @param selectedText - Selected text context (if any)
  * @param action - Explicit action to perform (create, update, rewrite, or chat)
+ * @param model - Optional LLM model ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
  */
 export async function sendCanvasMessage(
@@ -176,6 +183,7 @@ export async function sendCanvasMessage(
   artifact: ArtifactV3 | undefined,
   selectedText: SelectedText | undefined,
   action: "create" | "update" | "rewrite" | "chat" | undefined,
+  model: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
@@ -186,6 +194,7 @@ export async function sendCanvasMessage(
       artifact: artifact,
       selectedText: selectedText,
       action: action,
+      model: model,
     };
 
     console.log('[API] Sending canvas request:', { 
@@ -193,7 +202,8 @@ export async function sendCanvasMessage(
       runId, 
       messageCount: messages.length,
       hasArtifact: !!artifact,
-      action 
+      action,
+      model
     });
 
     const response = await fetch(`${API_BASE_URL}/api/canvas/stream`, {
@@ -268,3 +278,36 @@ export async function sendCanvasMessage(
   }
 }
 
+/**
+ * Fetch available LLM models from the backend
+ * 
+ * @returns Promise with ModelsResponse containing available models and default model
+ */
+export async function fetchAvailableModels(): Promise<ModelsResponse> {
+  try {
+    console.log('[API] Fetching available models...');
+    const response = await fetch(`${API_BASE_URL}/api/models`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[API] Available models:', data);
+    return data;
+  } catch (error) {
+    console.error('[API] Error fetching models:', error);
+    // Return default fallback if API fails
+    return {
+      models: [
+        {
+          id: 'qwen:7b',
+          name: 'Qwen 7B',
+          size: '7B parameters',
+          available: true
+        }
+      ],
+      default: 'qwen:7b'
+    };
+  }
+}
