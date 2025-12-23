@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Bot, Search, Sparkles } from 'lucide-react';
+import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Search, Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -48,16 +49,30 @@ export function Sidebar({
       )}>
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white">
-              <Bot className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg">
+              <Image 
+                src="/logo.svg" 
+                alt="AgentKit Logo" 
+                width={32} 
+                height={32}
+                priority
+                className="h-8 w-8"
+              />
             </div>
             <span className="font-semibold text-gray-900">AgentKit</span>
           </div>
         )}
         {isCollapsed && (
           <>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-white group-hover:opacity-0 transition-opacity">
-              <Bot className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg group-hover:opacity-0 transition-opacity">
+              <Image 
+                src="/logo.svg" 
+                alt="AgentKit Logo" 
+                width={40} 
+                height={40}
+                priority
+                className="h-10 w-10"
+              />
             </div>
             <Button
               variant="ghost"
