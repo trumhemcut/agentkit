@@ -10,6 +10,7 @@ import { useSidebar } from '@/hooks/useSidebar';
 export default function Home() {
   const {
     threads,
+    currentThread,
     currentThreadId,
     createThread,
     deleteThread,
@@ -21,7 +22,13 @@ export default function Home() {
   const chatContainerRef = useRef<ChatContainerRef>(null);
   
   const handleNewChat = () => {
-    createThread();
+    // Only create a new thread if the current thread has messages
+    const hasMessages = currentThread && currentThread.messages.length > 0;
+    
+    if (hasMessages) {
+      createThread();
+    }
+    
     // Focus on input after a short delay to ensure the component is rendered
     setTimeout(() => {
       chatContainerRef.current?.focusInput();
