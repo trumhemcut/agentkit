@@ -319,7 +319,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### Check Ollama
 ```bash
 ollama serve
-ollama pull qwen:4b
+ollama pull qwen:7b
 ```
 
 ## Success Criteria ✅

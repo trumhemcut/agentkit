@@ -9,7 +9,7 @@ Backend skeleton for Agentic AI solution using LangGraph and AG-UI protocol.
 - **LangGraph**: Multi-agent workflow orchestration
 - **AG-UI Protocol**: Real-time agent-frontend communication (official SDK: `ag-ui-protocol`)
 - **FastAPI**: HTTP server with streaming endpoints
-- **Ollama**: LLM provider with `qwen:4b` model
+- **Ollama**: LLM provider with `qwen:7b` model
 - **Python**: Backend implementation
 
 ## Setup
@@ -42,7 +42,7 @@ Backend skeleton for Agentic AI solution using LangGraph and AG-UI protocol.
 4. Ensure Ollama is running:
    ```bash
    ollama serve
-   ollama pull qwen:4b
+   ollama pull qwen:7b
    ```
 
 ### Run Server

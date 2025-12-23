@@ -44,7 +44,7 @@ AgentKit is a **multi-agent AI system** that uses **LangGraph** for agent orches
 │                            ▼                                  │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │              LLM Provider (Ollama)                     │  │
-│  │                    qwen:4b model                       │  │
+│  │                    qwen:7b model                       │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -55,7 +55,7 @@ AgentKit is a **multi-agent AI system** that uses **LangGraph** for agent orches
 - **Python 3.12**: Modern Python with type hints
 - **FastAPI**: High-performance async HTTP server
 - **LangGraph**: Multi-agent workflow orchestration
-- **Ollama**: Local LLM provider (qwen:4b model)
+- **Ollama**: Local LLM provider (qwen:7b model)
 - **AG-UI Protocol SDK**: Official Python SDK for event streaming
 - **Pydantic**: Data validation and settings management
 
@@ -136,7 +136,7 @@ LangGraph Workflow → Agent Nodes → State Management
 ```
 Provider Factory → LLM Provider → Model API
        ↓               ↓             ↓
-  Configuration   Ollama Provider  qwen:4b
+  Configuration   Ollama Provider  qwen:7b
    Management     Implementation   Inference
 ```
 

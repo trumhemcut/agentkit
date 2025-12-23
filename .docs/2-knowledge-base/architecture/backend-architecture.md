@@ -12,7 +12,7 @@ The backend implements a multi-agent AI system using LangGraph for orchestration
 - **LangGraph**: Multi-agent workflow orchestration framework
 - **AG-UI Protocol**: Real-time agent-frontend communication
 - **FastAPI**: HTTP server with streaming endpoints
-- **Ollama**: LLM provider with `qwen:4b` model
+- **Ollama**: LLM provider with `qwen:7b` model
 - **Python 3.12**: Backend implementation language
 
 ## Project Structure
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = True
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen:4b"
+    OLLAMA_MODEL: str = "qwen:7b"
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 ```
 
@@ -305,7 +305,7 @@ Health check endpoint
 
 ### Prerequisites
 - Python 3.10+
-- Ollama installed with `qwen:4b` model
+- Ollama installed with `qwen:7b` model
 
 ### Installation
 ```bash

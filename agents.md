@@ -12,7 +12,7 @@ Multi-agent chat application using **LangGraph** for orchestration and **AG-UI**
 ### Backend
 - **Agent Orchestration**: LangGraph multi-agent workflows 
 - **State Management**: LangGraph state graphs with conditional routing
-- **LLM Integration**: Ollama provider with `qwen:4b` model (extensible to other providers)
+- **LLM Integration**: Ollama provider with `qwen:7b` model (extensible to other providers)
 - **API Server**: FastAPI with CORS, streaming SSE endpoints
 - **AG-UI Protocol**: Real-time agent stream events to front-end app as JSON stream. 
 - **Observability**: LangFuse integration (optional), structured logging
@@ -42,7 +42,7 @@ When building LangGraph agents:
 
 ### LLM Integration
 - Use `LLMProviderFactory` to get provider instances
-- Default: Ollama with `qwen:4b` model
+- Default: Ollama with `qwen:7b` model
 - Extensible to OpenAI, Anthropic, and other providers
 - Configure via `config.py` and environment variables
 

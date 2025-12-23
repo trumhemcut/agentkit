@@ -94,7 +94,7 @@ This knowledge base contains comprehensive documentation for the AgentKit multi-
 - Python 3.12
 - LangGraph (agent orchestration)
 - FastAPI (HTTP/SSE server)
-- Ollama (LLM provider - qwen:4b)
+- Ollama (LLM provider - qwen:7b)
 - Pydantic (validation & settings)
 
 **Frontend**

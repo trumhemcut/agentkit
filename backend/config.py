@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # LLM settings
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen:4b"
+    OLLAMA_MODEL: str = "qwen:7b"
     
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

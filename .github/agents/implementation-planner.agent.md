@@ -75,7 +75,7 @@ When creating plans, organize by layer:
 - State schema definitions (with streaming support)
 - Agent tools and custom functions
 - Routing logic and conditional edges
-- Multi-LLM provider support (Ollama with qwen:4b by default)
+- Multi-LLM provider support (Ollama with qwen:7b by default)
 - FastAPI endpoints and AG-UI integration
 
 ### 2. Protocol (AG-UI)

@@ -266,7 +266,7 @@ for line in response.iter_lines():
 
 No additional configuration needed. Uses existing:
 - `OLLAMA_BASE_URL`: LLM provider endpoint
-- `OLLAMA_MODEL`: Model for generation (default: qwen:4b)
+- `OLLAMA_MODEL`: Model for generation (default: qwen:7b)
 
 ## Dependencies
 

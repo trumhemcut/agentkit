@@ -25,7 +25,7 @@ A modern multi-agent AI assistant built with **LangGraph** for orchestration and
 - **Framework**: FastAPI with streaming SSE endpoints
 - **Agent Orchestration**: LangGraph multi-agent workflows
 - **State Management**: LangGraph state graphs with conditional routing
-- **LLM Provider**: Ollama (`qwen:4b` model by default)
+- **LLM Provider**: Ollama (`qwen:7b` model by default)
 - **Protocol**: AG-UI for real-time event streaming
 - **Observability**: LangFuse integration (optional)
 
@@ -69,7 +69,7 @@ cp .env.example .env
 
 # Ensure Ollama is running
 ollama serve
-ollama pull qwen:4b
+ollama pull qwen:7b
 
 # Start backend server
 python -m backend.main
@@ -217,7 +217,7 @@ Create a `.env` file in the `backend/` directory:
 # LLM Provider Settings
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen:4b
+OLLAMA_MODEL=qwen:7b
 
 # Optional: LangFuse Observability
 LANGFUSE_PUBLIC_KEY=your_public_key
@@ -321,7 +321,7 @@ ollama serve
 
 # Verify model is available
 ollama list
-ollama pull qwen:4b
+ollama pull qwen:7b
 ```
 
 **Port 8000 already in use:**

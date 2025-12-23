@@ -13,7 +13,7 @@ This agent specializes in building agentic AI applications with LangGraph:
 - Building agent tools and custom functions
 - Setting up agent communication and state management
 - The agent should support SSE streaming
-- The agent support multiple LLM providers and models, starting with Ollama, model named `qwen:4b`
+- The agent support multiple LLM providers and models, starting with Ollama, model named `qwen:7b`
 
 ## When to Use
 

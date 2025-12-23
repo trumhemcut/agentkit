@@ -141,7 +141,7 @@ from llm.provider_factory import LLMProviderFactory
 # Get provider from factory
 llm = LLMProviderFactory.get_provider(
     provider="ollama",
-    model="qwen:4b"
+    model="qwen:7b"
 )
 
 # Use provider
@@ -191,7 +191,7 @@ cp .env.example .env
 
 # Install Ollama (if using local LLM)
 # Follow: https://ollama.ai/download
-ollama pull qwen:4b
+ollama pull qwen:7b
 ```
 
 ### Running
@@ -225,7 +225,7 @@ pytest tests/test_chat_agent.py
 ```python
 # LLM Configuration
 LLM_PROVIDER=ollama              # Provider: ollama, openai, anthropic
-LLM_MODEL=qwen:4b               # Model name
+LLM_MODEL=qwen:7b               # Model name
 OLLAMA_BASE_URL=http://localhost:11434
 
 # API Configuration

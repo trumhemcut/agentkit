@@ -222,13 +222,13 @@ The canvas feature uses your existing configuration:
 ```python
 # config.py
 OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen:4b"
+OLLAMA_MODEL = "qwen:7b"
 ```
 
 Make sure Ollama is running:
 ```bash
 ollama serve
-ollama pull qwen:4b
+ollama pull qwen:7b
 ```
 
 ## Troubleshooting

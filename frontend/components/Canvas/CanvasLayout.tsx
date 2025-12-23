@@ -10,12 +10,12 @@ interface CanvasLayoutProps {
 export function CanvasLayout({ chatPanel, artifactPanel }: CanvasLayoutProps) {
   return (
     <div className="flex h-screen w-full">
-      {/* Chat Panel (Left) - 40% width */}
-      <div className="flex-[0_0_40%] min-w-[30%] max-w-[60%] flex flex-col border-r">
+      {/* Chat Panel (Left) - 1/3 width */}
+      <div className="flex-[0_0_33.333%] min-w-[25%] max-w-[50%] flex flex-col border-r">
         {chatPanel}
       </div>
       
-      {/* Artifact Panel (Right) - 60% width */}
+      {/* Artifact Panel (Right) - 2/3 width */}
       <div className="flex-1 flex flex-col bg-gray-50">
         {artifactPanel}
       </div>

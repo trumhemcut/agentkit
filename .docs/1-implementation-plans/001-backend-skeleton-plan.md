@@ -14,7 +14,7 @@ Build a Python-based backend skeleton that implements a simple chat agent with s
 - **LangGraph**: Multi-agent workflow orchestration framework
 - **AG-UI Protocol**: Real-time agent-frontend communication via SSE streaming
 - **FastAPI**: HTTP server with streaming endpoints
-- **Ollama**: LLM provider with `qwen:4b` model
+- **Ollama**: LLM provider with `qwen:7b` model
 - **Python**: Backend implementation language
 
 ### 2. Project Structure
@@ -98,7 +98,7 @@ Build a Python-based backend skeleton that implements a simple chat agent with s
       
       # LLM settings
       OLLAMA_BASE_URL: str = "http://localhost:11434"
-      OLLAMA_MODEL: str = "qwen:4b"
+      OLLAMA_MODEL: str = "qwen:7b"
       
       # CORS settings
       CORS_ORIGINS: list = ["http://localhost:3000"]
@@ -161,7 +161,7 @@ Build a Python-based backend skeleton that implements a simple chat agent with s
 
 **Tasks**:
 - Create provider factory pattern
-- Implement Ollama provider with `qwen:4b` model
+- Implement Ollama provider with `qwen:7b` model
 - Set up streaming support
 
 **Files to Create**:
@@ -458,7 +458,7 @@ Build a Python-based backend skeleton that implements a simple chat agent with s
   4. Ensure Ollama is running:
      ```bash
      ollama serve
-     ollama pull qwen:4b
+     ollama pull qwen:7b
      ```
   
   5. Run server:
@@ -492,7 +492,7 @@ Build a Python-based backend skeleton that implements a simple chat agent with s
   PORT=8000
   DEBUG=True
   OLLAMA_BASE_URL=http://localhost:11434
-  OLLAMA_MODEL=qwen:4b
+  OLLAMA_MODEL=qwen:7b
   CORS_ORIGINS=["http://localhost:3000"]
   ```
 
@@ -516,7 +516,7 @@ python-dotenv==1.0.0
 
 ### External Services
 - **Ollama**: Local LLM provider (must be installed and running)
-  - Model: `qwen:4b` (must be pulled)
+  - Model: `qwen:7b` (must be pulled)
 
 ---
 
@@ -537,7 +537,7 @@ python-dotenv==1.0.0
 ### Validation Checklist
 - [ ] Virtual environment created at `./.venv`
 - [ ] All dependencies installed
-- [ ] Ollama running with `qwen:4b` model
+- [ ] Ollama running with `qwen:7b` model
 - [ ] Server starts without errors
 - [ ] Health check returns 200
 - [ ] Chat endpoint streams SSE events
@@ -567,7 +567,7 @@ python-dotenv==1.0.0
 4. **Simple chat agent functional**:
    - Receives user messages
    - Streams responses chunk by chunk
-   - Integrates with Ollama `qwen:4b` model
+   - Integrates with Ollama `qwen:7b` model
    - No tools implemented (as per requirement)
 
 5. **Code quality**:
