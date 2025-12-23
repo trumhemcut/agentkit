@@ -29,6 +29,9 @@ export enum EventType {
   EXECUTING = 'EXECUTING',
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR',
+  
+  // Custom events (for canvas and other extensions)
+  CUSTOM = 'CUSTOM',
 }
 
 export type AGUIEventType = EventType | string;
@@ -122,6 +125,15 @@ export interface ErrorEvent extends BaseEvent {
 }
 
 /**
+ * Custom event (for canvas and other extensions)
+ */
+export interface CustomEvent extends BaseEvent {
+  type: EventType.CUSTOM;
+  name: string;
+  value: any;
+}
+
+/**
  * Union type for all AG-UI events
  */
 export type AGUIEvent = 
@@ -136,6 +148,7 @@ export type AGUIEvent =
   | ToolCallEndEvent
   | ToolCallResultEvent
   | ErrorEvent
+  | CustomEvent
   | BaseEvent; // Fallback for unknown events
 
 // AG-UI connection state

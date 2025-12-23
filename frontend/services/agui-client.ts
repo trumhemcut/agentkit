@@ -1,4 +1,5 @@
 import { AGUIEvent, ConnectionState, EventType } from '@/types/agui';
+import { ArtifactV3 } from '@/types/canvas';
 
 /**
  * AG-UI Client for handling Server-Sent Events (SSE) from backend
@@ -173,3 +174,86 @@ export function getAGUIClient(): AGUIClient {
   }
   return clientInstance;
 }
+
+/**
+ * Canvas-specific event handlers
+ * These handle artifact creation, streaming, and version changes
+ */
+export interface CanvasEventHandlers {
+  onArtifactCreated?: (artifact: ArtifactV3) => void
+  onArtifactStreaming?: (delta: string, index: number) => void
+  onArtifactStreamingStart?: (artifact: ArtifactV3) => void
+  onArtifactUpdated?: (artifact: ArtifactV3) => void
+  onVersionChanged?: (artifact: ArtifactV3) => void
+}
+
+/**
+ * Setup canvas event listeners on the AG-UI client
+ * 
+ * @param client - The AG-UI client instance
+ * @param handlers - Canvas event handler callbacks
+ * @returns Cleanup function to remove all listeners
+ */
+export function setupCanvasEventHandlers(
+  client: AGUIClient,
+  handlers: CanvasEventHandlers
+): () => void {
+  const unsubscribers: (() => void)[] = []
+  
+  if (handlers.onArtifactCreated) {
+    const unsub = client.on('artifact_created', (event: any) => {
+      console.log('[Canvas] Artifact created:', event)
+      if (event.artifact) {
+        handlers.onArtifactCreated?.(event.artifact)
+      }
+    })
+    unsubscribers.push(unsub)
+  }
+  
+  if (handlers.onArtifactStreamingStart) {
+    const unsub = client.on('artifact_streaming_start', (event: any) => {
+      console.log('[Canvas] Artifact streaming start:', event)
+      if (event.artifact) {
+        handlers.onArtifactStreamingStart?.(event.artifact)
+      }
+    })
+    unsubscribers.push(unsub)
+  }
+  
+  if (handlers.onArtifactStreaming) {
+    const unsub = client.on('artifact_streaming', (event: any) => {
+      console.log('[Canvas] Artifact streaming delta:', event)
+      if (event.contentDelta !== undefined && event.artifactIndex !== undefined) {
+        handlers.onArtifactStreaming?.(event.contentDelta, event.artifactIndex)
+      }
+    })
+    unsubscribers.push(unsub)
+  }
+  
+  if (handlers.onArtifactUpdated) {
+    const unsub = client.on('artifact_updated', (event: any) => {
+      console.log('[Canvas] Artifact updated:', event)
+      if (event.artifact) {
+        handlers.onArtifactUpdated?.(event.artifact)
+      }
+    })
+    unsubscribers.push(unsub)
+  }
+  
+  if (handlers.onVersionChanged) {
+    const unsub = client.on('artifact_version_changed', (event: any) => {
+      console.log('[Canvas] Artifact version changed:', event)
+      if (event.artifact) {
+        handlers.onVersionChanged?.(event.artifact)
+      }
+    })
+    unsubscribers.push(unsub)
+  }
+  
+  // Return cleanup function
+  return () => {
+    unsubscribers.forEach(unsub => unsub())
+    console.log('[Canvas] Cleaned up canvas event handlers')
+  }
+}
+

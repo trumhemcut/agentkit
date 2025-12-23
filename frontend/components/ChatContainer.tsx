@@ -79,7 +79,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       
       // Create new agent message
       const newMessage: ChatMessage = {
-        id: event.message_id || `msg-agent-${Date.now()}`,
+        id: (event as any).message_id || `msg-agent-${Date.now()}`,
         threadId: currentThreadId,
         role: 'agent',
         content: '',
