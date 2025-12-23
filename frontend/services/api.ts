@@ -2,6 +2,7 @@
  * API Client for backend communication
  * 
  * Provides typed functions for interacting with the backend API endpoints.
+ * Handles AG-UI protocol streaming events from the backend.
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -24,8 +25,15 @@ export interface AgentStatusResponse {
 }
 
 /**
- * Send a chat message to the backend and get streaming response
- * Returns a ReadableStream that can be consumed for SSE events
+ * Send a chat message to the backend and get streaming AG-UI response
+ * 
+ * This function sends a POST request to the /api/chat endpoint and processes
+ * the Server-Sent Events (SSE) stream returned by the backend.
+ * 
+ * @param messages - Array of messages in the conversation
+ * @param threadId - Unique identifier for the conversation thread
+ * @param runId - Unique identifier for this agent run
+ * @param onEvent - Callback function to handle each AG-UI event
  */
 export async function sendChatMessage(
   messages: Message[],
@@ -40,7 +48,7 @@ export async function sendChatMessage(
       messages: messages,
     };
 
-    console.log('Sending chat request:', chatRequest);
+    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length });
 
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -51,8 +59,7 @@ export async function sendChatMessage(
       body: JSON.stringify(chatRequest),
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -67,19 +74,18 @@ export async function sendChatMessage(
     const decoder = new TextDecoder();
     let buffer = '';
 
-    console.log('Starting to read stream...');
+    console.log('[API] Starting to read AG-UI event stream...');
 
     while (true) {
       const { done, value } = await reader.read();
       
       if (done) {
-        console.log('Stream completed');
+        console.log('[API] Stream completed');
         break;
       }
 
       // Decode chunk and add to buffer
       const chunk = decoder.decode(value, { stream: true });
-      console.log('Received chunk:', chunk);
       buffer += chunk;
 
       // Process complete SSE messages
@@ -87,28 +93,30 @@ export async function sendChatMessage(
       buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
       for (const line of lines) {
+        // SSE format: "data: <json>"
         if (line.startsWith('data: ')) {
           const data = line.slice(6); // Remove 'data: ' prefix
           
+          // Skip [DONE] marker
           if (data.trim() === '[DONE]') {
             continue;
           }
 
           try {
             const event = JSON.parse(data);
-            console.log('Parsed event:', event);
+            console.log('[API] Received AG-UI event:', event.type);
             onEvent(event);
           } catch (error) {
-            console.error('Error parsing SSE event:', error, data);
+            console.error('[API] Error parsing SSE event:', error, 'Data:', data);
           }
         }
       }
     }
   } catch (error) {
-    console.error('Error sending chat message:', error);
+    console.error('[API] Error sending chat message:', error);
     onEvent({
       type: 'ERROR',
-      data: { message: error instanceof Error ? error.message : 'Unknown error' },
+      message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now(),
     });
   }

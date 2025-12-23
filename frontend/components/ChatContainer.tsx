@@ -7,6 +7,7 @@ import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage } from '@/services/api';
+import { EventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
 
 interface ChatContainerProps {
@@ -54,14 +55,16 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
   // Handle AG-UI events - register once, not per thread
   useEffect(() => {
+    console.log('[ChatContainer] Registering AG-UI event handlers');
+    
     // Handle RUN_STARTED
-    const unsubscribeStart = on('RUN_STARTED', (event) => {
-      console.log('Agent run started:', event);
+    const unsubscribeStart = on(EventType.RUN_STARTED, (event) => {
+      console.log('[ChatContainer] Agent run started:', event);
     });
 
     // Handle TEXT_MESSAGE_START - new message begins
-    const unsubscribeMessageStart = on('TEXT_MESSAGE_START', (event) => {
-      console.log('Text message start:', event);
+    const unsubscribeMessageStart = on(EventType.TEXT_MESSAGE_START, (event) => {
+      console.log('[ChatContainer] Text message start:', event);
       const currentThreadId = threadIdRef.current;
       if (!currentThreadId) return;
       
@@ -80,7 +83,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         role: 'agent',
         content: '',
         timestamp: Date.now(),
-        agentName: event.agentName || 'Agent',
+        agentName: (event as any).agentName || 'Agent',
         isStreaming: true,
         isPending: false,
       };
@@ -89,9 +92,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     });
 
     // Handle TEXT_MESSAGE_CONTENT - streaming chunks
-    const unsubscribeContent = on('TEXT_MESSAGE_CONTENT', (event) => {
-      const chunk = event.delta || '';
-      console.log('Text message content:', chunk);
+    const unsubscribeContent = on(EventType.TEXT_MESSAGE_CONTENT, (event) => {
+      const chunk = (event as any).delta || '';
+      console.log('[ChatContainer] Text message content chunk');
       
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
@@ -104,8 +107,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     });
 
     // Handle TEXT_MESSAGE_END - message complete
-    const unsubscribeMessageEnd = on('TEXT_MESSAGE_END', (event) => {
-      console.log('Text message end:', event);
+    const unsubscribeMessageEnd = on(EventType.TEXT_MESSAGE_END, (event) => {
+      console.log('[ChatContainer] Text message end:', event);
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
         updateMessage(currentMsg.id, { isStreaming: false });
@@ -114,8 +117,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     });
 
     // Handle RUN_FINISHED
-    const unsubscribeFinish = on('RUN_FINISHED', (event) => {
-      console.log('Run finished:', event);
+    const unsubscribeFinish = on(EventType.RUN_FINISHED, (event) => {
+      console.log('[ChatContainer] Run finished:', event);
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
         updateMessage(currentMsg.id, { isStreaming: false });
@@ -125,23 +128,25 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     });
 
     // Handle ERROR
-    const unsubscribeError = on('ERROR', (event) => {
-      console.error('AG-UI Error:', event);
+    const unsubscribeError = on(EventType.ERROR, (event) => {
+      console.error('[ChatContainer] AG-UI Error:', event);
       setIsSending(false);
       currentAgentMessageRef.current = null;
-      setConnectionState(false, event.data?.message || event.message || 'Connection error');
+      const errorMsg = (event as any).data?.message || (event as any).message || 'Connection error';
+      setConnectionState(false, errorMsg);
     });
 
     // Handle RUN_ERROR
-    const unsubscribeRunError = on('RUN_ERROR', (event) => {
-      console.error('AG-UI Run Error:', event);
+    const unsubscribeRunError = on(EventType.RUN_ERROR, (event) => {
+      console.error('[ChatContainer] AG-UI Run Error:', event);
       setIsSending(false);
       currentAgentMessageRef.current = null;
-      setConnectionState(false, event.message || 'Agent error');
+      const errorMsg = (event as any).message || 'Agent error';
+      setConnectionState(false, errorMsg);
     });
 
     return () => {
-      console.log('Unsubscribing all event handlers');
+      console.log('[ChatContainer] Unsubscribing all event handlers');
       unsubscribeStart();
       unsubscribeMessageStart();
       unsubscribeContent();
@@ -150,7 +155,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       unsubscribeError();
       unsubscribeRunError();
     };
-  }, [on, addMessage, updateMessage, setConnectionState]); // Removed threadId!
+  }, [on, addMessage, updateMessage, setConnectionState]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {

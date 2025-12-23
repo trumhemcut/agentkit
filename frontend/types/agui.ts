@@ -1,42 +1,142 @@
-// AG-UI Protocol event types
-export type AGUIEventType = 
-  | 'RUN_STARTED'
-  | 'RUN_FINISHED'
-  | 'RUN_ERROR'
-  | 'TEXT_MESSAGE_START'
-  | 'TEXT_MESSAGE_CONTENT'
-  | 'TEXT_MESSAGE_END'
-  | 'THINKING'
-  | 'EXECUTING'
-  | 'COMPLETE'
-  | 'ERROR';
+/**
+ * AG-UI Protocol event types
+ * 
+ * These types should match the official ag-ui-protocol events from the backend
+ */
 
-export interface AGUIEvent {
+// Re-export types from @ag-ui/core when available
+// For now, define compatible types
+
+export enum EventType {
+  // Run lifecycle events
+  RUN_STARTED = 'RUN_STARTED',
+  RUN_FINISHED = 'RUN_FINISHED',
+  RUN_ERROR = 'RUN_ERROR',
+  
+  // Text message events
+  TEXT_MESSAGE_START = 'TEXT_MESSAGE_START',
+  TEXT_MESSAGE_CONTENT = 'TEXT_MESSAGE_CONTENT',
+  TEXT_MESSAGE_END = 'TEXT_MESSAGE_END',
+  
+  // Tool call events (for future use)
+  TOOL_CALL_START = 'TOOL_CALL_START',
+  TOOL_CALL_ARGS = 'TOOL_CALL_ARGS',
+  TOOL_CALL_END = 'TOOL_CALL_END',
+  TOOL_CALL_RESULT = 'TOOL_CALL_RESULT',
+  
+  // Additional events
+  THINKING = 'THINKING',
+  EXECUTING = 'EXECUTING',
+  COMPLETE = 'COMPLETE',
+  ERROR = 'ERROR',
+}
+
+export type AGUIEventType = EventType | string;
+
+/**
+ * Base event structure
+ */
+export interface BaseEvent {
   type: AGUIEventType;
-  data?: any;
   timestamp?: number;
-  agentName?: string;
-  threadId?: string;
+}
+
+/**
+ * Run lifecycle events
+ */
+export interface RunStartedEvent extends BaseEvent {
+  type: EventType.RUN_STARTED;
   thread_id?: string;
   run_id?: string;
-  message_id?: string;
+}
+
+export interface RunFinishedEvent extends BaseEvent {
+  type: EventType.RUN_FINISHED;
+  thread_id?: string;
+  run_id?: string;
+}
+
+export interface RunErrorEvent extends BaseEvent {
+  type: EventType.RUN_ERROR;
+  thread_id?: string;
+  run_id?: string;
+  message?: string;
+}
+
+/**
+ * Text message events
+ */
+export interface TextMessageStartEvent extends BaseEvent {
+  type: EventType.TEXT_MESSAGE_START;
+  message_id: string;
   role?: string;
+  agentName?: string;
+}
+
+export interface TextMessageContentEvent extends BaseEvent {
+  type: EventType.TEXT_MESSAGE_CONTENT;
+  message_id: string;
+  delta: string;
+}
+
+export interface TextMessageEndEvent extends BaseEvent {
+  type: EventType.TEXT_MESSAGE_END;
+  message_id: string;
+}
+
+/**
+ * Tool call events (for future use)
+ */
+export interface ToolCallStartEvent extends BaseEvent {
+  type: EventType.TOOL_CALL_START;
+  tool_call_id: string;
+  tool_name: string;
+  parent_message_id?: string;
+}
+
+export interface ToolCallArgsEvent extends BaseEvent {
+  type: EventType.TOOL_CALL_ARGS;
+  tool_call_id: string;
+  args?: string;
   delta?: string;
-  message?: string;
 }
 
-// AG-UI text message chunk
-export interface TextMessageChunk {
+export interface ToolCallEndEvent extends BaseEvent {
+  type: EventType.TOOL_CALL_END;
+  tool_call_id: string;
+}
+
+export interface ToolCallResultEvent extends BaseEvent {
+  type: EventType.TOOL_CALL_RESULT;
+  tool_call_id: string;
   content: string;
-  isComplete: boolean;
 }
 
-// AG-UI run state
-export interface RunState {
-  runId: string;
-  status: 'started' | 'running' | 'finished' | 'error';
+/**
+ * Generic error event
+ */
+export interface ErrorEvent extends BaseEvent {
+  type: EventType.ERROR;
+  data?: any;
   message?: string;
 }
+
+/**
+ * Union type for all AG-UI events
+ */
+export type AGUIEvent = 
+  | RunStartedEvent
+  | RunFinishedEvent
+  | RunErrorEvent
+  | TextMessageStartEvent
+  | TextMessageContentEvent
+  | TextMessageEndEvent
+  | ToolCallStartEvent
+  | ToolCallArgsEvent
+  | ToolCallEndEvent
+  | ToolCallResultEvent
+  | ErrorEvent
+  | BaseEvent; // Fallback for unknown events
 
 // AG-UI connection state
 export interface ConnectionState {
