@@ -44,9 +44,12 @@ export function useMessages(threadId: string | null) {
   const addMessage = useCallback((message: Message) => {
     setMessages(prev => [...prev, message]);
     
-    const currentThreadId = threadId;
-    if (currentThreadId) {
-      StorageService.addMessage(currentThreadId, message);
+    if (threadId) {
+      console.log('[useMessages] Adding message to thread:', threadId, message);
+      StorageService.addMessage(threadId, message);
+      console.log('[useMessages] Message added to localStorage');
+    } else {
+      console.warn('[useMessages] Cannot add message - threadId is null');
     }
     
     // Auto-scroll to bottom
@@ -55,7 +58,7 @@ export function useMessages(threadId: string | null) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     }, 100);
-  }, []); // No dependencies - uses closure over threadId
+  }, [threadId]); // Include threadId as dependency
 
   /**
    * Update an existing message
@@ -65,11 +68,13 @@ export function useMessages(threadId: string | null) {
       msg.id === messageId ? { ...msg, ...updates } : msg
     ));
     
-    const currentThreadId = threadId;
-    if (currentThreadId) {
-      StorageService.updateMessage(currentThreadId, messageId, updates);
+    if (threadId) {
+      console.log('[useMessages] Updating message in thread:', threadId, messageId, updates);
+      StorageService.updateMessage(threadId, messageId, updates);
+    } else {
+      console.warn('[useMessages] Cannot update message - threadId is null');
     }
-  }, []); // No dependencies - uses closure over threadId
+  }, [threadId]); // Include threadId as dependency
 
   /**
    * Clear all messages (for current thread)

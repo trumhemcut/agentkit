@@ -13,6 +13,7 @@ import { MessageSquare } from 'lucide-react';
 interface ChatContainerProps {
   threadId: string | null;
   onUpdateThreadTitle: (threadId: string, title: string) => void;
+  onRefreshThreads?: () => void;
 }
 
 export interface ChatContainerRef {
@@ -24,7 +25,7 @@ export interface ChatContainerRef {
  * 
  * Main chat interface with message history and input
  */
-export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle }, ref) {
+export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads }, ref) {
   const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const [isSending, setIsSending] = useState(false);
@@ -114,6 +115,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         updateMessage(currentMsg.id, { isStreaming: false });
         currentAgentMessageRef.current = null;
       }
+      // Refresh threads to update sidebar with latest messages
+      onRefreshThreads?.();
     });
 
     // Handle RUN_FINISHED
@@ -125,6 +128,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         currentAgentMessageRef.current = null;
       }
       setIsSending(false);
+      // Refresh threads to update sidebar with latest messages
+      onRefreshThreads?.();
     });
 
     // Handle ERROR
@@ -197,6 +202,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
       onUpdateThreadTitle(threadId, title);
     }
+    
+    // Refresh threads to update sidebar immediately after adding user message
+    onRefreshThreads?.();
 
     // Prepare messages for API
     const apiMessages: APIMessage[] = [

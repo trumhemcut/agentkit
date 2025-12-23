@@ -16,6 +16,7 @@ export default function Home() {
     deleteThread,
     selectThread,
     updateThreadTitle,
+    refreshThreads,
   } = useChatThreads();
 
   const { isCollapsed, toggleCollapse } = useSidebar();
@@ -53,6 +54,7 @@ export default function Home() {
         ref={chatContainerRef}
         threadId={currentThreadId}
         onUpdateThreadTitle={updateThreadTitle}
+        onRefreshThreads={refreshThreads}
       />
     </Layout>
   );

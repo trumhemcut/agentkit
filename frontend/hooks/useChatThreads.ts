@@ -18,6 +18,24 @@ export function useChatThreads() {
   useEffect(() => {
     const loadedThreads = StorageService.getThreads();
     setThreads(loadedThreads);
+    
+    // Auto-create first thread if no threads exist
+    if (loadedThreads.length === 0) {
+      const newThread: Thread = {
+        id: `thread-${Date.now()}`,
+        title: 'New Chat',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      StorageService.saveThread(newThread);
+      setThreads([newThread]);
+      setCurrentThreadId(newThread.id);
+    } else {
+      // Select the most recent thread
+      setCurrentThreadId(loadedThreads[0].id);
+    }
+    
     setIsLoading(false);
   }, []);
 
@@ -34,7 +52,8 @@ export function useChatThreads() {
     };
 
     StorageService.saveThread(newThread);
-    setThreads(prev => [newThread, ...prev]);
+    // Reload threads to maintain sort order
+    setThreads(StorageService.getThreads());
     setCurrentThreadId(newThread.id);
     
     return newThread;
@@ -63,13 +82,15 @@ export function useChatThreads() {
    * Update thread title
    */
   const updateThreadTitle = useCallback((threadId: string, title: string) => {
-    const thread = threads.find(t => t.id === threadId);
+    // Get thread from localStorage to ensure we have the latest messages
+    const thread = StorageService.getThread(threadId);
     if (thread) {
       const updatedThread = { ...thread, title, updatedAt: Date.now() };
       StorageService.saveThread(updatedThread);
-      setThreads(prev => prev.map(t => t.id === threadId ? updatedThread : t));
+      // Reload threads to maintain sort order
+      setThreads(StorageService.getThreads());
     }
-  }, [threads]);
+  }, []);
 
   /**
    * Get current thread
