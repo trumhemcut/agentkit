@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, KeyboardEvent } from 'react';
+import { useState, KeyboardEvent, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Send } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -11,17 +11,28 @@ interface ChatInputProps {
   placeholder?: string;
 }
 
+export interface ChatInputRef {
+  focus: () => void;
+}
+
 /**
  * Chat Input component
  * 
  * Message input box with send button
  */
-export function ChatInput({ 
+export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatInput({ 
   onSendMessage, 
   disabled = false,
   placeholder = "Type your message..."
-}: ChatInputProps) {
+}, ref) {
   const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    }
+  }));
 
   const handleSend = () => {
     const trimmedMessage = message.trim();
@@ -42,6 +53,7 @@ export function ChatInput({
     <div className="border-t bg-background p-4">
       <div className="flex gap-2">
         <Textarea
+          ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -64,4 +76,4 @@ export function ChatInput({
       </p>
     </div>
   );
-}
+});

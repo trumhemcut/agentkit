@@ -7,6 +7,7 @@ export interface Message {
   timestamp: number;
   agentName?: string;
   isStreaming?: boolean;
+  isPending?: boolean; // True when waiting for server response
 }
 
 // Chat thread types

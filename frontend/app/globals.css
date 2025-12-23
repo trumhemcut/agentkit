@@ -21,6 +21,12 @@
   --color-input: 0 0% 89.8%;
   --color-ring: 0 0% 3.9%;
   --radius: 0.5rem;
+  
+  /* Custom variables for sidebar */
+  --sidebar-width-expanded: 16rem; /* 256px / w-64 */
+  --sidebar-width-collapsed: 4rem; /* 64px / w-16 */
+  --transition-duration: 300ms;
+  --sidebar-background: 0 0% 100%; /* Pure white background */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +50,30 @@
     --color-border: 0 0% 14.9%;
     --color-input: 0 0% 14.9%;
     --color-ring: 0 0% 83.1%;
+    --sidebar-background: 0 0% 100%; /* Pure white background */
   }
 }
 
+/* Smooth transitions for sidebar */
+.sidebar-transition {
+  transition: width var(--transition-duration) ease-in-out;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--color-muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-muted-foreground) / 0.5);
+}

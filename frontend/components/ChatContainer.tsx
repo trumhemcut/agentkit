@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { ChatHistory } from './ChatHistory';
-import { ChatInput } from './ChatInput';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { MessageHistory } from './MessageHistory';
+import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { Message as ChatMessage } from '@/types/chat';
@@ -14,17 +14,28 @@ interface ChatContainerProps {
   onUpdateThreadTitle: (threadId: string, title: string) => void;
 }
 
+export interface ChatContainerRef {
+  focusInput: () => void;
+}
+
 /**
  * Chat Container component
  * 
  * Main chat interface with message history and input
  */
-export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerProps) {
+export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle }, ref) {
   const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
+  const chatInputRef = useRef<ChatInputRef>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      chatInputRef.current?.focus();
+    }
+  }));
 
   // Keep threadId ref in sync
   useEffect(() => {
@@ -54,6 +65,14 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
       const currentThreadId = threadIdRef.current;
       if (!currentThreadId) return;
       
+      // If there's a pending message, update it to streaming
+      const currentMsg = currentAgentMessageRef.current;
+      if (currentMsg && currentMsg.isPending) {
+        updateMessage(currentMsg.id, { isPending: false, isStreaming: true });
+        currentAgentMessageRef.current = { ...currentMsg, isPending: false, isStreaming: true };
+        return;
+      }
+      
       // Create new agent message
       const newMessage: ChatMessage = {
         id: event.message_id || `msg-agent-${Date.now()}`,
@@ -63,6 +82,7 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
         timestamp: Date.now(),
         agentName: event.agentName || 'Agent',
         isStreaming: true,
+        isPending: false,
       };
       currentAgentMessageRef.current = newMessage;
       addMessage(newMessage);
@@ -153,6 +173,20 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
     // Add user message to chat
     addMessage(userMessage);
 
+    // Add pending agent message immediately
+    const pendingMessage: ChatMessage = {
+      id: `msg-agent-pending-${Date.now()}`,
+      threadId: threadId,
+      role: 'agent',
+      content: '',
+      timestamp: Date.now(),
+      agentName: 'Agent',
+      isPending: true,
+      isStreaming: false,
+    };
+    currentAgentMessageRef.current = pendingMessage;
+    addMessage(pendingMessage);
+
     // Update thread title if it's the first message
     if (messages.length === 0) {
       const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
@@ -201,12 +235,20 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
 
   if (!threadId) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center">
-        <MessageSquare className="mb-4 h-16 w-16 text-muted-foreground" />
-        <h2 className="mb-2 text-2xl font-bold">Welcome to AgentKit</h2>
-        <p className="text-muted-foreground">
-          Select a chat or start a new conversation
-        </p>
+      <div className="flex h-full flex-col">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <MessageSquare className="mb-4 h-16 w-16 text-muted-foreground" />
+          <h2 className="mb-2 text-2xl font-bold">Welcome to AgentKit</h2>
+          <p className="text-muted-foreground mb-4">
+            Select a chat or start a new conversation
+          </p>
+        </div>
+        <ChatInput 
+          ref={chatInputRef}
+          onSendMessage={() => {}} 
+          disabled={true}
+          placeholder="Start a new chat to begin..."
+        />
       </div>
     );
   }
@@ -214,9 +256,10 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-hidden">
-        <ChatHistory messages={messages} scrollRef={scrollRef} />
+        <MessageHistory messages={messages} scrollRef={scrollRef} />
       </div>
       <ChatInput 
+        ref={chatInputRef}
         onSendMessage={handleSendMessage} 
         disabled={isSending || !isConnected}
         placeholder={
@@ -229,4 +272,4 @@ export function ChatContainer({ threadId, onUpdateThreadTitle }: ChatContainerPr
       />
     </div>
   );
-}
+});

@@ -4,6 +4,7 @@ import { Message } from '@/types/chat';
 import { Card, CardContent } from '@/components/ui/card';
 import { AvatarIcon } from './AvatarIcon';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -48,9 +49,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             : 'bg-muted'
         )}>
           <CardContent className="p-3">
-            <p className="text-sm whitespace-pre-wrap break-words">
-              {message.content}
-            </p>
+            {(message.isPending || message.isStreaming) && message.content === '' ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Thinking...</span>
+              </div>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap break-words">
+                {message.content}
+              </p>
+            )}
           </CardContent>
         </Card>
         
