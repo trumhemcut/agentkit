@@ -101,3 +101,8 @@ When creating plans, organize by layer:
 3. **Clear Handoffs**: Specify which agent owns each task
 4. **Integration Points**: Document where backend and frontend connect
 5. **Follow Existing Patterns**: Reference backend.agent.md and frontend.agent.md for tech stack
+
+## Knowledge Base
+Please use these sources for reference:
+1. The code is the single source of truth. Always refer to existing code patterns.
+2. The supporting knowledge base is from ./docs/2-knowledge-base/ which is updated regularly.
