@@ -1,16 +1,18 @@
 'use client';
 
-import { Message } from '@/types/chat';
+import { Message, isArtifactMessage } from '@/types/chat';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { AvatarIcon } from './AvatarIcon';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 
 interface AgentMessageBubbleProps {
   message: Message;
+  onEnableCanvas?: (message: Message) => void;
 }
 
 /**
@@ -18,13 +20,17 @@ interface AgentMessageBubbleProps {
  * 
  * Displays an agent chat message with avatar and markdown-rendered content
  */
-export function AgentMessageBubble({ message }: AgentMessageBubbleProps) {
+export function AgentMessageBubble({ message, onEnableCanvas }: AgentMessageBubbleProps) {
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+  
+  const handleEnableCanvas = () => {
+    onEnableCanvas?.(message);
   };
 
   return (
@@ -138,9 +144,23 @@ export function AgentMessageBubble({ message }: AgentMessageBubbleProps) {
           </CardContent>
         </Card>
         
-        <span className="text-xs text-muted-foreground">
-          {formatTime(message.timestamp)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {formatTime(message.timestamp)}
+          </span>
+          
+          {isArtifactMessage(message) && !message.isStreaming && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEnableCanvas}
+              className="h-6 px-2 text-xs flex items-center gap-1"
+            >
+              <Edit className="h-3 w-3" />
+              Edit in Canvas
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

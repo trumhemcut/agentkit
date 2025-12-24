@@ -8,6 +8,7 @@ import { RefObject } from 'react';
 interface MessageHistoryProps {
   messages: Message[];
   scrollRef?: RefObject<HTMLDivElement | null>;
+  onEnableCanvas?: (message: Message) => void;
 }
 
 /**
@@ -15,7 +16,7 @@ interface MessageHistoryProps {
  * 
  * Displays list of messages with auto-scroll
  */
-export function MessageHistory({ messages, scrollRef }: MessageHistoryProps) {
+export function MessageHistory({ messages, scrollRef, onEnableCanvas }: MessageHistoryProps) {
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
@@ -32,7 +33,7 @@ export function MessageHistory({ messages, scrollRef }: MessageHistoryProps) {
     <div className="h-full overflow-y-auto">
       <div ref={scrollRef} className="p-4 space-y-4">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} />
         ))}
       </div>
     </div>

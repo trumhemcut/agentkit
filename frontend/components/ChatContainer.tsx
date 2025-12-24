@@ -17,6 +17,7 @@ interface ChatContainerProps {
   onUpdateThreadTitle: (threadId: string, title: string) => void;
   onRefreshThreads?: () => void;
   onArtifactDetected?: (message: ChatMessage) => void;
+  onEnableCanvas?: (message: ChatMessage) => void;
 }
 
 export interface ChatContainerRef {
@@ -28,7 +29,7 @@ export interface ChatContainerRef {
  * 
  * Main chat interface with message history and input
  */
-export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads, onArtifactDetected }, ref) {
+export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads, onArtifactDetected, onEnableCanvas }, ref) {
   const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId, {
     onArtifactDetected,
   });
@@ -312,7 +313,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-hidden">
-        <MessageHistory messages={messages} scrollRef={scrollRef} />
+        <MessageHistory messages={messages} scrollRef={scrollRef} onEnableCanvas={onEnableCanvas} />
       </div>
       <ChatInput 
         ref={chatInputRef}

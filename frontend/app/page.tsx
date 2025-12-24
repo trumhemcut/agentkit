@@ -83,6 +83,7 @@ export default function Home() {
             onUpdateThreadTitle={updateThreadTitle}
             onRefreshThreads={refreshThreads}
             onArtifactDetected={handleArtifactDetected}
+            onEnableCanvas={activateCanvas}
           />
         </div>
         {canvasModeActive && currentArtifactMessage && (
