@@ -47,7 +47,7 @@ export function TextRenderer({ markdown, isStreaming, onUpdate }: TextRendererPr
   }
   
   return (
-    <div className="relative p-4 h-full overflow-auto">
+    <div className="relative h-full w-full overflow-auto">
       {isStreaming && (
         <div className="absolute top-6 right-6 z-10 bg-blue-500 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -55,12 +55,14 @@ export function TextRenderer({ markdown, isStreaming, onUpdate }: TextRendererPr
         </div>
       )}
       
-      <BlockNoteView
-        editor={editor}
-        onChange={handleChange}
-        editable={!isStreaming}
-        theme="light"
-      />
+      <div className="p-4">
+        <BlockNoteView
+          editor={editor}
+          onChange={handleChange}
+          editable={!isStreaming}
+          theme="light"
+        />
+      </div>
     </div>
   )
 }

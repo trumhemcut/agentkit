@@ -321,7 +321,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
         </div>
       )}
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <MessageHistory messages={messages} scrollRef={scrollRef} />
       </div>
       

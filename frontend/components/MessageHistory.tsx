@@ -30,12 +30,10 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas }: MessageH
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div ref={scrollRef} className="p-4 space-y-4">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} />
-        ))}
-      </div>
+    <div className="h-full overflow-y-auto p-4 space-y-4" ref={scrollRef}>
+      {messages.map((message) => (
+        <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} />
+      ))}
     </div>
   );
 }

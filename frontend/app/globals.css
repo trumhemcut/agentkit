@@ -88,6 +88,18 @@
   background: hsl(var(--color-muted-foreground) / 0.5);
 }
 
+/* Radix ScrollArea scrollbar styling */
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+/* Make Radix ScrollArea thumb more visible */
+[data-radix-scroll-area-scrollbar] {
+  background: transparent;
+  display: flex !important;
+}
+
 /* BlockNote menu backgrounds - make them white */
 .bn-toolbar,
 .bn-formatting-toolbar,

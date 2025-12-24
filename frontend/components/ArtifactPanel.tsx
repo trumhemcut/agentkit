@@ -92,22 +92,24 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
           </p>
         )}
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full">
-          {message.artifactType === 'code' ? (
-            <CodeRenderer
-              code={message.content}
-              language={message.language || 'text'}
-              isStreaming={message.isStreaming || false}
-              onUpdate={() => {}} // Read-only for now
-            />
-          ) : (
-            <TextRenderer
-              markdown={message.content}
-              isStreaming={message.isStreaming || false}
-              onUpdate={() => {}} // Read-only for now
-            />
-          )}
+      <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
+        <ScrollArea className="h-full w-full">
+          <div className="p-4">
+            {message.artifactType === 'code' ? (
+              <CodeRenderer
+                code={message.content}
+                language={message.language || 'text'}
+                isStreaming={message.isStreaming || false}
+                onUpdate={() => {}} // Read-only for now
+              />
+            ) : (
+              <TextRenderer
+                markdown={message.content}
+                isStreaming={message.isStreaming || false}
+                onUpdate={() => {}} // Read-only for now
+              />
+            )}
+          </div>
         </ScrollArea>
       </CardContent>
     </Card>

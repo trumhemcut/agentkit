@@ -34,7 +34,7 @@ export function CodeRenderer({ code, language, isStreaming, onUpdate }: CodeRend
   }
   
   return (
-    <div className="relative h-full">
+    <div className="relative h-full w-full">
       {isStreaming && (
         <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -47,7 +47,7 @@ export function CodeRenderer({ code, language, isStreaming, onUpdate }: CodeRend
         extensions={extensions}
         onChange={handleChange}
         editable={!isStreaming}
-        className="text-sm h-full"
+        className="text-sm"
         height="100%"
         theme="light"
       />
