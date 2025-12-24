@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'highlight.js/styles/github-dark.css';
 
 @theme {
   --color-background: 0 0% 100%;
@@ -110,3 +111,20 @@
 [data-radix-dropdown-menu-viewport] {
   background-color: white !important;
 }
+
+/* Markdown content styling for syntax highlighting */
+.markdown-content pre {
+  @apply my-3 rounded-lg overflow-x-auto;
+}
+
+.markdown-content pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+/* Inline code styling in markdown */
+.markdown-content :not(pre) > code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono;
+}
+
+

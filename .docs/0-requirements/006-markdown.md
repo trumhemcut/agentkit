@@ -1,0 +1,1 @@
+Reponse stream từ server về thì khi hiển thị message ở chat container phải hỗ trợ định dạng markdown để render.
