@@ -77,6 +77,24 @@ export function useMessages(threadId: string | null) {
   }, [threadId]); // Include threadId as dependency
 
   /**
+   * Remove a message
+   */
+  const removeMessage = useCallback((messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    
+    if (threadId) {
+      console.log('[useMessages] Removing message from thread:', threadId, messageId);
+      const thread = StorageService.getThread(threadId);
+      if (thread) {
+        thread.messages = thread.messages.filter(msg => msg.id !== messageId);
+        StorageService.saveThread(thread);
+      }
+    } else {
+      console.warn('[useMessages] Cannot remove message - threadId is null');
+    }
+  }, [threadId]);
+
+  /**
    * Clear all messages (for current thread)
    */
   const clearMessages = useCallback(() => {
@@ -88,6 +106,7 @@ export function useMessages(threadId: string | null) {
     isLoading,
     addMessage,
     updateMessage,
+    removeMessage,
     clearMessages,
     scrollToBottom,
     scrollRef,

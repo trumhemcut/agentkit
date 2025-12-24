@@ -9,10 +9,28 @@ export interface AgentState {
   lastUpdate: number;
 }
 
-// Agent metadata
+// Agent metadata for discovery
 export interface AgentMetadata {
+  id: string;
   name: string;
   description: string;
-  capabilities: string[];
-  avatar?: string;
+  icon: string;
+  sub_agents: string[];
+  features: string[];
+}
+
+/**
+ * Response from /api/agents endpoint
+ */
+export interface AgentsResponse {
+  agents: AgentMetadata[];
+  default: string;
+}
+
+/**
+ * Agent selection state
+ */
+export interface AgentSelection {
+  selectedAgent: string;
+  availableAgents: AgentMetadata[];
 }

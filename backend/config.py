@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Server settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # LLM settings
     OLLAMA_BASE_URL: str = "http://localhost:11434"
@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    
+    # Agent settings
+    DEFAULT_AGENT: str = "chat"
     
     class Config:
         env_file = ".env"

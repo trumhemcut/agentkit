@@ -98,11 +98,11 @@ def chat_response_node(state: CanvasGraphState) -> CanvasGraphState:
     return state
 
 
-def create_canvas_graph():
+def create_canvas_graph(model: str = None):
     """Build canvas workflow graph"""
     from agents.canvas_agent import CanvasAgent
     
-    canvas_agent = CanvasAgent()
+    canvas_agent = CanvasAgent(model=model)
     
     graph = StateGraph(CanvasGraphState)
     

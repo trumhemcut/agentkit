@@ -1,8 +1,11 @@
 import uuid
+import logging
 from typing import AsyncGenerator
 from ag_ui.core import EventType, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, BaseEvent
 from agents.base_agent import BaseAgent, AgentState
 from llm.provider_factory import LLMProviderFactory
+
+logger = logging.getLogger(__name__)
 
 
 class ChatAgent(BaseAgent):
@@ -22,6 +25,10 @@ class ChatAgent(BaseAgent):
         messages = state["messages"]
         message_id = str(uuid.uuid4())
         
+        logger.info(f"Starting chat agent run")
+        logger.debug(f"Message count: {len(messages)}")
+        logger.debug(f"Message ID: {message_id}")
+        
         # Start message event using official AG-UI event class
         yield TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
@@ -30,15 +37,19 @@ class ChatAgent(BaseAgent):
         )
         
         # Stream LLM response - yield events immediately as chunks arrive
+        chunk_count = 0
         async for chunk in self.llm.astream(messages):
             content = chunk.content
             if content:
+                chunk_count += 1
                 # Content event using official AG-UI event class
                 yield TextMessageContentEvent(
                     type=EventType.TEXT_MESSAGE_CONTENT,
                     message_id=message_id,
                     delta=content
                 )
+        
+        logger.info(f"Completed streaming {chunk_count} chunks")
         
         # End message event using official AG-UI event class
         yield TextMessageEndEvent(

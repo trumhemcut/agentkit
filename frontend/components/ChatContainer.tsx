@@ -6,6 +6,7 @@ import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { useModelSelection } from '@/hooks/useModelSelection';
+import { useAgentSelection } from '@/hooks/useAgentSelection';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
@@ -27,9 +28,10 @@ export interface ChatContainerRef {
  * Main chat interface with message history and input
  */
 export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads }, ref) {
-  const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
+  const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const { selectedModel } = useModelSelection();
+  const { selectedAgent } = useAgentSelection();
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
@@ -126,7 +128,14 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       console.log('[ChatContainer] Run finished:', event);
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
-        updateMessage(currentMsg.id, { isStreaming: false });
+        // If message has no content, remove it
+        if (currentMsg.content.trim() === '') {
+          console.log('[ChatContainer] Removing empty pending/streaming message');
+          removeMessage(currentMsg.id);
+        } else {
+          // Message has content, mark as complete
+          updateMessage(currentMsg.id, { isPending: false, isStreaming: false });
+        }
         currentAgentMessageRef.current = null;
       }
       setIsSending(false);
@@ -162,7 +171,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       unsubscribeError();
       unsubscribeRunError();
     };
-  }, [on, addMessage, updateMessage, setConnectionState]);
+  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {
@@ -234,6 +243,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         threadId,
         runId,
         selectedModel || undefined,
+        selectedAgent || undefined,
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);

@@ -1,10 +1,13 @@
 import uuid
 import json
+import logging
 from typing import AsyncGenerator, List
 from ag_ui.core import EventType, BaseEvent, CustomEvent
 from agents.base_agent import BaseAgent
 from graphs.canvas_graph import CanvasGraphState, ArtifactV3, ArtifactContentCode, ArtifactContentText
 from llm.provider_factory import LLMProviderFactory
+
+logger = logging.getLogger(__name__)
 
 
 class CanvasAgent(BaseAgent):
@@ -18,8 +21,10 @@ class CanvasAgent(BaseAgent):
             model: Model name to use (e.g., "qwen:7b", "qwen:4b")
                    Falls back to default if not provided
         """
+        logger.info(f"Initializing CanvasAgent with model: {model or 'default'}")
         provider = LLMProviderFactory.get_provider("ollama", model=model)
         self.llm = provider.get_model()
+        logger.debug(f"CanvasAgent initialized successfully with LLM provider")
     
     async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """
@@ -28,6 +33,8 @@ class CanvasAgent(BaseAgent):
         """
         
         action = state.get("artifactAction", "create")
+        logger.info(f"CanvasAgent.run started with action: {action}")
+        logger.debug(f"State keys: {list(state.keys())}")
         
         # Emit THINKING event
         yield CustomEvent(
@@ -52,23 +59,33 @@ class CanvasAgent(BaseAgent):
         Returns updated state without streaming events.
         """
         action = state.get("artifactAction", "create")
+        logger.info(f"CanvasAgent.process_sync started with action: {action}")
         
         if action == "create":
-            return await self._create_artifact_sync(state)
+            result = await self._create_artifact_sync(state)
+            logger.debug(f"Artifact created successfully (sync mode)")
+            return result
         elif action == "update":
-            return await self._update_artifact_sync(state)
+            result = await self._update_artifact_sync(state)
+            logger.debug(f"Artifact updated successfully (sync mode)")
+            return result
         elif action == "rewrite":
-            return await self._rewrite_artifact_sync(state)
+            result = await self._rewrite_artifact_sync(state)
+            logger.debug(f"Artifact rewritten successfully (sync mode)")
+            return result
         
+        logger.warning(f"Unknown action '{action}', returning state unchanged")
         return state
     
     async def _create_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """Generate new artifact from scratch"""
         messages = state["messages"]
         last_message = messages[-1]["content"]
+        logger.info(f"Creating new artifact, message length: {len(last_message)}")
         
         # Determine artifact type from context
         artifact_type = self._detect_artifact_type(last_message)
+        logger.info(f"Detected artifact type: {artifact_type}")
         
         # Create system prompt for artifact generation
         system_prompt = self._get_creation_prompt(artifact_type)
@@ -106,10 +123,12 @@ class CanvasAgent(BaseAgent):
         
         # Extract title from content if possible
         artifact_title = self._extract_title(artifact_content, artifact_type)
+        logger.debug(f"Artifact title extracted: {artifact_title}")
         
         # Create artifact structure
         if artifact_type == "code":
             language = self._detect_language(last_message, artifact_content)
+            logger.info(f"Code artifact created - language: {language}, title: {artifact_title}")
             artifact_content_obj: ArtifactContentCode = {
                 "index": 1,
                 "type": "code",
@@ -132,6 +151,7 @@ class CanvasAgent(BaseAgent):
         
         # Update state
         state["artifact"] = artifact
+        logger.info(f"Artifact created successfully: {artifact_title} (index: {artifact['currentIndex']})")
         
         # Emit artifact created event
         yield CustomEvent(
@@ -148,9 +168,11 @@ class CanvasAgent(BaseAgent):
         """Update specific parts of existing artifact"""
         messages = state["messages"]
         current_artifact = state.get("artifact")
+        logger.info(f"Updating artifact, has existing: {current_artifact is not None}")
         
         if not current_artifact:
             # No artifact to update, create new one
+            logger.warning("No existing artifact found, creating new one instead")
             async for event in self._create_artifact(state):
                 yield event
             return
@@ -198,6 +220,7 @@ class CanvasAgent(BaseAgent):
         
         # Create new version
         new_index = len(current_artifact["contents"]) + 1
+        logger.debug(f"Creating new artifact version: {new_index}")
         
         if current_content["type"] == "code":
             new_content_obj: ArtifactContentCode = {
@@ -222,6 +245,7 @@ class CanvasAgent(BaseAgent):
         }
         
         state["artifact"] = updated_artifact
+        logger.info(f"Artifact updated successfully: {current_content['title']} (version: {new_index})")
         
         # Emit artifact updated event
         yield CustomEvent(
@@ -236,6 +260,7 @@ class CanvasAgent(BaseAgent):
     
     async def _rewrite_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """Rewrite entire artifact with new approach"""
+        logger.info("Rewriting artifact from scratch")
         # For rewrite, we treat it similar to create but with context from existing
         async for event in self._create_artifact(state):
             yield event
@@ -346,7 +371,9 @@ class CanvasAgent(BaseAgent):
         
         message_lower = message.lower()
         if any(keyword in message_lower for keyword in code_keywords):
+            logger.debug(f"Artifact type detected as 'code' based on keywords")
             return "code"
+        logger.debug(f"Artifact type detected as 'text' (default)")
         return "text"
     
     def _detect_language(self, message: str, code: str) -> str:
@@ -369,16 +396,21 @@ class CanvasAgent(BaseAgent):
         
         for lang, keywords in language_map.items():
             if any(keyword in message_lower for keyword in keywords):
+                logger.debug(f"Language detected from message: {lang}")
                 return lang
         
         # Try to detect from code syntax (basic heuristic)
         if "def " in code or "import " in code:
+            logger.debug("Language detected from code syntax: python")
             return "python"
         elif "function" in code or "const" in code or "let" in code:
+            logger.debug("Language detected from code syntax: javascript")
             return "javascript"
         elif "public class" in code or "private void" in code:
+            logger.debug("Language detected from code syntax: java")
             return "java"
         
+        logger.debug("Language detection defaulted to: python")
         return "python"  # Default
     
     def _extract_title(self, content: str, artifact_type: str) -> str:

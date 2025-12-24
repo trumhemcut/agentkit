@@ -234,6 +234,31 @@ Look for AG-UI event logs:
 2. `updateMessage` is being called in `TEXT_MESSAGE_CONTENT`
 3. React state is updating (check React DevTools)
 
+### Agent Stuck on "Thinking..." State
+**Symptom**: Agent message shows "Thinking..." spinner indefinitely even after `RUN_FINISHED` event
+**Root Cause**: The pending/streaming message with empty content is not being cleared when run finishes
+**Fix Applied**:
+1. Added `removeMessage` function to `useMessages` hook
+2. In `RUN_FINISHED` handler, check if `currentAgentMessageRef` has empty content
+3. If empty, remove the message entirely; otherwise mark as complete
+4. This applies to both `ChatContainer` and `CanvasChatContainer`
+
+**Implementation**:
+```typescript
+const unsubscribeFinish = on(EventType.RUN_FINISHED, (event) => {
+  const currentMsg = currentAgentMessageRef.current;
+  if (currentMsg) {
+    if (currentMsg.content.trim() === '') {
+      removeMessage(currentMsg.id); // Remove empty placeholder
+    } else {
+      updateMessage(currentMsg.id, { isPending: false, isStreaming: false });
+    }
+    currentAgentMessageRef.current = null;
+  }
+  setIsSending(false);
+});
+```
+
 ## Future Enhancements
 
 1. **Tool Call Visualization**: Display when agent uses tools

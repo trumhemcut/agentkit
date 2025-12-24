@@ -9,6 +9,7 @@ The backend is a **Python-based multi-agent system** using **LangGraph** for orc
 ## Quick Links
 
 - [Architecture Overview](../architecture/backend-architecture.md) - Detailed backend architecture
+- [Agent Discovery System](agent-discovery.md) - Agent registry and discovery
 - [Agents](agents/base-agent.md) - Agent development patterns
 - [API Routes](api/routes.md) - FastAPI endpoint documentation
 - [LLM Providers](llm/providers.md) - Language model integration

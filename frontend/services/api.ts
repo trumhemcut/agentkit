@@ -7,6 +7,7 @@
 
 import { ArtifactV3, SelectedText } from '@/types/canvas';
 import { LLMModel, ModelsResponse } from '@/types/chat';
+import { AgentsResponse } from '@/types/agent';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -20,6 +21,7 @@ export interface ChatRequest {
   run_id: string;
   messages: Message[];
   model?: string;
+  agent?: string;
 }
 
 export interface AgentStatusResponse {
@@ -38,6 +40,7 @@ export interface AgentStatusResponse {
  * @param threadId - Unique identifier for the conversation thread
  * @param runId - Unique identifier for this agent run
  * @param model - Optional LLM model ID to use for this conversation
+ * @param agent - Optional agent ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
  */
 export async function sendChatMessage(
@@ -45,6 +48,7 @@ export async function sendChatMessage(
   threadId: string,
   runId: string,
   model: string | undefined,
+  agent: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
@@ -53,9 +57,10 @@ export async function sendChatMessage(
       run_id: runId,
       messages: messages,
       model: model,
+      agent: agent,
     };
 
-    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model });
+    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model, agent });
 
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -159,6 +164,7 @@ export interface CanvasRequest {
   selectedText?: SelectedText;
   action?: "create" | "update" | "rewrite" | "chat";
   model?: string;
+  agent?: string;
 }
 
 /**
@@ -174,6 +180,7 @@ export interface CanvasRequest {
  * @param selectedText - Selected text context (if any)
  * @param action - Explicit action to perform (create, update, rewrite, or chat)
  * @param model - Optional LLM model ID to use for this conversation
+ * @param agent - Optional agent ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
  */
 export async function sendCanvasMessage(
@@ -184,6 +191,7 @@ export async function sendCanvasMessage(
   selectedText: SelectedText | undefined,
   action: "create" | "update" | "rewrite" | "chat" | undefined,
   model: string | undefined,
+  agent: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
@@ -195,6 +203,7 @@ export async function sendCanvasMessage(
       selectedText: selectedText,
       action: action,
       model: model,
+      agent: agent,
     };
 
     console.log('[API] Sending canvas request:', { 
@@ -203,7 +212,8 @@ export async function sendCanvasMessage(
       messageCount: messages.length,
       hasArtifact: !!artifact,
       action,
-      model
+      model,
+      agent
     });
 
     const response = await fetch(`${API_BASE_URL}/api/canvas/stream`, {
@@ -275,6 +285,50 @@ export async function sendCanvasMessage(
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now(),
     });
+  }
+}
+
+/**
+ * Fetch available agents from backend
+ * 
+ * @returns Promise with AgentsResponse containing list of agents and default agent
+ */
+export async function fetchAvailableAgents(): Promise<AgentsResponse> {
+  try {
+    console.log('[API] Fetching available agents...');
+    const response = await fetch(`${API_BASE_URL}/api/agents`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch agents: ${response.statusText}`);
+    }
+    
+    const data: AgentsResponse = await response.json();
+    console.log('[API] Available agents:', data);
+    return data;
+  } catch (error) {
+    console.error('[API] Error fetching agents:', error);
+    // Return default fallback if API fails
+    return {
+      agents: [
+        {
+          id: 'chat',
+          name: 'Chat Agent',
+          description: 'General purpose conversational agent',
+          icon: 'message-circle',
+          sub_agents: [],
+          features: ['conversation', 'streaming']
+        },
+        {
+          id: 'canvas',
+          name: 'Canvas Agent',
+          description: 'Multi-agent system with artifact generation and editing',
+          icon: 'layout',
+          sub_agents: ['generator', 'editor'],
+          features: ['artifacts', 'code-generation', 'multi-step']
+        }
+      ],
+      default: 'chat'
+    };
   }
 }
 

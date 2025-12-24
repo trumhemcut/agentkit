@@ -7,6 +7,7 @@ import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { useCanvas } from '@/contexts/CanvasContext';
 import { useModelSelection } from '@/hooks/useModelSelection';
+import { useAgentSelection } from '@/hooks/useAgentSelection';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendCanvasMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
@@ -23,9 +24,10 @@ interface CanvasChatContainerProps {
  * Chat interface specifically for canvas mode with artifact integration
  */
 export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
-  const { messages, addMessage, updateMessage, scrollRef } = useMessages(threadId);
+  const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId);
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const { selectedModel } = useModelSelection();
+  const { selectedAgent } = useAgentSelection();
   const { 
     artifact, 
     setArtifact, 
@@ -116,6 +118,20 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
     const unsubscribeFinish = on(EventType.RUN_FINISHED, (event) => {
       console.log('[CanvasChatContainer] Agent run finished:', event);
       setIsSending(false);
+      
+      // Clear any pending/streaming message that hasn't been completed
+      const currentMsg = currentAgentMessageRef.current;
+      if (currentMsg && (currentMsg.isPending || currentMsg.isStreaming)) {
+        // If message has no content, remove it as it was likely a thinking placeholder
+        if (currentMsg.content.trim() === '') {
+          console.log('[CanvasChatContainer] Removing empty pending/streaming message');
+          removeMessage(currentMsg.id);
+        } else {
+          // Message has content, just mark it as complete
+          updateMessage(currentMsg.id, { isPending: false, isStreaming: false });
+        }
+        currentAgentMessageRef.current = null;
+      }
     });
     
     // Handle canvas-specific artifact events (direct events, not CUSTOM)
@@ -205,7 +221,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
       unsubscribeRunError();
       unsubscribeCustom();
     };
-  }, [on, addMessage, updateMessage, setConnectionState, setArtifact, setIsArtifactStreaming, appendStreamingContent, clearStreamingContent]);
+  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, setArtifact, setIsArtifactStreaming, appendStreamingContent, clearStreamingContent]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {
@@ -271,6 +287,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
         undefined, // selectedText - can be added later
         undefined, // action - let backend determine
         selectedModel || undefined,
+        'canvas', // Force canvas agent for canvas page
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);
