@@ -3,6 +3,7 @@
 import { CodeRenderer } from "./CodeRenderer"
 import { TextRenderer } from "./TextRenderer"
 import { ArtifactHeader } from "./ArtifactHeader"
+import { ModelSelector } from "@/components/ModelSelector"
 import { ArtifactV3 } from "@/types/canvas"
 import { FileText } from "lucide-react"
 
@@ -94,14 +95,23 @@ export function ArtifactRenderer({
 
 function EmptyArtifactState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-gray-50 text-gray-500">
-      <FileText className="h-16 w-16 mb-4 text-gray-300" />
-      <h3 className="text-lg font-semibold mb-2">No Artifact Yet</h3>
-      <p className="text-sm text-center max-w-md">
-        Start a conversation and ask me to create code or text content.
-        <br />
-        I&apos;ll generate it here for you to view and edit.
-      </p>
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Header with Model Selector */}
+      <div className="flex items-center justify-between p-4 border-b bg-white">
+        <h2 className="text-lg font-semibold">Canvas</h2>
+        <ModelSelector />
+      </div>
+      
+      {/* Empty State Content */}
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+        <FileText className="h-16 w-16 mb-4 text-gray-300" />
+        <h3 className="text-lg font-semibold mb-2">No Artifact Yet</h3>
+        <p className="text-sm text-center max-w-md">
+          Start a conversation and ask me to create code or text content.
+          <br />
+          I&apos;ll generate it here for you to view and edit.
+        </p>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-# Copilot Instructions for AgentKit5
+# Copilot Instructions for AgentKit
 
 ## Project Overview
 Multi-agent chat application using **LangGraph** for orchestration and **AG-UI** for agent-frontend protocol communication.

@@ -77,3 +77,36 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--color-muted-foreground) / 0.5);
 }
+
+/* BlockNote menu backgrounds - make them white */
+.bn-toolbar,
+.bn-formatting-toolbar,
+.bn-slash-menu,
+.bn-link-toolbar,
+.bn-file-panel,
+.bn-suggestion-menu,
+.bn-side-menu,
+.bn-drag-handle-menu,
+.bn-block-type-select-menu,
+.bn-dropdown-menu,
+[data-radix-popper-content-wrapper],
+[role="menu"],
+[role="menuitem"] {
+  background-color: white !important;
+}
+
+/* BlockNote popover and dropdown backgrounds */
+[data-side],
+[data-align],
+.bn-container [data-radix-select-content],
+.bn-container [data-radix-dropdown-menu-content] {
+  background-color: white !important;
+}
+
+/* Radix UI Select component backgrounds (used by BlockNote) */
+[data-radix-select-viewport],
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+[data-radix-dropdown-menu-viewport] {
+  background-color: white !important;
+}
