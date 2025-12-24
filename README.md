@@ -72,7 +72,7 @@ ollama serve
 ollama pull qwen:7b
 
 # Start backend server
-python -m backend.main
+python main.py
 ```
 
 Backend will be available at `http://localhost:8000`
