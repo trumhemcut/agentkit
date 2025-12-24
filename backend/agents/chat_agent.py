@@ -29,11 +29,12 @@ class ChatAgent(BaseAgent):
         logger.debug(f"Message count: {len(messages)}")
         logger.debug(f"Message ID: {message_id}")
         
-        # Start message event using official AG-UI event class
+        # Start message event using official AG-UI event class with metadata
         yield TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
-            role="assistant"
+            role="assistant",
+            metadata={"message_type": "text"}  # Explicitly mark as text message
         )
         
         # Stream LLM response - yield events immediately as chunks arrive

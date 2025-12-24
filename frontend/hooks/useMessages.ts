@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Message } from '@/types/chat';
+import { Message, isArtifactMessage } from '@/types/chat';
 import { StorageService } from '@/services/storage';
+
+export interface UseMessagesOptions {
+  onArtifactDetected?: (message: Message) => void;
+}
 
 /**
  * Hook for managing messages in a thread
  * 
  * Handles message state, updates, and auto-scrolling
+ * Detects artifact messages and triggers canvas mode
  */
-export function useMessages(threadId: string | null) {
+export function useMessages(threadId: string | null, options?: UseMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +49,14 @@ export function useMessages(threadId: string | null) {
   const addMessage = useCallback((message: Message) => {
     setMessages(prev => [...prev, message]);
     
+    // Detect artifact messages and defer callback to avoid setState during render
+    if (isArtifactMessage(message) && options?.onArtifactDetected) {
+      // Use queueMicrotask to defer execution until after render
+      queueMicrotask(() => {
+        options.onArtifactDetected?.(message);
+      });
+    }
+    
     if (threadId) {
       console.log('[useMessages] Adding message to thread:', threadId, message);
       StorageService.addMessage(threadId, message);
@@ -58,15 +71,28 @@ export function useMessages(threadId: string | null) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     }, 100);
-  }, [threadId]); // Include threadId as dependency
+  }, [threadId, options]); // Include options as dependency
 
   /**
    * Update an existing message
    */
   const updateMessage = useCallback((messageId: string, updates: Partial<Message>) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, ...updates } : msg
-    ));
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        const updatedMsg = { ...msg, ...updates };
+        
+        // If this is an artifact message being updated, defer callback to avoid setState during render
+        if (isArtifactMessage(updatedMsg) && options?.onArtifactDetected) {
+          // Use queueMicrotask to defer execution until after render
+          queueMicrotask(() => {
+            options.onArtifactDetected?.(updatedMsg);
+          });
+        }
+        
+        return updatedMsg;
+      }
+      return msg;
+    }));
     
     if (threadId) {
       console.log('[useMessages] Updating message in thread:', threadId, messageId, updates);
@@ -74,7 +100,7 @@ export function useMessages(threadId: string | null) {
     } else {
       console.warn('[useMessages] Cannot update message - threadId is null');
     }
-  }, [threadId]); // Include threadId as dependency
+  }, [threadId, options]); // Include options as dependency
 
   /**
    * Remove a message

@@ -52,20 +52,59 @@ async def list_models():
 
 
 @router.post("/chat")
-async def chat_endpoint(input_data: RunAgentInput, request: Request):
-    """AG-UI compliant chat endpoint with SSE streaming using chat_graph"""
-    # Validate agent exists and is available BEFORE starting streaming
-    if not agent_registry.is_available(input_data.agent):
+async def chat_endpoint_legacy(input_data: RunAgentInput, request: Request):
+    """
+    DEPRECATED: Legacy chat endpoint without agent_id in path.
+    
+    Use /chat/{agent_id} endpoint instead. This endpoint is maintained for backward compatibility
+    but will be removed in a future version.
+    
+    Redirects to appropriate agent based on input_data.agent field.
+    """
+    logger.warning("DEPRECATED: /chat endpoint called. Please migrate to /chat/{agent_id}")
+    
+    # Map old agent names to registry agent_id format
+    agent_mapping = {
+        "chat": "chat",
+        "canvas": "canvas",
+        "chat-agent": "chat",
+        "canvas-agent": "canvas"
+    }
+    
+    agent_id = agent_mapping.get(input_data.agent or "chat", "chat")
+    
+    # Forward to the new unified endpoint
+    return await chat_endpoint(agent_id, input_data, request)
+
+
+@router.post("/chat/{agent_id}")
+async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Request):
+    """AG-UI compliant unified chat endpoint with SSE streaming.
+    
+    Supports all agents through single endpoint:
+    - /chat/chat: Text-only conversations (ChatAgent)
+    - /chat/canvas: Text + artifact generation (CanvasAgent)
+    
+    Args:
+        agent_id: Agent identifier (e.g., 'chat', 'canvas')
+        input_data: Chat request with messages, thread_id, run_id, optional model
+        request: FastAPI request object
+    
+    Returns:
+        StreamingResponse with AG-UI protocol events
+    """
+    # Validate agent exists and is available
+    if not agent_registry.is_available(agent_id):
         raise HTTPException(
             status_code=400,
-            detail=f"Agent '{input_data.agent}' not available"
+            detail=f"Agent '{agent_id}' not available"
         )
     
     accept_header = request.headers.get("accept")
     encoder = EventEncoder(accept=accept_header)
     
     async def event_generator():
-        # Send RUN_STARTED event using official AG-UI event class
+        # Send RUN_STARTED event
         yield encoder.encode(
             RunStartedEvent(
                 type=EventType.RUN_STARTED,
@@ -75,83 +114,37 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
         )
         
         try:
-            # Select appropriate agent/graph based on agent parameter
-            if input_data.agent == "chat":
-                # Use chat graph with event callback pattern
-                graph = create_chat_graph(model=input_data.model)
+            # Route to appropriate agent based on agent_id
+            if agent_id == "chat":
+                # Use ChatAgent for text-only conversations
+                from agents.chat_agent import ChatAgent
                 state = {
-                    "messages": [msg.model_dump() for msg in input_data.messages],
+                    "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
                     "thread_id": input_data.thread_id,
                     "run_id": input_data.run_id
                 }
-                
-                # Create event queue for streaming
-                import asyncio
-                event_queue = asyncio.Queue()
-                
-                async def event_callback(event):
-                    """Callback to receive events from agent"""
-                    await event_queue.put(event)
-                
-                # Run graph with event callback in background
-                async def run_graph():
-                    config = {
-                        "configurable": {
-                            "event_callback": event_callback
-                        }
-                    }
-                    await graph.ainvoke(state, config=config)
-                    await event_queue.put(None)  # Signal completion
-                
-                graph_task = asyncio.create_task(run_graph())
-                
-                # Stream events as they arrive
-                while True:
-                    event = await event_queue.get()
-                    if event is None:  # Completion signal
-                        break
+                chat_agent = ChatAgent(model=input_data.model)
+                async for event in chat_agent.run(state):
                     yield encoder.encode(event)
-                
-                # Wait for graph to complete
-                await graph_task
-                
-            elif input_data.agent == "canvas":
-                # Use canvas agent directly for streaming (similar to /canvas/stream endpoint)
+                    
+            elif agent_id == "canvas":
+                # Use CanvasAgent for text + artifact conversations
                 from agents.canvas_agent import CanvasAgent
-                from agents.chat_agent import ChatAgent
-                from graphs.canvas_graph import detect_intent_node, route_to_handler
-                
-                # Prepare state with canvas-specific fields
                 state = {
-                    "messages": [msg.model_dump() for msg in input_data.messages],
+                    "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
                     "thread_id": input_data.thread_id,
                     "run_id": input_data.run_id,
-                    "artifact": None,
-                    "selectedText": None,
-                    "artifactAction": None
+                    "artifact": input_data.artifact.model_dump() if input_data.artifact else None,
+                    "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
+                    "artifactAction": input_data.action
                 }
-                
-                # Detect intent to determine routing
-                try:
-                    state = detect_intent_node(state)
-                    route = route_to_handler(state)
-                except Exception as e:
-                    logger.warning(f"Error in intent detection, defaulting to chat: {e}")
-                    route = "chat_only"
-                
-                # Route to appropriate agent
-                if route == "artifact_action":
-                    canvas_agent = CanvasAgent(model=input_data.model)
-                    async for event in canvas_agent.run(state):
-                        yield encoder.encode(event)
-                else:
-                    chat_agent = ChatAgent(model=input_data.model)
-                    async for event in chat_agent.run(state):
-                        yield encoder.encode(event)
+                canvas_agent = CanvasAgent(model=input_data.model)
+                async for event in canvas_agent.run(state):
+                    yield encoder.encode(event)
             else:
-                raise ValueError(f"Unknown agent: {input_data.agent}")
+                raise ValueError(f"Unknown agent: {agent_id}")
             
-            # Send RUN_FINISHED event using official AG-UI event class
+            # Send RUN_FINISHED event
             yield encoder.encode(
                 RunFinishedEvent(
                     type=EventType.RUN_FINISHED,
@@ -166,7 +159,7 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
             logger.error(f"Error occurred: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             
-            # Send RUN_ERROR event using official AG-UI event class
+            # Send RUN_ERROR event
             yield encoder.encode(
                 RunErrorEvent(
                     type=EventType.RUN_ERROR,
@@ -182,10 +175,20 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
     )
 
 
-# Canvas routes
+# Canvas routes (DEPRECATED - Use /chat/canvas-agent instead)
 @router.post("/canvas/stream")
 async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Request):
-    """Canvas agent endpoint with artifact streaming"""
+    """
+    DEPRECATED: Canvas agent endpoint with artifact streaming.
+    
+    Use /chat/canvas-agent endpoint instead. This endpoint is maintained for backward compatibility
+    but will be removed in a future version.
+    
+    The new /chat/canvas-agent endpoint uses unified TEXT_MESSAGE protocol with artifact metadata,
+    providing better integration with the main chat interface.
+    """
+    logger.warning("DEPRECATED: /canvas/stream endpoint called. Please migrate to /chat/canvas-agent")
+    
     # Validate agent exists and is available BEFORE starting streaming
     if not agent_registry.is_available(input_data.agent):
         raise HTTPException(

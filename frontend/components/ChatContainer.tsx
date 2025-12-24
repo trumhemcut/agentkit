@@ -16,6 +16,7 @@ interface ChatContainerProps {
   threadId: string | null;
   onUpdateThreadTitle: (threadId: string, title: string) => void;
   onRefreshThreads?: () => void;
+  onArtifactDetected?: (message: ChatMessage) => void;
 }
 
 export interface ChatContainerRef {
@@ -27,8 +28,10 @@ export interface ChatContainerRef {
  * 
  * Main chat interface with message history and input
  */
-export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads }, ref) {
-  const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId);
+export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads, onArtifactDetected }, ref) {
+  const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId, {
+    onArtifactDetected,
+  });
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const { selectedModel } = useModelSelection();
   const { selectedAgent } = useAgentSelection();
@@ -73,24 +76,46 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       const currentThreadId = threadIdRef.current;
       if (!currentThreadId) return;
       
+      const typedEvent = event as any;
+      const isArtifact = typedEvent.metadata?.message_type === 'artifact';
+      
       // If there's a pending message, update it to streaming
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg && currentMsg.isPending) {
-        updateMessage(currentMsg.id, { isPending: false, isStreaming: true });
-        currentAgentMessageRef.current = { ...currentMsg, isPending: false, isStreaming: true };
+        const updates: Partial<ChatMessage> = { 
+          isPending: false, 
+          isStreaming: true 
+        };
+        
+        // If it's an artifact, add artifact metadata
+        if (isArtifact) {
+          updates.messageType = 'artifact';
+          updates.artifactType = typedEvent.metadata.artifact_type;
+          updates.language = typedEvent.metadata.language;
+          updates.title = typedEvent.metadata.title;
+        }
+        
+        updateMessage(currentMsg.id, updates);
+        currentAgentMessageRef.current = { ...currentMsg, ...updates } as ChatMessage;
         return;
       }
       
       // Create new agent message
       const newMessage: ChatMessage = {
-        id: (event as any).message_id || `msg-agent-${Date.now()}`,
+        id: typedEvent.message_id || `msg-agent-${Date.now()}`,
         threadId: currentThreadId,
         role: 'agent',
         content: '',
         timestamp: Date.now(),
-        agentName: (event as any).agentName || 'Agent',
+        agentName: typedEvent.agentName || 'Agent',
         isStreaming: true,
         isPending: false,
+        messageType: isArtifact ? 'artifact' : 'text',
+        ...(isArtifact && {
+          artifactType: typedEvent.metadata.artifact_type,
+          language: typedEvent.metadata.language,
+          title: typedEvent.metadata.title,
+        }),
       };
       currentAgentMessageRef.current = newMessage;
       addMessage(newMessage);
@@ -179,6 +204,11 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       return;
     }
 
+    if (!selectedAgent) {
+      console.error('Cannot send message: Agent not loaded yet');
+      return;
+    }
+
     console.log('Sending message:', content);
     setIsSending(true);
 
@@ -243,7 +273,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         threadId,
         runId,
         selectedModel || undefined,
-        selectedAgent || undefined,
+        selectedAgent,
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);

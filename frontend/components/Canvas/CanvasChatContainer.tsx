@@ -229,6 +229,11 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
       return;
     }
 
+    if (!selectedAgent) {
+      console.error('Cannot send message: Agent not loaded yet');
+      return;
+    }
+
     console.log('Sending canvas message:', content);
     setIsSending(true);
 
@@ -287,7 +292,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
         undefined, // selectedText - can be added later
         undefined, // action - let backend determine
         selectedModel || undefined,
-        'canvas', // Force canvas agent for canvas page
+        selectedAgent, // Use selected agent from hook
         (event) => {
           // Process each event through the AGUI client
           client.processEvent(event);

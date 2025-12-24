@@ -6,6 +6,12 @@ from typing import List, Optional, Union, Literal, Dict
 class Message(BaseModel):
     role: str
     content: str
+    message_type: Optional[str] = "text"  # "text" or "artifact"
+    
+    # Artifact-specific fields (only when message_type="artifact")
+    artifact_type: Optional[str] = None  # "code", "text", "document"
+    language: Optional[str] = None  # for code artifacts
+    title: Optional[str] = None
 
 
 class RunAgentInput(BaseModel):
@@ -14,6 +20,11 @@ class RunAgentInput(BaseModel):
     messages: List[Message]
     model: Optional[str] = None  # Optional model selection
     agent: Optional[str] = "chat"  # Optional agent selection
+    
+    # Canvas-specific optional fields (for unified endpoint)
+    artifact: Optional['ArtifactV3'] = None
+    selectedText: Optional['SelectedText'] = None
+    action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
 
 
 # Canvas-specific models

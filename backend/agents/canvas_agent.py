@@ -2,7 +2,7 @@ import uuid
 import json
 import logging
 from typing import AsyncGenerator, List
-from ag_ui.core import EventType, BaseEvent, CustomEvent
+from ag_ui.core import EventType, BaseEvent, CustomEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent
 from agents.base_agent import BaseAgent
 from graphs.canvas_graph import CanvasGraphState, ArtifactV3, ArtifactContentCode, ArtifactContentText
 from llm.provider_factory import LLMProviderFactory
@@ -28,21 +28,36 @@ class CanvasAgent(BaseAgent):
     
     async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """
-        Stream events for artifact creation/modification.
+        Stream events for artifact creation/modification or regular text response.
         This is called directly from the API route for proper streaming.
         """
         
-        action = state.get("artifactAction", "create")
+        action = state.get("artifactAction", None)
         logger.info(f"CanvasAgent.run started with action: {action}")
         logger.debug(f"State keys: {list(state.keys())}")
         
-        # Emit THINKING event
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            name="thinking",
-            value={"message": f"Processing {action} request..."}
-        )
+        # If no action specified, determine if we should create artifact or just chat
+        if action is None:
+            # Analyze user's intent
+            messages = state["messages"]
+            last_message = messages[-1]["content"] if messages else ""
+            
+            # Simple heuristic: if user asks to create/generate/write something, treat as artifact
+            artifact_intent_keywords = ["create", "generate", "write", "make", "build", "code", "script", "function", "document"]
+            should_create_artifact = any(keyword in last_message.lower() for keyword in artifact_intent_keywords)
+            
+            if should_create_artifact:
+                action = "create"
+                state["artifactAction"] = "create"
+                logger.info("Detected artifact creation intent from user message")
+            else:
+                # Respond with regular text message
+                logger.info("No artifact intent detected, responding with text")
+                async for event in self._respond_with_text(state):
+                    yield event
+                return
         
+        # Process artifact actions
         if action == "create":
             async for event in self._create_artifact(state):
                 yield event
@@ -52,6 +67,41 @@ class CanvasAgent(BaseAgent):
         elif action == "rewrite":
             async for event in self._rewrite_artifact(state):
                 yield event
+        else:
+            # Unknown action, respond with text
+            async for event in self._respond_with_text(state):
+                yield event
+    
+    async def _respond_with_text(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
+        """Respond with regular text message (no artifact)"""
+        messages = state["messages"]
+        message_id = str(uuid.uuid4())
+        
+        logger.info("Responding with text message (no artifact)")
+        
+        # Start text message
+        yield TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={"message_type": "text"}
+        )
+        
+        # Stream LLM response
+        async for chunk in self.llm.astream(messages):
+            content = chunk.content
+            if content:
+                yield TextMessageContentEvent(
+                    type=EventType.TEXT_MESSAGE_CONTENT,
+                    message_id=message_id,
+                    delta=content
+                )
+        
+        # End text message
+        yield TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
     
     async def process_sync(self, state: CanvasGraphState) -> CanvasGraphState:
         """
@@ -96,39 +146,57 @@ class CanvasAgent(BaseAgent):
             *messages
         ]
         
-        # Stream artifact content
+        # Stream artifact content as TEXT_MESSAGE with artifact metadata
         artifact_content = ""
         artifact_title = "Untitled"
+        message_id = str(uuid.uuid4())
         
-        # Emit artifact streaming start
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            name="artifact_streaming_start",
-            value={"artifactType": artifact_type}
+        # Detect language early for code artifacts
+        language = None
+        if artifact_type == "code":
+            language = self._detect_language(last_message, "")
+        
+        # Emit TEXT_MESSAGE_START with artifact metadata
+        yield TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={
+                "message_type": "artifact",
+                "artifact_type": artifact_type,
+                "language": language,
+                "title": "Generating artifact..."  # Will update when complete
+            }
         )
         
+        # Stream artifact content using TEXT_MESSAGE_CONTENT
         async for chunk in self.llm.astream(llm_messages):
             content = chunk.content
             if content:
                 artifact_content += content
-                # Emit streaming delta
-                yield CustomEvent(
-                    type=EventType.CUSTOM,
-                    name="artifact_streaming",
-                    value={
-                        "contentDelta": content,
-                        "artifactIndex": 1
-                    }
+                yield TextMessageContentEvent(
+                    type=EventType.TEXT_MESSAGE_CONTENT,
+                    message_id=message_id,
+                    delta=content
                 )
         
         # Extract title from content if possible
         artifact_title = self._extract_title(artifact_content, artifact_type)
         logger.debug(f"Artifact title extracted: {artifact_title}")
         
-        # Create artifact structure
+        # Update language detection for code artifacts with full content
         if artifact_type == "code":
             language = self._detect_language(last_message, artifact_content)
             logger.info(f"Code artifact created - language: {language}, title: {artifact_title}")
+        
+        # End TEXT_MESSAGE
+        yield TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        
+        # Create artifact structure for state (still needed for internal tracking)
+        if artifact_type == "code":
             artifact_content_obj: ArtifactContentCode = {
                 "index": 1,
                 "type": "code",
@@ -152,17 +220,6 @@ class CanvasAgent(BaseAgent):
         # Update state
         state["artifact"] = artifact
         logger.info(f"Artifact created successfully: {artifact_title} (index: {artifact['currentIndex']})")
-        
-        # Emit artifact created event
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            name="artifact_created",
-            value={"artifact": artifact}
-        )
-        
-        # Step 2: Stream summary to chat
-        async for event in self._stream_summary(artifact_type, artifact_title, "created"):
-            yield event
     
     async def _update_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """Update specific parts of existing artifact"""
@@ -195,30 +252,41 @@ class CanvasAgent(BaseAgent):
             *messages
         ]
         
-        # Stream updated content
+        # Stream updated content as TEXT_MESSAGE with artifact metadata
         updated_content = ""
+        message_id = str(uuid.uuid4())
         
-        # Emit artifact streaming start
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            name="artifact_streaming_start",
-            value={"artifactType": current_content["type"], "action": "update"}
+        # Emit TEXT_MESSAGE_START with artifact metadata
+        yield TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={
+                "message_type": "artifact",
+                "artifact_type": current_content["type"],
+                "language": current_content.get("language"),
+                "title": current_content["title"]
+            }
         )
         
+        # Stream updated content using TEXT_MESSAGE_CONTENT
         async for chunk in self.llm.astream(llm_messages):
             content = chunk.content
             if content:
                 updated_content += content
-                yield CustomEvent(
-                    type=EventType.CUSTOM,
-                    name="artifact_streaming",
-                    value={
-                        "contentDelta": content,
-                        "artifactIndex": current_artifact["currentIndex"] + 1
-                    }
+                yield TextMessageContentEvent(
+                    type=EventType.TEXT_MESSAGE_CONTENT,
+                    message_id=message_id,
+                    delta=content
                 )
         
-        # Create new version
+        # End TEXT_MESSAGE
+        yield TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        
+        # Create new version for state tracking
         new_index = len(current_artifact["contents"]) + 1
         logger.debug(f"Creating new artifact version: {new_index}")
         
@@ -246,17 +314,6 @@ class CanvasAgent(BaseAgent):
         
         state["artifact"] = updated_artifact
         logger.info(f"Artifact updated successfully: {current_content['title']} (version: {new_index})")
-        
-        # Emit artifact updated event
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            name="artifact_updated",
-            value={"artifact": updated_artifact, "action": "update"}
-        )
-        
-        # Step 2: Stream summary to chat
-        async for event in self._stream_summary(current_content["type"], current_content["title"], "updated"):
-            yield event
     
     async def _rewrite_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """Rewrite entire artifact with new approach"""
@@ -483,44 +540,3 @@ Instructions:
 - Maintain document structure and tone
 - Keep existing formatting unless asked to change it
 - Output ONLY the updated content in markdown format"""
-    
-    async def _stream_summary(self, artifact_type: str, artifact_title: str, action: str) -> AsyncGenerator[BaseEvent, None]:
-        """Stream a summary message to the chat about the artifact action"""
-        from ag_ui.core import TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent
-        
-        message_id = f"msg-{uuid.uuid4()}"
-        
-        # Start text message
-        yield TextMessageStartEvent(
-            type=EventType.TEXT_MESSAGE_START,
-            message_id=message_id,
-            role="assistant"
-        )
-        
-        # Create summary message
-        if action == "created":
-            if artifact_type == "code":
-                summary = f"I've created a code artifact: **{artifact_title}**. You can see it on the right side. Feel free to ask me to modify it or create something else!"
-            else:
-                summary = f"I've created a text document: **{artifact_title}**. It's displayed on the right side. Let me know if you'd like any changes!"
-        else:  # updated
-            if artifact_type == "code":
-                summary = f"I've updated the code artifact: **{artifact_title}**. The new version is now displayed. What else would you like me to change?"
-            else:
-                summary = f"I've updated the document: **{artifact_title}**. You can see the changes on the right side. Anything else?"
-        
-        # Stream summary in chunks (simulate natural streaming)
-        chunk_size = 10
-        for i in range(0, len(summary), chunk_size):
-            chunk = summary[i:i + chunk_size]
-            yield TextMessageContentEvent(
-                type=EventType.TEXT_MESSAGE_CONTENT,
-                message_id=message_id,
-                delta=chunk
-            )
-        
-        # End text message
-        yield TextMessageEndEvent(
-            type=EventType.TEXT_MESSAGE_END,
-            message_id=message_id
-        )

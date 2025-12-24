@@ -11,7 +11,7 @@ const AGENT_STORAGE_KEY = 'selected_agent';
  * Persists selection to localStorage
  */
 export function useAgentSelection() {
-  const [selectedAgent, setSelectedAgentState] = useState<string>('chat');
+  const [selectedAgent, setSelectedAgentState] = useState<string>('');
   const [availableAgents, setAvailableAgents] = useState<AgentMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +37,9 @@ export function useAgentSelection() {
         console.error('Failed to load agents:', err);
         setError('Failed to load agents');
         
-        // Fallback to default
+        // Keep empty state - UI should handle error/loading state
         setAvailableAgents([]);
-        setSelectedAgentState('chat');
+        setSelectedAgentState('');
       } finally {
         setLoading(false);
       }

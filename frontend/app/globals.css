@@ -60,6 +60,15 @@
   transition: width var(--transition-duration) ease-in-out;
 }
 
+/* Canvas mode layout transitions */
+.canvas-transition {
+  transition: all var(--transition-duration) ease-in-out;
+}
+
+.canvas-grid-layout {
+  transition: grid-template-columns var(--transition-duration) ease-in-out;
+}
+
 /* Custom scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

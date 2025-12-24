@@ -27,9 +27,16 @@ export function useSidebar() {
     });
   };
 
+  // Set collapsed state directly
+  const setCollapsed = (collapsed: boolean) => {
+    setIsCollapsed(collapsed);
+    localStorage.setItem('sidebar-collapsed', String(collapsed));
+  };
+
   return {
     isCollapsed,
     toggleCollapse,
+    setCollapsed,
     isLoaded, // Use this to avoid flash of wrong state on load
   };
 }

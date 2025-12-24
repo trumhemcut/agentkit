@@ -52,17 +52,21 @@ export async function sendChatMessage(
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
+    // Use the unified endpoint pattern: /chat/{agent_id}
+    // Default to 'chat' if no agent specified (matches agent_registry IDs)
+    const agentId = agent || 'chat';
+    
     const chatRequest: ChatRequest = {
       thread_id: threadId,
       run_id: runId,
       messages: messages,
       model: model,
-      agent: agent,
+      agent: agentId, // Keep for backward compatibility
     };
 
-    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model, agent });
+    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model, agent: agentId });
 
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    const response = await fetch(`${API_BASE_URL}/api/chat/${agentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,6 +199,13 @@ export async function sendCanvasMessage(
   onEvent: (event: any) => void
 ): Promise<void> {
   try {
+    // Use the unified endpoint pattern: /chat/{agent_id}
+    // Agent ID must be provided from the /agents discovery API
+    if (!agent) {
+      throw new Error('Agent ID is required. Make sure agent selection is loaded from /agents API');
+    }
+    const agentId = agent;
+    
     const canvasRequest: CanvasRequest = {
       thread_id: threadId,
       run_id: runId,
@@ -203,7 +214,7 @@ export async function sendCanvasMessage(
       selectedText: selectedText,
       action: action,
       model: model,
-      agent: agent,
+      agent: agentId, // Keep for backward compatibility
     };
 
     console.log('[API] Sending canvas request:', { 
@@ -213,10 +224,10 @@ export async function sendCanvasMessage(
       hasArtifact: !!artifact,
       action,
       model,
-      agent
+      agent: agentId
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/canvas/stream`, {
+    const response = await fetch(`${API_BASE_URL}/api/chat/${agentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

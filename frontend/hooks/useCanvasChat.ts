@@ -25,6 +25,11 @@ export function useCanvasChat(threadId: string) {
     console.log('[useCanvasChat] Sending message with artifact:', artifact)
     console.log('[useCanvasChat] Selected agent:', selectedAgent)
     
+    // Validate agent is loaded
+    if (!selectedAgent) {
+      throw new Error('Agent not loaded yet. Cannot send message.')
+    }
+    
     // Convert chat messages to API format
     const apiMessages = messages.map(msg => ({
       role: msg.role,
@@ -40,7 +45,7 @@ export function useCanvasChat(threadId: string) {
       undefined, // selectedText - can be added later
       undefined, // action - let backend determine
       selectedModel || undefined,
-      selectedAgent || undefined,
+      selectedAgent,
       (event) => {
         aguiClientRef.current.processEvent(event)
       }

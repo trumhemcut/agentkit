@@ -74,6 +74,12 @@ export interface TextMessageStartEvent extends BaseEvent {
   message_id: string;
   role?: string;
   agentName?: string;
+  metadata?: {
+    message_type?: 'text' | 'artifact';
+    artifact_type?: 'code' | 'text' | 'document';
+    language?: string;
+    title?: string;
+  };
 }
 
 export interface TextMessageContentEvent extends BaseEvent {
