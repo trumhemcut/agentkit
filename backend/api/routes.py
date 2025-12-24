@@ -22,7 +22,7 @@ async def list_models():
 
 @router.post("/chat")
 async def chat_endpoint(input_data: RunAgentInput, request: Request):
-    """AG-UI compliant chat endpoint with SSE streaming"""
+    """AG-UI compliant chat endpoint with SSE streaming using chat_graph"""
     accept_header = request.headers.get("accept")
     encoder = EventEncoder(accept=accept_header)
     
@@ -37,9 +37,8 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
         )
         
         try:
-            # Create chat agent directly for streaming with optional model
-            from agents.chat_agent import ChatAgent
-            chat_agent = ChatAgent(model=input_data.model)
+            # Create chat graph with optional model
+            graph = create_chat_graph(model=input_data.model)
             
             state = {
                 "messages": [msg.model_dump() for msg in input_data.messages],
@@ -47,9 +46,35 @@ async def chat_endpoint(input_data: RunAgentInput, request: Request):
                 "run_id": input_data.run_id
             }
             
-            # Stream agent events directly
-            async for event in chat_agent.run(state):
+            # Create event queue for streaming
+            import asyncio
+            event_queue = asyncio.Queue()
+            
+            async def event_callback(event):
+                """Callback to receive events from agent"""
+                await event_queue.put(event)
+            
+            # Run graph with event callback in background
+            async def run_graph():
+                config = {
+                    "configurable": {
+                        "event_callback": event_callback
+                    }
+                }
+                await graph.ainvoke(state, config=config)
+                await event_queue.put(None)  # Signal completion
+            
+            graph_task = asyncio.create_task(run_graph())
+            
+            # Stream events as they arrive
+            while True:
+                event = await event_queue.get()
+                if event is None:  # Completion signal
+                    break
                 yield encoder.encode(event)
+            
+            # Wait for graph to complete
+            await graph_task
             
             # Send RUN_FINISHED event using official AG-UI event class
             yield encoder.encode(

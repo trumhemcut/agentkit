@@ -18,6 +18,7 @@ class ChatAgent(BaseAgent):
         self.llm = provider.get_model()
     
     async def run(self, state: AgentState) -> AsyncGenerator[BaseEvent, None]:
+        """Execute chat agent and stream events as they occur"""
         messages = state["messages"]
         message_id = str(uuid.uuid4())
         
@@ -28,7 +29,7 @@ class ChatAgent(BaseAgent):
             role="assistant"
         )
         
-        # Stream LLM response
+        # Stream LLM response - yield events immediately as chunks arrive
         async for chunk in self.llm.astream(messages):
             content = chunk.content
             if content:

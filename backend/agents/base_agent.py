@@ -1,8 +1,9 @@
-from typing import TypedDict, List, Dict
+from typing import TypedDict, List, Dict, AsyncGenerator
 from abc import ABC, abstractmethod
 
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
+    """State schema for LangGraph agents"""
     messages: List[Dict[str, str]]
     thread_id: str
     run_id: str
@@ -10,6 +11,6 @@ class AgentState(TypedDict):
 
 class BaseAgent(ABC):
     @abstractmethod
-    async def run(self, state: AgentState):
-        """Execute agent logic"""
+    async def run(self, state: AgentState) -> AsyncGenerator:
+        """Execute agent logic and stream events"""
         pass
