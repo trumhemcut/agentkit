@@ -4,7 +4,7 @@ import logging
 from typing import AsyncGenerator, List
 from ag_ui.core import EventType, BaseEvent, CustomEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent
 from agents.base_agent import BaseAgent
-from graphs.canvas_graph import CanvasGraphState, ArtifactV3, ArtifactContentCode, ArtifactContentText
+from graphs.canvas_graph import CanvasGraphState, Artifact
 from llm.provider_factory import LLMProviderFactory
 from protocols.event_types import CanvasEventType
 from cache.artifact_cache import artifact_cache
@@ -37,12 +37,13 @@ class CanvasAgent(BaseAgent):
         action = state.get("artifactAction", None)
         thread_id = state.get("thread_id")
         artifact_id = state.get("artifact_id")
+        artifact = state.get("artifact")
         
         logger.info(f"CanvasAgent.run started with action: {action}, artifact_id: {artifact_id}")
         logger.debug(f"State keys: {list(state.keys())}")
         
         # Retrieve artifact from cache if artifact_id is provided
-        if artifact_id:
+        if not artifact:
             cached_artifact = artifact_cache.get(artifact_id)
             if cached_artifact:
                 state["artifact"] = cached_artifact
@@ -88,9 +89,6 @@ class CanvasAgent(BaseAgent):
                 yield event
         elif action == "update":
             async for event in self._update_artifact(state):
-                yield event
-        elif action == "rewrite":
-            async for event in self._rewrite_artifact(state):
                 yield event
         else:
             # Unknown action, respond with text
@@ -144,10 +142,6 @@ class CanvasAgent(BaseAgent):
             result = await self._update_artifact_sync(state)
             logger.debug(f"Artifact updated successfully (sync mode)")
             return result
-        elif action == "rewrite":
-            result = await self._rewrite_artifact_sync(state)
-            logger.debug(f"Artifact rewritten successfully (sync mode)")
-            return result
         
         logger.warning(f"Unknown action '{action}', returning state unchanged")
         return state
@@ -159,12 +153,8 @@ class CanvasAgent(BaseAgent):
         thread_id = state.get("thread_id")
         logger.info(f"Creating new artifact, message length: {len(last_message)}")
         
-        # Determine artifact type from context
-        artifact_type = self._detect_artifact_type(last_message)
-        logger.info(f"Detected artifact type: {artifact_type}")
-        
         # Create system prompt for artifact generation
-        system_prompt = self._get_creation_prompt(artifact_type)
+        system_prompt = self._get_creation_prompt()
         
         # Prepare messages for LLM
         llm_messages = [
@@ -178,9 +168,7 @@ class CanvasAgent(BaseAgent):
         message_id = str(uuid.uuid4())
         
         # Detect language early for code artifacts
-        language = None
-        if artifact_type == "code":
-            language = self._detect_language(last_message, "")
+        language = self._detect_language(last_message, "")
         
         # Generate artifact_id for caching
         artifact_id = str(uuid.uuid4())
@@ -192,7 +180,6 @@ class CanvasAgent(BaseAgent):
             role="assistant",
             metadata={
                 "message_type": "artifact",
-                "artifact_type": artifact_type,
                 "artifact_id": artifact_id,  # Send artifact_id to frontend
                 "language": language,
                 "title": "Generating artifact..."  # Will update when complete
@@ -211,13 +198,12 @@ class CanvasAgent(BaseAgent):
                 )
         
         # Extract title from content if possible
-        artifact_title = self._extract_title(artifact_content, artifact_type)
+        artifact_title = self._extract_title(artifact_content)
         logger.debug(f"Artifact title extracted: {artifact_title}")
         
-        # Update language detection for code artifacts with full content
-        if artifact_type == "code":
-            language = self._detect_language(last_message, artifact_content)
-            logger.info(f"Code artifact created - language: {language}, title: {artifact_title}")
+        # Update language detection with full content
+        language = self._detect_language(last_message, artifact_content)
+        logger.info(f"Artifact created - language: {language}, title: {artifact_title}")
         
         # End TEXT_MESSAGE
         yield TextMessageEndEvent(
@@ -225,26 +211,12 @@ class CanvasAgent(BaseAgent):
             message_id=message_id
         )
         
-        # Create artifact structure for state (still needed for internal tracking)
-        if artifact_type == "code":
-            artifact_content_obj: ArtifactContentCode = {
-                "index": 1,
-                "type": "code",
-                "title": artifact_title,
-                "code": artifact_content,
-                "language": language
-            }
-        else:
-            artifact_content_obj: ArtifactContentText = {
-                "index": 1,
-                "type": "text",
-                "title": artifact_title,
-                "fullMarkdown": artifact_content
-            }
-        
-        artifact: ArtifactV3 = {
-            "currentIndex": 1,
-            "contents": [artifact_content_obj]
+        # Create simplified artifact structure
+        artifact: Artifact = {
+            "artifact_id": artifact_id,
+            "title": artifact_title,
+            "content": artifact_content,
+            "language": language
         }
         
         # Cache the artifact on server-side
@@ -254,10 +226,10 @@ class CanvasAgent(BaseAgent):
         # Update state
         state["artifact"] = artifact
         state["artifact_id"] = artifact_id  # Store artifact_id in state
-        logger.info(f"Artifact created successfully: {artifact_title} (index: {artifact['currentIndex']})")
+        logger.info(f"Artifact created successfully: {artifact_title}")
     
     async def _update_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
-        """Update specific parts of existing artifact"""
+        """Update existing artifact"""
         messages = state["messages"]
         current_artifact = state.get("artifact")
         thread_id = state.get("thread_id")
@@ -272,16 +244,10 @@ class CanvasAgent(BaseAgent):
             return
         
         last_message = messages[-1]["content"]
-        current_content = current_artifact["contents"][-1]
-        
-        # Get current artifact content
-        if current_content["type"] == "code":
-            current_text = current_content["code"]
-        else:
-            current_text = current_content["fullMarkdown"]
+        current_content = current_artifact["content"]
         
         # Create system prompt for updating
-        system_prompt = self._get_update_prompt(current_content["type"], current_text)
+        system_prompt = self._get_update_prompt(current_content)
         
         # Prepare messages for LLM
         llm_messages = [
@@ -300,10 +266,9 @@ class CanvasAgent(BaseAgent):
             role="assistant",
             metadata={
                 "message_type": "artifact",
-                "artifact_type": current_content["type"],
                 "artifact_id": artifact_id,  # Send artifact_id to frontend
-                "language": current_content.get("language"),
-                "title": current_content["title"]
+                "language": current_artifact.get("language"),
+                "title": current_artifact["title"]
             }
         )
         
@@ -324,30 +289,12 @@ class CanvasAgent(BaseAgent):
             message_id=message_id
         )
         
-        # Create new version for state tracking
-        new_index = len(current_artifact["contents"]) + 1
-        logger.debug(f"Creating new artifact version: {new_index}")
-        
-        if current_content["type"] == "code":
-            new_content_obj: ArtifactContentCode = {
-                "index": new_index,
-                "type": "code",
-                "title": current_content["title"],
-                "code": updated_content,
-                "language": current_content["language"]
-            }
-        else:
-            new_content_obj: ArtifactContentText = {
-                "index": new_index,
-                "type": "text",
-                "title": current_content["title"],
-                "fullMarkdown": updated_content
-            }
-        
-        # Update artifact
-        updated_artifact: ArtifactV3 = {
-            "currentIndex": new_index,
-            "contents": [*current_artifact["contents"], new_content_obj]
+        # Update artifact with new content
+        updated_artifact: Artifact = {
+            "artifact_id": artifact_id or current_artifact["artifact_id"],
+            "title": current_artifact["title"],
+            "content": updated_content,
+            "language": current_artifact.get("language")
         }
         
         # Update cache
@@ -361,22 +308,16 @@ class CanvasAgent(BaseAgent):
             logger.info(f"New artifact cached with ID: {artifact_id}")
         
         state["artifact"] = updated_artifact
-        logger.info(f"Artifact updated successfully: {current_content['title']} (version: {new_index})")
+        logger.info(f"Artifact updated successfully: {current_artifact['title']}")
     
-    async def _rewrite_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
-        """Rewrite entire artifact with new approach"""
-        logger.info("Rewriting artifact from scratch")
-        # For rewrite, we treat it similar to create but with context from existing
-        async for event in self._create_artifact(state):
-            yield event
+
     
     async def _create_artifact_sync(self, state: CanvasGraphState) -> CanvasGraphState:
         """Create artifact without streaming - for LangGraph node"""
         messages = state["messages"]
         last_message = messages[-1]["content"]
         
-        artifact_type = self._detect_artifact_type(last_message)
-        system_prompt = self._get_creation_prompt(artifact_type)
+        system_prompt = self._get_creation_prompt()
         
         llm_messages = [
             {"role": "system", "content": system_prompt},
@@ -387,31 +328,19 @@ class CanvasAgent(BaseAgent):
         response = await self.llm.ainvoke(llm_messages)
         artifact_content = response.content
         
-        artifact_title = self._extract_title(artifact_content, artifact_type)
+        artifact_title = self._extract_title(artifact_content)
+        language = self._detect_language(last_message, artifact_content)
+        artifact_id = str(uuid.uuid4())
         
-        if artifact_type == "code":
-            language = self._detect_language(last_message, artifact_content)
-            artifact_content_obj: ArtifactContentCode = {
-                "index": 1,
-                "type": "code",
-                "title": artifact_title,
-                "code": artifact_content,
-                "language": language
-            }
-        else:
-            artifact_content_obj: ArtifactContentText = {
-                "index": 1,
-                "type": "text",
-                "title": artifact_title,
-                "fullMarkdown": artifact_content
-            }
-        
-        artifact: ArtifactV3 = {
-            "currentIndex": 1,
-            "contents": [artifact_content_obj]
+        artifact: Artifact = {
+            "artifact_id": artifact_id,
+            "title": artifact_title,
+            "content": artifact_content,
+            "language": language
         }
         
         state["artifact"] = artifact
+        state["artifact_id"] = artifact_id
         return state
     
     async def _update_artifact_sync(self, state: CanvasGraphState) -> CanvasGraphState:
@@ -423,14 +352,9 @@ class CanvasAgent(BaseAgent):
             return await self._create_artifact_sync(state)
         
         last_message = messages[-1]["content"]
-        current_content = current_artifact["contents"][-1]
+        current_content = current_artifact["content"]
         
-        if current_content["type"] == "code":
-            current_text = current_content["code"]
-        else:
-            current_text = current_content["fullMarkdown"]
-        
-        system_prompt = self._get_update_prompt(current_content["type"], current_text)
+        system_prompt = self._get_update_prompt(current_content)
         
         llm_messages = [
             {"role": "system", "content": system_prompt},
@@ -440,46 +364,19 @@ class CanvasAgent(BaseAgent):
         response = await self.llm.ainvoke(llm_messages)
         updated_content = response.content
         
-        new_index = len(current_artifact["contents"]) + 1
-        
-        if current_content["type"] == "code":
-            new_content_obj: ArtifactContentCode = {
-                "index": new_index,
-                "type": "code",
-                "title": current_content["title"],
-                "code": updated_content,
-                "language": current_content["language"]
-            }
-        else:
-            new_content_obj: ArtifactContentText = {
-                "index": new_index,
-                "type": "text",
-                "title": current_content["title"],
-                "fullMarkdown": updated_content
-            }
-        
-        updated_artifact: ArtifactV3 = {
-            "currentIndex": new_index,
-            "contents": [*current_artifact["contents"], new_content_obj]
+        updated_artifact: Artifact = {
+            "artifact_id": current_artifact["artifact_id"],
+            "title": current_artifact["title"],
+            "content": updated_content,
+            "language": current_artifact.get("language")
         }
         
         state["artifact"] = updated_artifact
         return state
     
-    async def _rewrite_artifact_sync(self, state: CanvasGraphState) -> CanvasGraphState:
-        """Rewrite artifact without streaming - for LangGraph node"""
-        return await self._create_artifact_sync(state)
+
     
-    def _detect_artifact_type(self, message: str) -> str:
-        """Determine if user wants code or text artifact"""
-        code_keywords = ["code", "function", "class", "script", "program", "implementation"]
-        
-        message_lower = message.lower()
-        if any(keyword in message_lower for keyword in code_keywords):
-            logger.debug(f"Artifact type detected as 'code' based on keywords")
-            return "code"
-        logger.debug(f"Artifact type detected as 'text' (default)")
-        return "text"
+
     
     def _detect_language(self, message: str, code: str) -> str:
         """Detect programming language from context"""
@@ -518,87 +415,75 @@ class CanvasAgent(BaseAgent):
         logger.debug("Language detection defaulted to: python")
         return "python"  # Default
     
-    def _extract_title(self, content: str, artifact_type: str) -> str:
+    def _extract_title(self, content: str) -> str:
         """Extract title from artifact content"""
         lines = content.strip().split("\n")
         
-        if artifact_type == "code":
-            # Look for class or function name
-            for line in lines:
-                if "class " in line:
-                    parts = line.split("class ")
-                    if len(parts) > 1:
-                        class_name = parts[1].split("(")[0].split(":")[0].strip()
-                        return f"Class: {class_name}"
-                elif "def " in line:
-                    parts = line.split("def ")
-                    if len(parts) > 1:
-                        func_name = parts[1].split("(")[0].strip()
-                        return f"Function: {func_name}"
-            return "Code Artifact"
-        else:
-            # For text, use first heading or first line
-            for line in lines:
-                if line.startswith("#"):
-                    return line.replace("#", "").strip()
-            # Use first non-empty line
-            for line in lines:
-                if line.strip():
-                    return line.strip()[:50]
-            return "Text Document"
+        # Look for markdown heading
+        for line in lines:
+            if line.startswith("#"):
+                return line.replace("#", "").strip()
+        
+        # Look for class or function name in code
+        for line in lines:
+            if "class " in line:
+                parts = line.split("class ")
+                if len(parts) > 1:
+                    class_name = parts[1].split("(")[0].split(":")[0].strip()
+                    return f"Class: {class_name}"
+            elif "def " in line:
+                parts = line.split("def ")
+                if len(parts) > 1:
+                    func_name = parts[1].split("(")[0].strip()
+                    return f"Function: {func_name}"
+        
+        # Use first non-empty line
+        for line in lines:
+            if line.strip():
+                return line.strip()[:50]
+        
+        return "Artifact"
     
-    def _get_creation_prompt(self, artifact_type: str) -> str:
+    def _get_creation_prompt(self) -> str:
         """Get system prompt for artifact creation"""
-        if artifact_type == "code":
-            return """You are a code generation assistant. Generate clean, well-documented code based on the user's request.
+        return """You are a content generation assistant. Generate high-quality content based on the user's request.
+
+For code:
 - Write production-quality code with proper error handling
 - Include helpful comments
 - Follow best practices for the language
-- Output ONLY the code, no explanations or markdown formatting"""
-        else:
-            return """You are a writing assistant. Generate clear, well-structured text based on the user's request.
+- Output ONLY the code, no explanations or markdown formatting
+
+For text/documentation:
 - Use proper markdown formatting
 - Organize content with headings and sections
 - Be concise and clear
-- Output ONLY the content in markdown format"""
+- Output ONLY the content
+
+IMPORTANT: Output ONLY the requested content without any preamble, explanations, or markdown code fences."""
     
-    def _get_update_prompt(self, artifact_type: str, current_content: str) -> str:
+    def _get_update_prompt(self, current_content: str) -> str:
         """Get system prompt for artifact updates"""
-        if artifact_type == "code":
-            return f"""You are a code modification assistant. Update the following code based on the user's request.
+        return f"""You are a content modification assistant. Update the following content based on the user's request.
 
-CURRENT CODE:
+CURRENT CONTENT:
 ```
 {current_content}
 ```
 
 Instructions:
 - Make only the requested changes
-- Maintain code quality and consistency
+- Maintain code quality and consistency for code content
+- Maintain document structure and tone for text content
 - Keep the overall structure unless asked to change it
-- Output ONLY the updated code, no explanations"""
-        else:
-            return f"""You are a text editing assistant. Update the following document based on the user's request.
-
-CURRENT DOCUMENT:
-{current_content}
-
-Instructions:
-- Make only the requested changes
-- Maintain document structure and tone
-- Keep existing formatting unless asked to change it
-- Output ONLY the updated content in markdown format"""
+- Output ONLY the updated content, no explanations or markdown formatting around it"""
     
     def _build_partial_update_prompt(self, state: CanvasGraphState) -> str:
         """Build context-aware prompt for partial content updates"""
         
         artifact = state["artifact"]
         selected_text = state["selectedText"]
-        current_content = artifact["contents"][artifact["currentIndex"] - 1]
-        
-        # Get full content
-        full_content = (current_content.get("code") or 
-                        current_content.get("fullMarkdown") or "")
+        full_content = artifact["content"]
         
         selection_start = selected_text["start"]
         selection_end = selected_text["end"]
@@ -608,14 +493,12 @@ Instructions:
         context_before = full_content[max(0, selection_start - context_window):selection_start]
         context_after = full_content[selection_end:min(len(full_content), selection_end + context_window)]
         
-        artifact_type = current_content["type"]
-        language = current_content.get("language", "text")
+        language = artifact.get("language", "text")
         
         prompt = f"""You are editing a specific section of content in a canvas artifact.
 
 **Task:** Modify ONLY the selected portion based on the user's request.
 
-**Artifact Type:** {artifact_type}
 **Language:** {language}
 
 **Context Before Selection:**
@@ -644,8 +527,7 @@ Instructions:
 6. Preserve line breaks and whitespace patterns from the original selection
 
 **Output Format:**
-- For code: Return only the modified code block without any markdown code fences
-- For text: Return only the modified paragraph/section without extra formatting
+- Return only the modified content block without any markdown code fences
 - NO explanations, NO surrounding context, ONLY the replacement text
 """
         
@@ -668,8 +550,8 @@ Instructions:
         
         # Emit start event with artifact_id
         yield CustomEvent(
-            event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START,
-            data={
+            name=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START,
+            value={
                 "artifact_id": artifact_id,  # Include artifact_id
                 "selection": {
                     "start": selected_text["start"],
@@ -689,8 +571,8 @@ Instructions:
                 
                 # Stream chunks to frontend
                 yield CustomEvent(
-                    event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_CHUNK,
-                    data={
+                    name=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_CHUNK,
+                    value={
                         "chunk": chunk.content,
                         "artifact_id": artifact_id,  # Include artifact_id
                         "selection": {
@@ -704,8 +586,8 @@ Instructions:
         
         # Emit completion event with full updated section
         yield CustomEvent(
-            event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE,
-            data={
+            name=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE,
+            value={
                 "artifact_id": artifact_id,  # Include artifact_id
                 "selection": {
                     "start": selected_text["start"],
@@ -737,11 +619,7 @@ Instructions:
         
         artifact = state["artifact"]
         selected_text = state["selectedText"]
-        current_content = artifact["contents"][artifact["currentIndex"] - 1]
-        
-        # Get full content
-        full_content = (current_content.get("code") or 
-                        current_content.get("fullMarkdown") or "")
+        full_content = artifact["content"]
         
         # Replace selected region with updated content
         new_content = (
@@ -750,30 +628,13 @@ Instructions:
             full_content[selected_text["end"]:]
         )
         
-        # Create new version of artifact
-        new_index = len(artifact["contents"]) + 1
-        
-        if current_content["type"] == "code":
-            new_content_obj: ArtifactContentCode = {
-                "index": new_index,
-                "type": "code",
-                "title": current_content["title"],
-                "code": new_content,
-                "language": current_content["language"]
-            }
-        else:
-            new_content_obj: ArtifactContentText = {
-                "index": new_index,
-                "type": "text",
-                "title": current_content["title"],
-                "fullMarkdown": new_content
-            }
-        
-        # Update artifact with new version
-        updated_artifact: ArtifactV3 = {
-            "currentIndex": new_index,
-            "contents": [*artifact["contents"], new_content_obj]
+        # Update artifact with new content
+        updated_artifact: Artifact = {
+            "artifact_id": artifact["artifact_id"],
+            "title": artifact["title"],
+            "content": new_content,
+            "language": artifact.get("language")
         }
         
         state["artifact"] = updated_artifact
-        logger.debug(f"Created artifact version {new_index} with partial update merged")
+        logger.debug(f"Artifact updated with partial update merged")

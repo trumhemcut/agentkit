@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-from graphs.canvas_graph import ArtifactV3
+from graphs.canvas_graph import Artifact
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class CachedArtifact:
     """Wrapper for cached artifact with metadata"""
     artifact_id: str
-    artifact: ArtifactV3
+    artifact: Artifact
     created_at: datetime
     last_accessed: datetime
     thread_id: str  # Associate with conversation thread
@@ -38,7 +38,7 @@ class ArtifactCache:
         self._ttl = timedelta(hours=ttl_hours)
         logger.info(f"ArtifactCache initialized with TTL: {ttl_hours} hours")
     
-    def store(self, artifact: ArtifactV3, thread_id: str, artifact_id: Optional[str] = None) -> str:
+    def store(self, artifact: Artifact, thread_id: str, artifact_id: Optional[str] = None) -> str:
         """
         Store artifact in cache and return artifact ID
         
@@ -71,7 +71,7 @@ class ArtifactCache:
         logger.debug(f"Artifact stored successfully. Cache size: {len(self._cache)}")
         return artifact_id
     
-    def get(self, artifact_id: str) -> Optional[ArtifactV3]:
+    def get(self, artifact_id: str) -> Optional[Artifact]:
         """
         Retrieve artifact from cache by ID
         
@@ -79,7 +79,7 @@ class ArtifactCache:
             artifact_id: Artifact ID
         
         Returns:
-            ArtifactV3 or None if not found or expired
+            Artifact or None if not found or expired
         """
         cached = self._cache.get(artifact_id)
         
@@ -98,7 +98,7 @@ class ArtifactCache:
         logger.debug(f"Artifact retrieved from cache: {artifact_id}")
         return cached.artifact
     
-    def update(self, artifact_id: str, artifact: ArtifactV3) -> bool:
+    def update(self, artifact_id: str, artifact: Artifact) -> bool:
         """
         Update existing artifact in cache
         
@@ -138,7 +138,7 @@ class ArtifactCache:
         logger.warning(f"Cannot delete, artifact not found: {artifact_id}")
         return False
     
-    def get_thread_artifacts(self, thread_id: str) -> Dict[str, ArtifactV3]:
+    def get_thread_artifacts(self, thread_id: str) -> Dict[str, Artifact]:
         """
         Get all artifacts for a specific thread
         

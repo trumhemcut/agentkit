@@ -1,31 +1,16 @@
 import logging
-from typing import TypedDict, Literal, Optional, List, Union, Dict
+from typing import TypedDict, Optional, List, Dict
 from langgraph.graph import StateGraph, START, END
 
 logger = logging.getLogger(__name__)
 
 
-class ArtifactContentCode(TypedDict):
-    """Code artifact content"""
-    index: int
-    type: Literal["code"]
-    title: str
-    code: str
-    language: str  # python, javascript, typescript, etc.
-
-
-class ArtifactContentText(TypedDict):
-    """Text/Markdown artifact content"""
-    index: int
-    type: Literal["text"]
-    title: str
-    fullMarkdown: str
-
-
-class ArtifactV3(TypedDict):
-    """Canvas artifact with versioning"""
-    currentIndex: int
-    contents: List[Union[ArtifactContentCode, ArtifactContentText]]
+class Artifact(TypedDict):
+    """Simplified artifact structure"""
+    artifact_id: str        # Unique identifier
+    title: str              # Artifact title
+    content: str            # The actual content (code, text, markdown, etc.)
+    language: Optional[str] # Optional language hint for syntax highlighting
 
 
 class SelectedText(TypedDict):
@@ -42,9 +27,10 @@ class CanvasGraphState(TypedDict):
     messages: List[Dict[str, str]]
     thread_id: str
     run_id: str
-    artifact: Optional[ArtifactV3]
+    artifact: Optional[Artifact]
     selectedText: Optional[SelectedText]
-    artifactAction: Optional[str]  # "create", "update", "rewrite", "partial_update"
+    artifactAction: Optional[str]  # "create", "update", "partial_update"
+    artifact_id: Optional[str]     # Current artifact ID being worked on
 
 
 def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
@@ -71,13 +57,10 @@ def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
     # Keywords suggesting artifact creation/manipulation
     create_keywords = ["create", "write", "generate", "make", "build"]
     update_keywords = ["update", "modify", "change", "edit", "fix"]
-    rewrite_keywords = ["rewrite", "refactor", "redo", "restart"]
     
     if artifact:
-        # Artifact exists, check for update/rewrite
-        if any(keyword in last_message for keyword in rewrite_keywords):
-            state["artifactAction"] = "rewrite"
-        elif any(keyword in last_message for keyword in update_keywords):
+        # Artifact exists, default to update
+        if any(keyword in last_message for keyword in update_keywords):
             state["artifactAction"] = "update"
         else:
             # Default to update if artifact exists

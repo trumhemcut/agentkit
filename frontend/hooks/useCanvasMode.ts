@@ -34,6 +34,11 @@ export function useCanvasMode(): UseCanvasModeReturn {
 
     if (message.artifactId && canvasContext) {
       canvasContext.setArtifactId(message.artifactId);
+      canvasContext.setArtifact({
+        artifact_id: message.artifactId,
+        content: message.content || '',
+        title: message.title || ''
+      });
     }
   }, [canvasContext]);
 

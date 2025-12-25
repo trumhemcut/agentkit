@@ -158,6 +158,20 @@ export type AGUIEvent =
   | CustomEvent
   | BaseEvent; // Fallback for unknown events
 
+// Canvas-specific custom event names
+export const CanvasEventType = {
+  ARTIFACT_CREATED: 'artifact_created',
+  ARTIFACT_UPDATED: 'artifact_updated',
+  ARTIFACT_STREAMING: 'artifact_streaming',
+  ARTIFACT_STREAMING_START: 'artifact_streaming_start',
+  SELECTION_CONTEXT: 'selection_context',
+  THINKING: 'thinking',
+  // Partial update events
+  ARTIFACT_PARTIAL_UPDATE_START: 'artifact_partial_update_start',
+  ARTIFACT_PARTIAL_UPDATE_CHUNK: 'artifact_partial_update_chunk',
+  ARTIFACT_PARTIAL_UPDATE_COMPLETE: 'artifact_partial_update_complete',
+} as const;
+
 // AG-UI connection state
 export interface ConnectionState {
   isConnected: boolean;

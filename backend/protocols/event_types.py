@@ -8,7 +8,6 @@ class CanvasEventType:
     ARTIFACT_UPDATED = "artifact_updated"
     ARTIFACT_STREAMING = "artifact_streaming"
     ARTIFACT_STREAMING_START = "artifact_streaming_start"
-    ARTIFACT_VERSION_CHANGED = "artifact_version_changed"
     SELECTION_CONTEXT = "selection_context"
     THINKING = "thinking"
     

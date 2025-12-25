@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from 'react';
 import { Message, isArtifactMessage } from '@/types/chat';
 import { CodeRenderer } from './Canvas/CodeRenderer';
 import { TextRenderer } from './Canvas/TextRenderer';
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Copy, Download, FileCode, FileText, X } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { useCanvas } from '@/contexts/CanvasContext';
 
 interface ArtifactPanelProps {
   message: Message;
@@ -18,20 +20,43 @@ interface ArtifactPanelProps {
  * Displays artifact messages (code or text) in a dedicated panel
  */
 export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
+  const { 
+    artifact, 
+    isPartialUpdateActive, 
+    partialUpdateBuffer, 
+    partialUpdateSelection 
+  } = useCanvas();
+
   if (!isArtifactMessage(message)) {
     console.warn('ArtifactPanel received non-artifact message');
     return null;
   }
 
+  // Use artifact from context if available, otherwise use message content
+  const displayContent = useMemo(() => {
+    // If partial update is active, show the preview of the update
+    if (isPartialUpdateActive && partialUpdateSelection && artifact) {
+      const { start, end } = partialUpdateSelection;
+      return (
+        artifact.content.substring(0, start) +
+        partialUpdateBuffer +
+        artifact.content.substring(end)
+      );
+    }
+    
+    // Otherwise use artifact from context or fall back to message
+    return artifact?.content || message.content;
+  }, [artifact, message.content, isPartialUpdateActive, partialUpdateBuffer, partialUpdateSelection]);
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(displayContent);
   };
 
   const handleDownload = () => {
     const extension = message.artifactType === 'code' 
       ? message.language || 'txt'
       : 'md';
-    const blob = new Blob([message.content], { type: 'text/plain' });
+    const blob = new Blob([displayContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -41,6 +66,7 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
   };
 
   const Icon = message.artifactType === 'code' ? FileCode : FileText;
+  const isStreaming = message.isStreaming || isPartialUpdateActive;
 
   return (
     <Card className="flex flex-col h-full border-0 rounded-none shadow-none">
@@ -51,9 +77,9 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
             <CardTitle className="text-lg">
               {message.title || 'Artifact'}
             </CardTitle>
-            {message.isStreaming && (
+            {isStreaming && (
               <span className="text-xs text-muted-foreground animate-pulse">
-                Streaming...
+                {isPartialUpdateActive ? 'Updating...' : 'Streaming...'}
               </span>
             )}
           </div>
@@ -97,15 +123,15 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
           <div className="p-4">
             {message.artifactType === 'code' ? (
               <CodeRenderer
-                code={message.content}
+                code={displayContent}
                 language={message.language || 'text'}
-                isStreaming={message.isStreaming || false}
+                isStreaming={isStreaming}
                 onUpdate={() => {}} // Read-only for now
               />
             ) : (
               <TextRenderer
-                markdown={message.content}
-                isStreaming={message.isStreaming || false}
+                markdown={displayContent}
+                isStreaming={isStreaming}
                 onUpdate={() => {}} // Read-only for now
               />
             )}

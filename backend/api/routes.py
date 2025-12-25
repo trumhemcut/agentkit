@@ -134,16 +134,12 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                 
                 # Handle artifact retrieval: prioritize artifact_id over artifact
                 artifact = None
-                if input_data.artifact_id:
-                    # Retrieve from cache using artifact_id
-                    artifact = artifact_cache.get(input_data.artifact_id)
-                    if not artifact:
-                        logger.warning(f"Artifact ID provided but not found in cache: {input_data.artifact_id}")
-                elif input_data.artifact:
-                    # Legacy: client sent full artifact (will be deprecated)
-                    logger.warning("Client sent full artifact instead of artifact_id. Consider updating frontend.")
+                if input_data.artifact:
+                    logger.info("Client sent full artifact object")
                     artifact = input_data.artifact.model_dump()
-                
+                else:
+                    logger.warning(f"Artifact ID provided but not found in cache: {input_data.artifact_id}")
+
                 state = {
                     "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
                     "thread_id": input_data.thread_id,
@@ -340,24 +336,51 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
 
 @router.post("/canvas/artifacts/{artifact_id}")
 async def update_artifact_endpoint(artifact_id: str, updates: ArtifactUpdate):
-    """Manually update artifact content (for future implementation)"""
-    # This endpoint would persist artifacts to a database
-    # For now, return a placeholder response
-    return {
-        "success": True,
-        "artifact_id": artifact_id,
-        "message": "Artifact update endpoint (to be implemented with persistence)"
-    }
+    """Manually update artifact content"""
+    try:
+        # Get existing artifact from cache
+        artifact = artifact_cache.get(artifact_id)
+        if not artifact:
+            raise HTTPException(status_code=404, detail=f"Artifact {artifact_id} not found")
+        
+        # Update artifact content
+        updated_artifact = {
+            "artifact_id": artifact_id,
+            "title": artifact.get("title", "Untitled"),
+            "content": updates.content,
+            "language": artifact.get("language")
+        }
+        
+        # Update in cache
+        success = artifact_cache.update(artifact_id, updated_artifact)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update artifact")
+        
+        return {
+            "success": True,
+            "artifact_id": artifact_id,
+            "message": "Artifact updated successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating artifact: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/canvas/artifacts/{artifact_id}/versions")
-async def get_artifact_versions_endpoint(artifact_id: str):
-    """Get version history for artifact (for future implementation)"""
-    # This endpoint would retrieve artifact history from database
-    # For now, return a placeholder response
-    return {
-        "artifact_id": artifact_id,
-        "versions": [],
-        "message": "Artifact version history (to be implemented with persistence)"
-    }
+@router.get("/canvas/artifacts/{artifact_id}")
+async def get_artifact_endpoint(artifact_id: str):
+    """Get artifact by ID from cache"""
+    try:
+        artifact = artifact_cache.get(artifact_id)
+        if not artifact:
+            raise HTTPException(status_code=404, detail=f"Artifact {artifact_id} not found")
+        
+        return artifact
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving artifact: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 

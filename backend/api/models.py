@@ -1,6 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union, Literal, Dict
+from typing import List, Optional, Literal, Dict
 
 
 class Message(BaseModel):
@@ -9,7 +9,6 @@ class Message(BaseModel):
     message_type: Optional[str] = "text"  # "text" or "artifact"
     
     # Artifact-specific fields (only when message_type="artifact")
-    artifact_type: Optional[str] = None  # "code", "text", "document"
     language: Optional[str] = None  # for code artifacts
     title: Optional[str] = None
 
@@ -22,35 +21,20 @@ class RunAgentInput(BaseModel):
     agent: Optional[str] = "chat"  # Optional agent selection
     
     # Canvas-specific optional fields (for unified endpoint)
-    artifact: Optional['ArtifactV3'] = None  # DEPRECATED: Use artifact_id instead
+    artifact: Optional['Artifact'] = None  # Full artifact object from frontend
     artifact_id: Optional[str] = None  # Server-side cached artifact ID
     selectedText: Optional['SelectedText'] = None
-    action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
+    action: Optional[Literal["create", "update", "partial_update", "chat"]] = None
 
 
 # Canvas-specific models
 
-class ArtifactContentCode(BaseModel):
-    """Code artifact content"""
-    index: int
-    type: Literal["code"]
+class Artifact(BaseModel):
+    """Simplified artifact structure"""
+    artifact_id: str
     title: str
-    code: str
-    language: str
-
-
-class ArtifactContentText(BaseModel):
-    """Text/Markdown artifact content"""
-    index: int
-    type: Literal["text"]
-    title: str
-    fullMarkdown: str
-
-
-class ArtifactV3(BaseModel):
-    """Canvas artifact with versioning"""
-    currentIndex: int
-    contents: List[Union[ArtifactContentCode, ArtifactContentText]]
+    content: str
+    language: Optional[str] = None
 
 
 class SelectedText(BaseModel):
@@ -67,10 +51,9 @@ class CanvasMessageRequest(BaseModel):
     thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     messages: List[Message]
-    artifact: Optional[ArtifactV3] = None  # DEPRECATED: Use artifact_id instead
     artifact_id: Optional[str] = None  # Server-side cached artifact ID
     selectedText: Optional[SelectedText] = None
-    action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
+    action: Optional[Literal["create", "update", "partial_update", "chat"]] = None
     model: Optional[str] = None  # Optional model selection
     agent: Optional[str] = "canvas"  # Optional agent selection
 
@@ -78,5 +61,5 @@ class CanvasMessageRequest(BaseModel):
 class ArtifactUpdate(BaseModel):
     """Manual artifact update request"""
     content: str
-    index: int
+    artifact_id: str
 

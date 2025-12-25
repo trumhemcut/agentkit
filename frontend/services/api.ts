@@ -5,7 +5,7 @@
  * Handles AG-UI protocol streaming events from the backend.
  */
 
-import { ArtifactV3, SelectedText } from '@/types/canvas';
+import { Artifact, SelectedText } from '@/types/canvas';
 import { LLMModel, ModelsResponse } from '@/types/chat';
 import { AgentsResponse } from '@/types/agent';
 
@@ -164,7 +164,7 @@ export interface CanvasRequest {
   thread_id: string;
   run_id: string;
   messages: Message[];
-  artifact?: ArtifactV3;
+  artifact?: Artifact;
   artifact_id?: string;
   selectedText?: SelectedText;
   action?: "create" | "update" | "rewrite" | "chat";
@@ -192,7 +192,7 @@ export async function sendCanvasMessage(
   messages: Message[],
   threadId: string,
   runId: string,
-  artifact: ArtifactV3 | undefined,
+  artifact: Artifact | undefined,
   artifactId: string | undefined,
   selectedText: SelectedText | undefined,
   action: "create" | "update" | "rewrite" | "chat" | undefined,

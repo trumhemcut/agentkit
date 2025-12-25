@@ -9,7 +9,7 @@ import { useModelSelection } from '@/hooks/useModelSelection';
 import { useAgentSelection } from '@/hooks/useAgentSelection';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage, sendCanvasMessage } from '@/services/api';
-import { EventType } from '@/types/agui';
+import { EventType, CanvasEventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
 import { useCanvasOptional } from '@/contexts/CanvasContext';
 
@@ -156,6 +156,19 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
         updateMessage(currentMsg.id, { isStreaming: false });
+        
+        // If this is an artifact message, sync to canvas context
+        if (currentMsg.messageType === 'artifact' && canvasContext) {
+          const artifact = {
+            artifact_id: currentMsg.artifactId || currentMsg.id,
+            title: currentMsg.title || 'Artifact',
+            content: currentMsg.content,
+            language: currentMsg.language || 'text',
+          };
+          canvasContext.setArtifact(artifact);
+          console.log('[ChatContainer] Synced artifact to canvas context:', artifact.artifact_id);
+        }
+        
         currentAgentMessageRef.current = null;
       }
       // Refresh threads to update sidebar with latest messages
@@ -184,20 +197,69 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     // Handle ERROR
     const unsubscribeError = on(EventType.ERROR, (event) => {
-      console.error('[ChatContainer] AG-UI Error:', event);
+      console.error('[ChatContainer] AG-UI Error:', JSON.stringify(event, null, 2));
       setIsSending(false);
       currentAgentMessageRef.current = null;
-      const errorMsg = (event as any).data?.message || (event as any).message || 'Connection error';
+      
+      // Try to extract error message from various possible locations
+      const typedEvent = event as any;
+      const errorMsg = typedEvent.message || 
+                      typedEvent.error?.message || 
+                      typedEvent.data?.message || 
+                      'Connection error';
+      
+      console.error('[ChatContainer] Error message:', errorMsg);
       setConnectionState(false, errorMsg);
     });
 
     // Handle RUN_ERROR
     const unsubscribeRunError = on(EventType.RUN_ERROR, (event) => {
-      console.error('[ChatContainer] AG-UI Run Error:', event);
+      // Check if event is actually empty
+      const eventKeys = Object.keys(event || {});
+      console.error('[ChatContainer] AG-UI Run Error - Keys:', eventKeys);
+      console.error('[ChatContainer] AG-UI Run Error - Full event:', JSON.stringify(event, null, 2));
+      
       setIsSending(false);
       currentAgentMessageRef.current = null;
-      const errorMsg = (event as any).message || 'Agent error';
+      
+      // Try to extract error message from various possible locations
+      const typedEvent = event as any;
+      const errorMsg = typedEvent.message || 
+                      typedEvent.error?.message || 
+                      typedEvent.data?.message || 
+                      'Agent error occurred';
+      
+      console.error('[ChatContainer] Error message extracted:', errorMsg);
       setConnectionState(false, errorMsg);
+    });
+
+    // Handle CUSTOM events for canvas partial updates
+    const unsubscribeCustom = on(EventType.CUSTOM, (event) => {
+      const customEvent = event as any;
+      console.log('[ChatContainer] CUSTOM event:', customEvent.name);
+      
+      if (!canvasContext) return;
+      
+      switch (customEvent.name) {
+        case 'artifact_partial_update_start':
+          console.log('[ChatContainer] Partial update started:', customEvent.value);
+          if (customEvent.value?.selection) {
+            canvasContext.startPartialUpdate(customEvent.value.selection);
+          }
+          break;
+          
+        case 'artifact_partial_update_chunk':
+          console.log('[ChatContainer] Partial update chunk:', customEvent.value?.chunk);
+          if (customEvent.value?.chunk) {
+            canvasContext.appendPartialUpdateChunk(customEvent.value.chunk);
+          }
+          break;
+          
+        case 'artifact_partial_update_complete':
+          console.log('[ChatContainer] Partial update complete:', customEvent.value);
+          canvasContext.completePartialUpdate();
+          break;
+      }
     });
 
     return () => {
@@ -209,8 +271,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       unsubscribeFinish();
       unsubscribeError();
       unsubscribeRunError();
+      unsubscribeCustom();
     };
-  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads]);
+  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads, canvasContext]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {

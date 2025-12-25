@@ -1,13 +1,13 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, ReactNode, RefObject } from "react"
-import { ArtifactV3, ArtifactContentCode, ArtifactContentText } from "@/types/canvas"
+import { Artifact } from "@/types/canvas"
 import { ChatInputRef } from "@/components/ChatInput"
 import { StorageService } from "@/services/storage"
 
 interface CanvasContextValue {
-  artifact: ArtifactV3 | undefined
-  setArtifact: (artifact: ArtifactV3 | undefined) => void
+  artifact: Artifact | undefined
+  setArtifact: (artifact: Artifact | undefined) => void
   artifactId: string | null
   setArtifactId: (id: string | null) => void
   loadArtifactById: (artifactId: string, threadId: string) => boolean
@@ -16,23 +16,34 @@ interface CanvasContextValue {
   streamingContent: string
   appendStreamingContent: (delta: string) => void
   clearStreamingContent: () => void
-  updateArtifactContent: (content: string, index: number) => void
-  changeArtifactVersion: (index: number) => void
+  updateArtifactContent: (content: string) => void
   chatInputRef: RefObject<ChatInputRef | null> | null
   setChatInputRef: (ref: RefObject<ChatInputRef | null>) => void
   selectedTextForChat: string | null
   setSelectedTextForChat: (text: string | null) => void
+  // Partial update state
+  isPartialUpdateActive: boolean
+  partialUpdateBuffer: string
+  partialUpdateSelection: { start: number; end: number } | null
+  startPartialUpdate: (selection: { start: number; end: number }) => void
+  appendPartialUpdateChunk: (chunk: string) => void
+  completePartialUpdate: () => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | null>(null)
 
 export function CanvasProvider({ children }: { children: ReactNode }) {
-  const [artifact, setArtifact] = useState<ArtifactV3 | undefined>(undefined)
+  const [artifact, setArtifact] = useState<Artifact | undefined>(undefined)
   const [artifactId, setArtifactId] = useState<string | null>(null)
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
   const [chatInputRef, setChatInputRefState] = useState<RefObject<ChatInputRef | null> | null>(null)
   const [selectedTextForChat, setSelectedTextForChat] = useState<string | null>(null)
+  
+  // Partial update state
+  const [isPartialUpdateActive, setIsPartialUpdateActive] = useState(false)
+  const [partialUpdateBuffer, setPartialUpdateBuffer] = useState("")
+  const [partialUpdateSelection, setPartialUpdateSelection] = useState<{ start: number; end: number } | null>(null)
   
   const appendStreamingContent = useCallback((delta: string) => {
     setStreamingContent(prev => prev + delta)
@@ -46,31 +57,47 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
     setChatInputRefState(ref)
   }, [])
   
-  const updateArtifactContent = useCallback((content: string, index: number) => {
+  const updateArtifactContent = useCallback((content: string) => {
     setArtifact(prev => {
       if (!prev) return undefined
-      
-      const updatedContents = prev.contents.map(c => {
-        if (c.index === index) {
-          if (c.type === "code") {
-            return { ...c, code: content } as ArtifactContentCode
-          } else {
-            return { ...c, fullMarkdown: content } as ArtifactContentText
-          }
-        }
-        return c
-      })
-      
-      return { ...prev, contents: updatedContents }
+      return { ...prev, content }
     })
   }, [])
   
-  const changeArtifactVersion = useCallback((index: number) => {
-    setArtifact(prev => {
-      if (!prev) return undefined
-      return { ...prev, currentIndex: index }
-    })
+  const startPartialUpdate = useCallback((selection: { start: number; end: number }) => {
+    console.log('[CanvasContext] Starting partial update:', selection)
+    setIsPartialUpdateActive(true)
+    setPartialUpdateBuffer("")
+    setPartialUpdateSelection(selection)
   }, [])
+  
+  const appendPartialUpdateChunk = useCallback((chunk: string) => {
+    console.log('[CanvasContext] Appending partial update chunk:', chunk)
+    setPartialUpdateBuffer(prev => prev + chunk)
+  }, [])
+  
+  const completePartialUpdate = useCallback(() => {
+    console.log('[CanvasContext] Completing partial update')
+    if (!partialUpdateSelection || !artifact) {
+      console.warn('[CanvasContext] Cannot complete partial update: missing selection or artifact')
+      return
+    }
+    
+    // Merge the partial update into the artifact content
+    const { start, end } = partialUpdateSelection
+    const newContent = 
+      artifact.content.substring(0, start) +
+      partialUpdateBuffer +
+      artifact.content.substring(end)
+    
+    console.log('[CanvasContext] Merged content length:', newContent.length)
+    updateArtifactContent(newContent)
+    
+    // Reset partial update state
+    setIsPartialUpdateActive(false)
+    setPartialUpdateBuffer("")
+    setPartialUpdateSelection(null)
+  }, [partialUpdateSelection, artifact, partialUpdateBuffer, updateArtifactContent])
   
   /**
    * Load an artifact by looking up a message with the given artifactId from storage
@@ -115,11 +142,16 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         appendStreamingContent,
         clearStreamingContent,
         updateArtifactContent,
-        changeArtifactVersion,
         chatInputRef,
         setChatInputRef,
         selectedTextForChat,
         setSelectedTextForChat,
+        isPartialUpdateActive,
+        partialUpdateBuffer,
+        partialUpdateSelection,
+        startPartialUpdate,
+        appendPartialUpdateChunk,
+        completePartialUpdate,
       }}
     >
       {children}
