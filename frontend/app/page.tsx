@@ -57,10 +57,11 @@ function HomeContent() {
   }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed]);
   
   const handleNewChat = () => {
-    // Only create a new thread if the current thread has messages
+    // Create a new thread if there's no current thread or if the current thread has messages
+    const hasNoThread = !currentThread;
     const hasMessages = currentThread && currentThread.messages.length > 0;
     
-    if (hasMessages) {
+    if (hasNoThread || hasMessages) {
       createThread();
       // Deactivate canvas mode when starting a new chat
       deactivateCanvas();
