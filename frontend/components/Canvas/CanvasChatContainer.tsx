@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { MessageHistory } from '@/components/MessageHistory';
-import { ChatInput } from '@/components/ChatInput';
+import { ChatInput, ChatInputRef } from '@/components/ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
 import { useCanvas } from '@/contexts/CanvasContext';
@@ -33,11 +33,18 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
     setArtifact, 
     setIsArtifactStreaming, 
     appendStreamingContent, 
-    clearStreamingContent 
+    clearStreamingContent,
+    setChatInputRef
   } = useCanvas();
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
+  const chatInputRef = useRef<ChatInputRef>(null);
+
+  // Register chat input ref with CanvasContext
+  useEffect(() => {
+    setChatInputRef(chatInputRef);
+  }, [setChatInputRef]);
 
   // Keep threadId ref in sync
   useEffect(() => {
@@ -326,6 +333,7 @@ export function CanvasChatContainer({ threadId }: CanvasChatContainerProps) {
       </div>
       
       <ChatInput 
+        ref={chatInputRef}
         onSendMessage={handleSendMessage} 
         disabled={isSending || !isConnected}
         placeholder={

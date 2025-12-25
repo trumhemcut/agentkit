@@ -9,6 +9,7 @@ import { useChatThreads } from '@/hooks/useChatThreads';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useCanvasMode } from '@/hooks/useCanvasMode';
 import { Message } from '@/types/chat';
+import { CanvasProvider } from '@/contexts/CanvasContext';
 
 export default function Home() {
   const {
@@ -62,39 +63,41 @@ export default function Home() {
   };
 
   return (
-    <Layout
-      sidebar={
-        <Sidebar
-          threads={threads}
-          currentThreadId={currentThreadId}
-          isCollapsed={isCollapsed || canvasModeActive}
-          onToggleCollapse={toggleCollapse}
-          onNewChat={handleNewChat}
-          onSelectThread={selectThread}
-          onDeleteThread={deleteThread}
-        />
-      }
-    >
-      <div className={canvasModeActive ? "grid grid-cols-3 h-full gap-0 canvas-grid-layout" : "flex h-full canvas-transition"}>
-        <div className={canvasModeActive ? "col-span-1 h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}>
-          <ChatContainer 
-            ref={chatContainerRef}
-            threadId={currentThreadId}
-            onUpdateThreadTitle={updateThreadTitle}
-            onRefreshThreads={refreshThreads}
-            onArtifactDetected={handleArtifactDetected}
-            onEnableCanvas={activateCanvas}
+    <CanvasProvider>
+      <Layout
+        sidebar={
+          <Sidebar
+            threads={threads}
+            currentThreadId={currentThreadId}
+            isCollapsed={isCollapsed || canvasModeActive}
+            onToggleCollapse={toggleCollapse}
+            onNewChat={handleNewChat}
+            onSelectThread={selectThread}
+            onDeleteThread={deleteThread}
           />
-        </div>
-        {canvasModeActive && currentArtifactMessage && (
-          <div className="col-span-2 h-full overflow-hidden">
-            <ArtifactPanel 
-              message={currentArtifactMessage} 
-              onClose={handleCloseCanvas}
+        }
+      >
+        <div className={canvasModeActive ? "grid grid-cols-3 h-full gap-0 canvas-grid-layout" : "flex h-full canvas-transition"}>
+          <div className={canvasModeActive ? "col-span-1 h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}>
+            <ChatContainer 
+              ref={chatContainerRef}
+              threadId={currentThreadId}
+              onUpdateThreadTitle={updateThreadTitle}
+              onRefreshThreads={refreshThreads}
+              onArtifactDetected={handleArtifactDetected}
+              onEnableCanvas={activateCanvas}
             />
           </div>
-        )}
-      </div>
-    </Layout>
+          {canvasModeActive && currentArtifactMessage && (
+            <div className="col-span-2 h-full overflow-hidden">
+              <ArtifactPanel 
+                message={currentArtifactMessage} 
+                onClose={handleCloseCanvas}
+              />
+            </div>
+          )}
+        </div>
+      </Layout>
+    </CanvasProvider>
   );
 }

@@ -148,4 +148,19 @@
   @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono;
 }
 
+/* Artifact text highlight styling */
+.artifact-highlight {
+  background-color: #FEF08A !important; /* yellow-200 */
+  padding: 2px 0;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
 
+.artifact-highlight:hover {
+  background-color: #FDE047 !important; /* yellow-300 */
+}
+
+/* Disable BlockNote formatting toolbar */
+.bn-formatting-toolbar {
+  display: none !important;
+}

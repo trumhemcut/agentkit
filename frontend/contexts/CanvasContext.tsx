@@ -1,7 +1,8 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, ReactNode, RefObject } from "react"
 import { ArtifactV3, ArtifactContentCode, ArtifactContentText } from "@/types/canvas"
+import { ChatInputRef } from "@/components/ChatInput"
 
 interface CanvasContextValue {
   artifact: ArtifactV3 | null
@@ -13,6 +14,10 @@ interface CanvasContextValue {
   clearStreamingContent: () => void
   updateArtifactContent: (content: string, index: number) => void
   changeArtifactVersion: (index: number) => void
+  chatInputRef: RefObject<ChatInputRef | null> | null
+  setChatInputRef: (ref: RefObject<ChatInputRef | null>) => void
+  selectedTextForChat: string | null
+  setSelectedTextForChat: (text: string | null) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | null>(null)
@@ -21,6 +26,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   const [artifact, setArtifact] = useState<ArtifactV3 | null>(null)
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
+  const [chatInputRef, setChatInputRefState] = useState<RefObject<ChatInputRef | null> | null>(null)
+  const [selectedTextForChat, setSelectedTextForChat] = useState<string | null>(null)
   
   const appendStreamingContent = useCallback((delta: string) => {
     setStreamingContent(prev => prev + delta)
@@ -28,6 +35,10 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   
   const clearStreamingContent = useCallback(() => {
     setStreamingContent("")
+  }, [])
+  
+  const setChatInputRef = useCallback((ref: RefObject<ChatInputRef | null>) => {
+    setChatInputRefState(ref)
   }, [])
   
   const updateArtifactContent = useCallback((content: string, index: number) => {
@@ -68,6 +79,10 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         clearStreamingContent,
         updateArtifactContent,
         changeArtifactVersion,
+        chatInputRef,
+        setChatInputRef,
+        selectedTextForChat,
+        setSelectedTextForChat,
       }}
     >
       {children}
@@ -81,4 +96,8 @@ export function useCanvas() {
     throw new Error("useCanvas must be used within CanvasProvider")
   }
   return context
+}
+
+export function useCanvasOptional() {
+  return useContext(CanvasContext)
 }

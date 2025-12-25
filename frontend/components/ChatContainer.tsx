@@ -11,6 +11,7 @@ import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
+import { useCanvasOptional } from '@/contexts/CanvasContext';
 
 interface ChatContainerProps {
   threadId: string | null;
@@ -40,6 +41,16 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
   const chatInputRef = useRef<ChatInputRef>(null);
+  
+  // Get canvas context if available
+  const canvasContext = useCanvasOptional();
+  
+  // Register chat input ref with canvas context if available
+  useEffect(() => {
+    if (canvasContext?.setChatInputRef) {
+      canvasContext.setChatInputRef(chatInputRef);
+    }
+  }, [canvasContext]);
 
   useImperativeHandle(ref, () => ({
     focusInput: () => {
