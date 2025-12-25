@@ -18,6 +18,7 @@ export interface Message {
   artifactType?: 'code' | 'text' | 'document';
   language?: string;  // for code artifacts
   title?: string;
+  artifactId?: string; // Artifact ID from backend
 }
 
 // Helper type guard
@@ -32,6 +33,7 @@ export interface Thread {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+  artifactId?: string; // Canvas artifact ID for persistence
 }
 
 // Chat conversation state

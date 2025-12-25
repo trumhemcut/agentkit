@@ -8,7 +8,7 @@ import { useAGUI } from '@/hooks/useAGUI';
 import { useModelSelection } from '@/hooks/useModelSelection';
 import { useAgentSelection } from '@/hooks/useAgentSelection';
 import { Message as ChatMessage } from '@/types/chat';
-import { Message as APIMessage, sendChatMessage } from '@/services/api';
+import { Message as APIMessage, sendChatMessage, sendCanvasMessage } from '@/services/api';
 import { EventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
 import { useCanvasOptional } from '@/contexts/CanvasContext';
@@ -105,6 +105,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           updates.artifactType = typedEvent.metadata.artifact_type;
           updates.language = typedEvent.metadata.language;
           updates.title = typedEvent.metadata.title;
+          updates.artifactId = typedEvent.metadata.artifact_id;
         }
         
         updateMessage(currentMsg.id, updates);
@@ -127,6 +128,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           artifactType: typedEvent.metadata.artifact_type,
           language: typedEvent.metadata.language,
           title: typedEvent.metadata.title,
+          artifactId: typedEvent.metadata.artifact_id,
         }),
       };
       currentAgentMessageRef.current = newMessage;
@@ -224,6 +226,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     console.log('Sending message:', content);
     setIsSending(true);
 
+    // Get selected text from canvas context if available
+    const selectedTextForChat = canvasContext?.selectedTextForChat;
+
     // Create user message
     const userMessage: ChatMessage = {
       id: `msg-user-${Date.now()}`,
@@ -273,6 +278,17 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     console.log('API messages:', apiMessages);
 
+    // Prepare selected text if available from canvas context
+    const selectedTextData = selectedTextForChat ? {
+      start: 0,
+      end: selectedTextForChat.length,
+      text: selectedTextForChat
+    } : undefined;
+
+    if (selectedTextData) {
+      console.log('Selected text from canvas:', selectedTextData);
+    }
+
     // Generate unique run ID
     const runId = `run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -280,17 +296,43 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     try {
       const client = getClient();
       
-      await sendChatMessage(
-        apiMessages,
-        threadId,
-        runId,
-        selectedModel || undefined,
-        selectedAgent,
-        (event) => {
-          // Process each event through the AGUI client
-          client.processEvent(event);
-        }
-      );
+      // Use canvas message API if there's selected text from canvas
+      if (selectedTextData) {
+        // Get artifactId from canvas context
+        const artifactIdToSend = canvasContext?.artifactId;
+        
+        console.log('[ChatContainer] Sending canvas message with artifactId:', artifactIdToSend);
+        
+        await sendCanvasMessage(
+          apiMessages,
+          threadId,
+          runId,
+          canvasContext?.artifact,
+          artifactIdToSend || undefined,
+          selectedTextData,
+          undefined, // action - let backend determine
+          selectedModel || undefined,
+          selectedAgent,
+          (event) => {
+            client.processEvent(event);
+          }
+        );
+        
+        // Clear selected text after sending
+        canvasContext?.setSelectedTextForChat?.(null);
+      } else {
+        await sendChatMessage(
+          apiMessages,
+          threadId,
+          runId,
+          selectedModel || undefined,
+          selectedAgent,
+          (event) => {
+            // Process each event through the AGUI client
+            client.processEvent(event);
+          }
+        );
+      }
       
       // Stream completed - note: isSending will be reset by RUN_FINISHED event
       console.log('Message send stream completed');
@@ -335,6 +377,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
             ? "Connecting to agent..." 
             : isSending 
             ? "Agent is responding..." 
+            : canvasContext?.selectedTextForChat
+            ? "Ask about the selected text..."
             : "Type your message..."
         }
       />

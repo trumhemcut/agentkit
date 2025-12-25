@@ -1,334 +1,259 @@
-# Partial Content Editing Implementation Plan
+# Implementation Plan: Partial Content Editing in Canvas Mode
 
 ## Overview
-Enable users to select a portion of content in Canvas mode and ask the agent to edit only that specific section. The agent should return the edited portion, and the frontend needs to stream and apply the changes to the correct region within the overall content in the canvas.
+Enable users to select a portion of content in Canvas mode and request the agent to make edits. The agent will stream only the modified section, and the frontend will intelligently merge the updated portion into the complete content in the canvas.
 
-## Key Capabilities
-1. **Text Selection**: User can select any portion of text/code in canvas artifact
-2. **Contextual Editing**: Agent receives selected text + surrounding context for editing
-3. **Partial Streaming**: Agent streams only the edited portion, not the entire artifact
-4. **Smart Merging**: Frontend intelligently replaces the selected region with streamed content
-5. **Version Tracking**: Each partial edit creates a new version in artifact history
+## Key Features
+1. **Text Selection**: User selects a specific range of text in the artifact
+2. **Partial Edit Request**: Agent receives context of selection + user's modification request
+3. **Targeted Response**: Agent generates only the modified section (not entire content)
+4. **Smart Merging**: Frontend streams and replaces only the selected region while preserving the rest
 
-## Architecture Flow
+---
 
+## Architecture
+
+### State Flow
 ```
-User selects text in Canvas
-    ↓
-Frontend captures selection (start, end, text)
-    ↓
-User sends edit request with selectedText context
-    ↓
-Backend receives: {messages, artifact, selectedText, artifactAction: "partial_update"}
-    ↓
-Agent generates edited portion with context awareness
-    ↓
-Backend streams: PARTIAL_EDIT_START → PARTIAL_EDIT_CHUNK → PARTIAL_EDIT_END
-    ↓
-Frontend merges streamed content into artifact at correct position
-    ↓
-Canvas updates with new version
+User selects text → Frontend captures selection coordinates → 
+User sends edit request → Backend receives selection context → 
+Agent generates partial update → Frontend merges partial update into full content
+```
+
+### Data Models
+
+**Extended SelectedText (Backend)**
+```python
+class SelectedText(TypedDict):
+    start: int          # Character position start
+    end: int            # Character position end  
+    text: str           # The actual selected text
+    lineStart: int      # Line number start (optional, for code)
+    lineEnd: int        # Line number end (optional, for code)
+```
+
+**Partial Edit Response (AG-UI Protocol)**
+```typescript
+{
+  type: "artifact_partial_update",
+  data: {
+    selection: {
+      start: number,
+      end: number
+    },
+    updatedContent: string,  // Only the modified portion
+    strategy: "replace" | "insert" | "append"
+  }
+}
 ```
 
 ---
 
-## 1. Backend Implementation (LangGraph + AG-UI)
+## Backend Implementation
 
-### 1.1 State Schema Updates
-**File**: `backend/graphs/canvas_graph.py`
+### 1. Update State Schema (`backend/graphs/canvas_graph.py`)
 
-**Current State**: `SelectedText` TypedDict already exists with `start`, `end`, `text` fields.
-
-**Enhancement**: Add partial edit tracking in `CanvasGraphState`:
+**Task:** Enhance `SelectedText` to include line numbers for code artifacts
 
 ```python
-class CanvasGraphState(TypedDict):
-    """Extended state for canvas feature"""
-    messages: List[Dict[str, str]]
-    thread_id: str
-    run_id: str
-    artifact: Optional[ArtifactV3]
-    selectedText: Optional[SelectedText]
-    artifactAction: Optional[str]  # "create", "update", "rewrite", "partial_update"
-    partialEdit: Optional['PartialEdit']  # NEW: tracks partial edit result
-
-class PartialEdit(TypedDict):
-    """Result of partial content editing"""
-    originalStart: int
-    originalEnd: int
-    newContent: str
-    contentType: Literal["code", "text"]
+class SelectedText(TypedDict):
+    """User selected text in artifact - supports both character and line-based selection"""
+    start: int                      # Character position start (0-indexed)
+    end: int                        # Character position end (0-indexed)
+    text: str                       # The actual selected text content
+    lineStart: Optional[int]        # Line number start (1-indexed) for code
+    lineEnd: Optional[int]          # Line number end (1-indexed) for code
 ```
 
-**Implementation Steps**:
-1. Add `PartialEdit` TypedDict to track edit boundaries and new content
-2. Update `artifactAction` to include `"partial_update"` option
-3. Add `partialEdit` field to `CanvasGraphState`
+**Why:** Line numbers are crucial for code artifacts to provide precise context to the LLM.
 
 ---
 
-### 1.2 Intent Detection Enhancement
-**File**: `backend/graphs/canvas_graph.py` → `detect_intent_node()`
+### 2. Create Partial Update Intent Detection (`backend/graphs/canvas_graph.py`)
 
-**Current Behavior**: Detects "create", "update", "rewrite" based on keywords
-
-**Enhancement**: Detect partial editing when `selectedText` is present
+**Task:** Add detection logic for partial edit intent in `detect_intent_node`
 
 ```python
 def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
     """Classify if message requires artifact manipulation"""
     
-    if not state["messages"]:
-        return state
-    
-    last_message = state["messages"][-1]["content"].lower()
-    artifact = state.get("artifact")
+    # Check if there's a text selection
     selected_text = state.get("selectedText")
     
-    # NEW: Check for partial editing
-    if artifact and selected_text:
-        # User has selected text in existing artifact - this is partial editing
+    if selected_text and state.get("artifact"):
+        # User has selected text AND there's an existing artifact
+        # Default to "partial_update" action
         state["artifactAction"] = "partial_update"
-        logger.info(f"Detected partial_update: selection from {selected_text['start']} to {selected_text['end']}")
         return state
     
-    # ... existing logic for create/update/rewrite
-    
-    return state
+    # ... existing logic for create/update/rewrite ...
 ```
 
-**Implementation Steps**:
-1. Check for presence of both `artifact` and `selectedText`
-2. Set `artifactAction = "partial_update"` when selection exists
-3. Log selection boundaries for debugging
+**Why:** Need to distinguish partial edits from full artifact updates.
 
 ---
 
-### 1.3 Canvas Agent - Partial Update Handler
-**File**: `backend/agents/canvas_agent.py`
+### 3. Implement Partial Update System Prompt (`backend/agents/canvas_agent.py`)
 
-**Enhancement**: Add `_partial_update_artifact()` method to handle selected text editing
+**Task:** Create specialized prompt for partial content editing
 
 ```python
-class CanvasAgent(BaseAgent):
+def _build_partial_update_prompt(self, state: CanvasGraphState) -> str:
+    """Build context-aware prompt for partial content updates"""
     
-    async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
-        """Stream events for artifact creation/modification"""
-        
-        action = state.get("artifactAction", None)
-        
-        # ... existing code ...
-        
-        # NEW: Handle partial update
-        if action == "partial_update":
-            async for event in self._partial_update_artifact(state):
-                yield event
-        # ... rest of actions ...
+    artifact = state["artifact"]
+    selected_text = state["selectedText"]
+    current_content = artifact["contents"][artifact["currentIndex"] - 1]
     
-    async def _partial_update_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
-        """
-        Edit only the selected portion of artifact content.
-        Streams the edited portion for frontend to merge.
-        """
-        messages = state["messages"]
-        artifact = state["artifact"]
-        selected_text = state["selectedText"]
-        
-        if not artifact or not selected_text:
-            logger.error("partial_update called without artifact or selectedText")
-            return
-        
-        current_content = artifact["contents"][artifact["currentIndex"]]
-        content_type = current_content["type"]
-        
-        # Get full content for context
-        full_content = current_content.get("code") if content_type == "code" else current_content.get("fullMarkdown")
-        
-        # Extract surrounding context (e.g., 200 chars before and after)
-        start_pos = max(0, selected_text["start"] - 200)
-        end_pos = min(len(full_content), selected_text["end"] + 200)
-        context_before = full_content[start_pos:selected_text["start"]]
-        context_after = full_content[selected_text["end"]:end_pos]
-        
-        # Build prompt with context
-        edit_prompt = self._build_partial_edit_prompt(
-            selected_text=selected_text["text"],
-            context_before=context_before,
-            context_after=context_after,
-            user_request=messages[-1]["content"],
-            content_type=content_type
-        )
-        
-        # Emit PARTIAL_EDIT_START custom event
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            custom_type="partial_edit_start",
-            data={
-                "originalStart": selected_text["start"],
-                "originalEnd": selected_text["end"],
-                "contentType": content_type
-            }
-        )
-        
-        # Stream edited content from LLM
-        edited_content = ""
-        async for chunk in self.llm.astream([{"role": "user", "content": edit_prompt}]):
-            content = chunk.content
-            if content:
-                edited_content += content
-                # Emit PARTIAL_EDIT_CHUNK
-                yield CustomEvent(
-                    type=EventType.CUSTOM,
-                    custom_type="partial_edit_chunk",
-                    data={"delta": content}
-                )
-        
-        # Emit PARTIAL_EDIT_END with full edited content
-        yield CustomEvent(
-            type=EventType.CUSTOM,
-            custom_type="partial_edit_end",
-            data={
-                "editedContent": edited_content,
-                "originalStart": selected_text["start"],
-                "originalEnd": selected_text["end"]
-            }
-        )
-        
-        # Store partial edit result in state for finalization
-        state["partialEdit"] = {
-            "originalStart": selected_text["start"],
-            "originalEnd": selected_text["end"],
-            "newContent": edited_content,
-            "contentType": content_type
-        }
+    # Get surrounding context (lines/characters before and after)
+    full_content = (current_content.get("code") or 
+                    current_content.get("fullMarkdown") or "")
     
-    def _build_partial_edit_prompt(
-        self, 
-        selected_text: str, 
-        context_before: str, 
-        context_after: str,
-        user_request: str,
-        content_type: str
-    ) -> str:
-        """Build LLM prompt for partial editing with context"""
-        
-        prompt = f"""You are editing a portion of a {content_type} artifact.
+    selection_start = selected_text["start"]
+    selection_end = selected_text["end"]
+    
+    # Extract context window (e.g., 200 chars before/after)
+    context_window = 200
+    context_before = full_content[max(0, selection_start - context_window):selection_start]
+    context_after = full_content[selection_end:min(len(full_content), selection_end + context_window)]
+    
+    prompt = f"""You are editing a specific section of content in a canvas artifact.
 
-**Context Before:**
+**Task:** Modify ONLY the selected portion based on the user's request.
+
+**Artifact Type:** {current_content["type"]}
+**Language:** {current_content.get("language", "text")}
+
+**Context Before Selection:**
 ```
 {context_before}
 ```
 
-**Selected Text to Edit:**
+**SELECTED TEXT (to be modified):**
 ```
-{selected_text}
+{selected_text["text"]}
 ```
 
-**Context After:**
+**Context After Selection:**
 ```
 {context_after}
 ```
 
-**User's Edit Request:**
-{user_request}
+**User Request:** {state["messages"][-1]["content"]}
 
 **Instructions:**
-- Only output the edited version of the selected text
-- Maintain consistency with surrounding context
-- Preserve formatting style (indentation, syntax)
-- Do NOT include the context before/after, only the edited portion
-- Do NOT add explanations, just the edited content
+1. Return ONLY the modified version of the selected text
+2. Maintain the same indentation and formatting style
+3. Do NOT include surrounding context
+4. Do NOT regenerate the entire content
+5. Focus solely on the user's requested change
 
-**Edited Content:**
+**Output Format:**
+- For code: Return only the modified code block
+- For text: Return only the modified paragraph/section
 """
-        return prompt
+    
+    return prompt
 ```
 
-**Implementation Steps**:
-1. Add `partial_update` case to `run()` method's action routing
-2. Implement `_partial_update_artifact()` to:
-   - Extract selected text and surrounding context
-   - Build prompt with context awareness
-   - Stream edited content chunk by chunk
-   - Emit custom events: `partial_edit_start`, `partial_edit_chunk`, `partial_edit_end`
-3. Implement `_build_partial_edit_prompt()` to construct context-aware prompt
-4. Store `partialEdit` result in state for graph finalization
+**Why:** The LLM needs clear context boundaries to avoid hallucinating or regenerating entire content.
 
 ---
 
-### 1.4 Graph Finalization Node
-**File**: `backend/graphs/canvas_graph.py` → `update_artifact_node()`
+### 4. Implement Partial Update Streaming (`backend/agents/canvas_agent.py`)
 
-**Enhancement**: Apply partial edit to create new artifact version
+**Task:** Add streaming logic for partial updates with custom AG-UI events
 
 ```python
-def update_artifact_node(state: CanvasGraphState) -> CanvasGraphState:
-    """Finalize artifact updates, including partial edits"""
+async def _stream_partial_update(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
+    """Stream partial content update for selected region"""
     
-    partial_edit = state.get("partialEdit")
+    # Build specialized prompt
+    system_prompt = self._build_partial_update_prompt(state)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": state["messages"][-1]["content"]}
+    ]
     
-    if partial_edit:
-        # Apply partial edit to create new version
-        artifact = state["artifact"]
-        current_content = artifact["contents"][artifact["currentIndex"]]
-        content_type = current_content["type"]
-        
-        # Get full content
-        if content_type == "code":
-            full_content = current_content["code"]
-        else:
-            full_content = current_content["fullMarkdown"]
-        
-        # Replace selected region with new content
-        new_full_content = (
-            full_content[:partial_edit["originalStart"]] +
-            partial_edit["newContent"] +
-            full_content[partial_edit["originalEnd"]:]
-        )
-        
-        # Create new version
-        new_index = len(artifact["contents"])
-        if content_type == "code":
-            new_version = {
-                "index": new_index,
-                "type": "code",
-                "title": current_content["title"],
-                "code": new_full_content,
-                "language": current_content["language"]
-            }
-        else:
-            new_version = {
-                "index": new_index,
-                "type": "text",
-                "title": current_content["title"],
-                "fullMarkdown": new_full_content
-            }
-        
-        artifact["contents"].append(new_version)
-        artifact["currentIndex"] = new_index
-        
-        logger.info(f"Created new artifact version {new_index} from partial edit")
-        
-        # Clear partial edit from state
-        state["partialEdit"] = None
+    # Emit start event
+    yield CustomEvent(
+        event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START,
+        data={
+            "selection": {
+                "start": state["selectedText"]["start"],
+                "end": state["selectedText"]["end"]
+            },
+            "strategy": "replace"
+        }
+    )
     
-    return state
+    # Stream the partial update
+    updated_content = ""
+    async for chunk in self.llm.astream(messages):
+        if hasattr(chunk, 'content') and chunk.content:
+            updated_content += chunk.content
+            
+            # Stream chunks to frontend
+            yield CustomEvent(
+                event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_CHUNK,
+                data={
+                    "chunk": chunk.content,
+                    "selection": {
+                        "start": state["selectedText"]["start"],
+                        "end": state["selectedText"]["end"]
+                    }
+                }
+            )
+    
+    # Emit completion event with full updated section
+    yield CustomEvent(
+        event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE,
+        data={
+            "selection": {
+                "start": state["selectedText"]["start"],
+                "end": state["selectedText"]["end"]
+            },
+            "updatedContent": updated_content,
+            "strategy": "replace"
+        }
+    )
 ```
 
-**Implementation Steps**:
-1. Check for `partialEdit` in state
-2. Extract full content from current artifact version
-3. Splice new content: `before + edited + after`
-4. Create new artifact version with spliced content
-5. Update `artifact.currentIndex` to new version
-6. Clear `partialEdit` from state
+**Why:** Frontend needs to know exact selection boundaries and the replacement strategy.
 
 ---
 
-### 1.5 Custom Event Types
-**File**: `backend/protocols/event_types.py`
+### 5. Integrate Partial Update into Main Agent Run (`backend/agents/canvas_agent.py`)
 
-**Enhancement**: Add partial editing event types
+**Task:** Add routing for partial update action
+
+```python
+async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
+    """Stream events for artifact operations"""
+    
+    action = state.get("artifactAction", None)
+    
+    # ... existing RUN_STARTED event ...
+    
+    if action == "partial_update":
+        # Handle partial content editing
+        async for event in self._stream_partial_update(state):
+            yield event
+    elif action == "create":
+        # ... existing create logic ...
+    elif action in ["update", "rewrite"]:
+        # ... existing update/rewrite logic ...
+    else:
+        # ... chat-only logic ...
+    
+    # ... existing RUN_FINISHED event ...
+```
+
+---
+
+### 6. Update Custom Event Types (`backend/protocols/event_types.py`)
+
+**Task:** Add new event types for partial updates
 
 ```python
 class CanvasEventType:
@@ -341,697 +266,738 @@ class CanvasEventType:
     SELECTION_CONTEXT = "selection_context"
     THINKING = "thinking"
     
-    # NEW: Partial editing events
-    PARTIAL_EDIT_START = "partial_edit_start"
-    PARTIAL_EDIT_CHUNK = "partial_edit_chunk"
-    PARTIAL_EDIT_END = "partial_edit_end"
+    # New: Partial update events
+    ARTIFACT_PARTIAL_UPDATE_START = "artifact_partial_update_start"
+    ARTIFACT_PARTIAL_UPDATE_CHUNK = "artifact_partial_update_chunk"
+    ARTIFACT_PARTIAL_UPDATE_COMPLETE = "artifact_partial_update_complete"
 ```
-
-**Implementation Steps**:
-1. Add three new event type constants for partial editing lifecycle
-2. Document event payload schemas in comments
 
 ---
 
-### 1.6 API Route Updates
-**File**: `backend/api/models.py`
+### 7. Update API Models (`backend/api/models.py`)
 
-**Current State**: `CanvasChatRequest` already has `selectedText` field
-
-**Verification**: Ensure `selectedText` is properly passed from API to graph state
+**Task:** Ensure `CanvasMessageRequest` properly handles enhanced `selectedText`
 
 ```python
-class CanvasChatRequest(BaseModel):
-    thread_id: str
-    message: str
-    artifact: Optional[ArtifactV3Schema] = None
-    selectedText: Optional[SelectedText] = None  # Already exists ✓
-    model: Optional[str] = None
-    agent: Optional[str] = "canvas"
+class SelectedText(BaseModel):
+    """User-selected text in artifact"""
+    start: int = Field(..., description="Character position start (0-indexed)")
+    end: int = Field(..., description="Character position end (0-indexed)")
+    text: str = Field(..., description="Selected text content")
+    lineStart: Optional[int] = Field(None, description="Line number start (1-indexed) for code")
+    lineEnd: Optional[int] = Field(None, description="Line number end (1-indexed) for code")
 ```
-
-**No changes needed** - the API already supports receiving `selectedText`.
 
 ---
 
-## 2. Frontend Implementation (AG-UI + React)
+## AG-UI Protocol
 
-### 2.1 Text Selection Tracking
-**File**: `frontend/components/Canvas/TextRenderer.tsx` and `CodeRenderer.tsx`
+### Event Flow Specification
 
-**Enhancement**: Capture user text selection and expose via callback
-
-#### TextRenderer.tsx
-
-```typescript
-interface TextRendererProps {
-  markdown: string
-  isStreaming: boolean
-  onUpdate: (newMarkdown: string) => void
-  onTextSelect?: (selection: SelectedText) => void  // NEW
-}
-
-export function TextRenderer({ 
-  markdown, 
-  isStreaming, 
-  onUpdate,
-  onTextSelect 
-}: TextRendererProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection()
-      if (!selection || selection.isCollapsed) return
-      
-      const selectedText = selection.toString()
-      if (!selectedText.trim()) return
-      
-      // Calculate position in markdown string
-      const range = selection.getRangeAt(0)
-      const container = contentRef.current
-      if (!container) return
-      
-      // Get text before selection to calculate start position
-      const preRange = document.createRange()
-      preRange.setStart(container, 0)
-      preRange.setEnd(range.startContainer, range.startOffset)
-      const textBefore = preRange.toString()
-      
-      const start = textBefore.length
-      const end = start + selectedText.length
-      
-      onTextSelect?.({
-        start,
-        end,
-        text: selectedText
-      })
-    }
-    
-    document.addEventListener('mouseup', handleSelection)
-    return () => document.removeEventListener('mouseup', handleSelection)
-  }, [markdown, onTextSelect])
-  
-  // ... rest of component
+**1. User Sends Request with Selection**
+```json
+{
+  "message": "Make this function async",
+  "artifact": { /* current artifact */ },
+  "selectedText": {
+    "start": 245,
+    "end": 389,
+    "text": "def process_data(data):\n    return transform(data)",
+    "lineStart": 12,
+    "lineEnd": 13
+  },
+  "thread_id": "thread_123"
 }
 ```
 
-#### CodeRenderer.tsx
-
-```typescript
-interface CodeRendererProps {
-  code: string
-  language: string
-  isStreaming: boolean
-  onUpdate: (newCode: string) => void
-  onTextSelect?: (selection: SelectedText) => void  // NEW
-}
-
-export function CodeRenderer({ 
-  code, 
-  language, 
-  isStreaming, 
-  onUpdate,
-  onTextSelect 
-}: CodeRendererProps) {
-  const editorRef = useRef<any>(null)
-  
-  useEffect(() => {
-    if (!editorRef.current) return
-    
-    const editor = editorRef.current
-    
-    // Listen for Monaco editor selection changes
-    const disposable = editor.onDidChangeCursorSelection((e: any) => {
-      const selection = e.selection
-      if (selection.isEmpty()) return
-      
-      const model = editor.getModel()
-      if (!model) return
-      
-      const start = model.getOffsetAt(selection.getStartPosition())
-      const end = model.getOffsetAt(selection.getEndPosition())
-      const selectedText = model.getValueInRange(selection)
-      
-      onTextSelect?.({
-        start,
-        end,
-        text: selectedText
-      })
-    })
-    
-    return () => disposable.dispose()
-  }, [onTextSelect])
-  
-  // ... rest of component
+**2. Backend Emits Partial Update Start**
+```json
+{
+  "type": "custom_event",
+  "event_type": "artifact_partial_update_start",
+  "data": {
+    "selection": { "start": 245, "end": 389 },
+    "strategy": "replace"
+  }
 }
 ```
 
-**Implementation Steps**:
-1. Add `onTextSelect` callback prop to both renderers
-2. In `TextRenderer`: Listen to `mouseup` events, calculate selection position in markdown string
-3. In `CodeRenderer`: Use Monaco editor's `onDidChangeCursorSelection` event
-4. Call `onTextSelect` with `{start, end, text}` when selection changes
-5. Handle edge cases: empty selections, collapsed ranges
+**3. Backend Streams Partial Update Chunks**
+```json
+{
+  "type": "custom_event",
+  "event_type": "artifact_partial_update_chunk",
+  "data": {
+    "chunk": "async def ",
+    "selection": { "start": 245, "end": 389 }
+  }
+}
+```
+
+**4. Backend Emits Completion**
+```json
+{
+  "type": "custom_event",
+  "event_type": "artifact_partial_update_complete",
+  "data": {
+    "selection": { "start": 245, "end": 389 },
+    "updatedContent": "async def process_data(data):\n    return await transform(data)",
+    "strategy": "replace"
+  }
+}
+```
 
 ---
 
-### 2.2 Selection State Management
-**File**: `frontend/hooks/useCanvasChat.ts`
+## Frontend Implementation
 
-**Enhancement**: Track selected text and include in API requests
+### 1. Update Types (`frontend/types/canvas.ts`)
+
+**Task:** Add types for partial updates
 
 ```typescript
-export function useCanvasChat(threadId: string) {
+export interface SelectedText {
+  start: number          // Character position start (0-indexed)
+  end: number           // Character position end (0-indexed)
+  text: string          // Selected text content
+  lineStart?: number    // Line number start (1-indexed) for code
+  lineEnd?: number      // Line number end (1-indexed) for code
+}
+
+export interface PartialUpdateEvent {
+  selection: {
+    start: number
+    end: number
+  }
+  updatedContent?: string   // Only present in COMPLETE event
+  chunk?: string            // Only present in CHUNK event
+  strategy: 'replace' | 'insert' | 'append'
+}
+```
+
+---
+
+### 2. Enhance Canvas Context (`frontend/contexts/CanvasContext.tsx`)
+
+**Task:** Add state management for partial updates and text selection
+
+```typescript
+interface CanvasContextType {
+  // ... existing fields ...
+  selectedText: SelectedText | null
+  setSelectedText: (selection: SelectedText | null) => void
+  isPartialUpdating: boolean
+  partialUpdateBuffer: string
+}
+
+export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const [selectedText, setSelectedText] = useState<SelectedText | null>(null)
+  const [isPartialUpdating, setIsPartialUpdating] = useState(false)
+  const [partialUpdateBuffer, setPartialUpdateBuffer] = useState("")
   
   // ... existing state ...
   
-  const handleTextSelect = useCallback((selection: SelectedText) => {
-    console.log('Text selected:', selection)
-    setSelectedText(selection)
-  }, [])
-  
-  const handleSendMessage = async (content: string) => {
-    // ... existing code ...
-    
-    // Include selectedText in request if present
-    const requestPayload = {
-      thread_id: threadId,
-      message: content,
-      artifact: artifact || undefined,
-      selectedText: selectedText || undefined,  // NEW
-      model: currentModel || undefined,
-      agent: "canvas"
-    }
-    
-    // Clear selection after sending
-    setSelectedText(null)
-    
-    // ... rest of send logic ...
-  }
-  
-  return {
-    // ... existing returns ...
-    selectedText,
-    handleTextSelect,
-    // ... rest of returns ...
-  }
+  return (
+    <CanvasContext.Provider value={{
+      // ... existing values ...
+      selectedText,
+      setSelectedText,
+      isPartialUpdating,
+      partialUpdateBuffer
+    }}>
+      {children}
+    </CanvasContext.Provider>
+  )
 }
 ```
 
-**Implementation Steps**:
-1. Add `selectedText` state to track current selection
-2. Add `handleTextSelect` callback to update selection state
-3. Include `selectedText` in API request payload
-4. Clear selection after message is sent
-5. Expose `handleTextSelect` for components to call
+---
+
+### 3. Implement Text Selection Handler (`frontend/components/Canvas/CodeRenderer.tsx`)
+
+**Task:** Capture user text selection in CodeMirror
+
+```typescript
+import { EditorView } from "@codemirror/view"
+import { EditorSelection } from "@codemirror/state"
+
+export function CodeRenderer({ code, language, isStreaming, onUpdate, onSelectionChange }: CodeRendererProps) {
+  // ... existing code ...
+  
+  const handleSelectionChange = (view: EditorView) => {
+    const selection = view.state.selection.main
+    
+    if (selection.from !== selection.to) {
+      // User has selected text
+      const selectedText = view.state.doc.sliceString(selection.from, selection.to)
+      
+      // Calculate line numbers
+      const fromLine = view.state.doc.lineAt(selection.from).number
+      const toLine = view.state.doc.lineAt(selection.to).number
+      
+      onSelectionChange({
+        start: selection.from,
+        end: selection.to,
+        text: selectedText,
+        lineStart: fromLine,
+        lineEnd: toLine
+      })
+    } else {
+      // Clear selection
+      onSelectionChange(null)
+    }
+  }
+  
+  return (
+    <CodeMirror
+      value={localCode}
+      extensions={[
+        ...extensions,
+        EditorView.updateListener.of((update) => {
+          if (update.selectionSet) {
+            handleSelectionChange(update.view)
+          }
+        })
+      ]}
+      onChange={handleChange}
+      editable={!isStreaming}
+    />
+  )
+}
+```
+
+**Task:** Similar implementation for `TextRenderer.tsx` (for markdown content)
+
+```typescript
+export function TextRenderer({ content, isStreaming, onUpdate, onSelectionChange }: TextRendererProps) {
+  const handleMouseUp = () => {
+    const selection = window.getSelection()
+    
+    if (selection && selection.toString().length > 0) {
+      const range = selection.getRangeAt(0)
+      
+      // Get character positions relative to the content
+      const preSelectionRange = range.cloneRange()
+      preSelectionRange.selectNodeContents(contentRef.current!)
+      preSelectionRange.setEnd(range.startContainer, range.startOffset)
+      const start = preSelectionRange.toString().length
+      
+      onSelectionChange({
+        start,
+        end: start + selection.toString().length,
+        text: selection.toString()
+      })
+    } else {
+      onSelectionChange(null)
+    }
+  }
+  
+  return (
+    <div 
+      ref={contentRef}
+      onMouseUp={handleMouseUp}
+      className="prose"
+    >
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  )
+}
+```
 
 ---
 
-### 2.3 Partial Edit Event Handling
-**File**: `frontend/hooks/useCanvasChat.ts` → AG-UI event handling
+### 4. Update AGUI Hook (`frontend/hooks/useCanvasChat.ts`)
 
-**Enhancement**: Handle partial editing events and merge content
+**Task:** Handle partial update events from backend
 
 ```typescript
 export function useCanvasChat(threadId: string) {
-  const [partialEditBuffer, setPartialEditBuffer] = useState<string>("")
-  const [partialEditBounds, setPartialEditBounds] = useState<{start: number, end: number} | null>(null)
+  const { selectedText, setIsPartialUpdating, setPartialUpdateBuffer } = useCanvas()
   
-  // ... existing state ...
+  // ... existing code ...
   
-  const handleAGUIEvent = useCallback((event: AGUIEvent) => {
-    console.log('AGUI Event:', event)
+  useEffect(() => {
+    if (!sseConnection) return
     
-    switch (event.type) {
-      // ... existing cases ...
-      
-      case 'custom':
-        const customEvent = event as CustomAGUIEvent
-        
-        switch (customEvent.custom_type) {
-          case 'partial_edit_start':
-            // Initialize partial edit streaming
-            setPartialEditBuffer("")
-            setPartialEditBounds({
-              start: customEvent.data.originalStart,
-              end: customEvent.data.originalEnd
-            })
-            setIsStreaming(true)
-            console.log('Partial edit started:', customEvent.data)
-            break
-          
-          case 'partial_edit_chunk':
-            // Accumulate streamed content
-            setPartialEditBuffer(prev => prev + customEvent.data.delta)
-            
-            // Real-time preview: merge buffer into artifact at correct position
-            if (partialEditBounds && artifact) {
-              const currentContent = artifact.contents[artifact.currentIndex]
-              const fullContent = currentContent.type === 'code' 
-                ? currentContent.code 
-                : currentContent.fullMarkdown
-              
-              const previewContent = 
-                fullContent.slice(0, partialEditBounds.start) +
-                partialEditBuffer + customEvent.data.delta +
-                fullContent.slice(partialEditBounds.end)
-              
-              // Update streaming preview
-              setStreamingContent(previewContent)
-            }
-            break
-          
-          case 'partial_edit_end':
-            // Finalize partial edit
-            if (artifact && partialEditBounds) {
-              const currentContent = artifact.contents[artifact.currentIndex]
-              const fullContent = currentContent.type === 'code' 
-                ? currentContent.code 
-                : currentContent.fullMarkdown
-              
-              // Create new version with edited content
-              const editedFullContent = 
-                fullContent.slice(0, partialEditBounds.start) +
-                customEvent.data.editedContent +
-                fullContent.slice(partialEditBounds.end)
-              
-              const newVersion = {
-                index: artifact.contents.length,
-                type: currentContent.type,
-                title: currentContent.title,
-                ...(currentContent.type === 'code' 
-                  ? { code: editedFullContent, language: currentContent.language }
-                  : { fullMarkdown: editedFullContent }
-                )
-              }
-              
-              setArtifact({
-                currentIndex: newVersion.index,
-                contents: [...artifact.contents, newVersion]
-              })
-            }
-            
-            // Clear partial edit state
-            setPartialEditBuffer("")
-            setPartialEditBounds(null)
-            setIsStreaming(false)
-            setStreamingContent("")
-            console.log('Partial edit completed')
-            break
-          
-          // ... existing custom event cases ...
-        }
-        break
-      
-      // ... rest of cases ...
+    const handlePartialUpdateStart = (event: CustomEvent) => {
+      setIsPartialUpdating(true)
+      setPartialUpdateBuffer("")
     }
-  }, [artifact, partialEditBounds, partialEditBuffer])
+    
+    const handlePartialUpdateChunk = (event: CustomEvent) => {
+      const { chunk } = event.data as PartialUpdateEvent
+      setPartialUpdateBuffer(prev => prev + chunk)
+    }
+    
+    const handlePartialUpdateComplete = (event: CustomEvent) => {
+      const { selection, updatedContent, strategy } = event.data as PartialUpdateEvent
+      
+      // Merge the updated content into the artifact
+      mergePartialUpdate(selection, updatedContent, strategy)
+      
+      setIsPartialUpdating(false)
+      setPartialUpdateBuffer("")
+    }
+    
+    sseConnection.addEventListener('artifact_partial_update_start', handlePartialUpdateStart)
+    sseConnection.addEventListener('artifact_partial_update_chunk', handlePartialUpdateChunk)
+    sseConnection.addEventListener('artifact_partial_update_complete', handlePartialUpdateComplete)
+    
+    return () => {
+      sseConnection.removeEventListener('artifact_partial_update_start', handlePartialUpdateStart)
+      sseConnection.removeEventListener('artifact_partial_update_chunk', handlePartialUpdateChunk)
+      sseConnection.removeEventListener('artifact_partial_update_complete', handlePartialUpdateComplete)
+    }
+  }, [sseConnection])
   
   // ... rest of hook ...
 }
 ```
 
-**Implementation Steps**:
-1. Add state for partial edit streaming: `partialEditBuffer`, `partialEditBounds`
-2. Handle `partial_edit_start`: Initialize buffer and store edit boundaries
-3. Handle `partial_edit_chunk`: 
-   - Accumulate content in buffer
-   - Generate real-time preview by splicing buffer into full content
-   - Update `streamingContent` for live preview
-4. Handle `partial_edit_end`:
-   - Create new artifact version with final edited content
-   - Splice: `before + editedContent + after`
-   - Add new version to artifact history
-   - Clear partial edit state
-5. Add proper TypeScript types for custom events
+---
+
+### 5. Implement Partial Update Merging Logic (`frontend/hooks/useCanvasChat.ts`)
+
+**Task:** Smart merging of partial updates into full content
+
+```typescript
+function mergePartialUpdate(
+  selection: { start: number; end: number },
+  updatedContent: string,
+  strategy: 'replace' | 'insert' | 'append'
+) {
+  setArtifact(prevArtifact => {
+    if (!prevArtifact) return null
+    
+    const currentContent = prevArtifact.contents[prevArtifact.currentIndex - 1]
+    const fullContent = currentContent.type === "code" 
+      ? currentContent.code 
+      : currentContent.fullMarkdown
+    
+    let newContent: string
+    
+    switch (strategy) {
+      case 'replace':
+        // Replace selected region with updated content
+        newContent = 
+          fullContent.slice(0, selection.start) +
+          updatedContent +
+          fullContent.slice(selection.end)
+        break
+      
+      case 'insert':
+        // Insert at cursor position (preserve selection)
+        newContent = 
+          fullContent.slice(0, selection.start) +
+          updatedContent +
+          fullContent.slice(selection.start)
+        break
+      
+      case 'append':
+        // Append after selection
+        newContent = 
+          fullContent.slice(0, selection.end) +
+          updatedContent +
+          fullContent.slice(selection.end)
+        break
+      
+      default:
+        newContent = fullContent
+    }
+    
+    // Create new version of artifact with updated content
+    const updatedArtifactContent = currentContent.type === "code"
+      ? { ...currentContent, code: newContent }
+      : { ...currentContent, fullMarkdown: newContent }
+    
+    return {
+      ...prevArtifact,
+      currentIndex: prevArtifact.currentIndex + 1,
+      contents: [...prevArtifact.contents, updatedArtifactContent]
+    }
+  })
+}
+```
+
+**Why:** Preserves artifact versioning while only updating the modified section.
 
 ---
 
-### 2.4 Component Integration
-**File**: `frontend/components/Canvas/CanvasChatContainer.tsx`
+### 6. Enhance Chat Input (`frontend/components/ChatInput.tsx`)
 
-**Enhancement**: Wire up text selection callbacks
+**Task:** Display selected text context when sending message
 
 ```typescript
-export function CanvasChatContainer() {
-  const { threadId } = useCanvasMode()
-  const {
-    artifact,
-    messages,
-    isStreaming,
-    streamingContent,
-    handleSendMessage,
-    handleArtifactUpdate,
-    handleVersionChange,
-    handleTextSelect,  // NEW
-    selectedText       // NEW
-  } = useCanvasChat(threadId)
+export function ChatInput({ onSend, disabled, selectedText }: ChatInputProps) {
+  const [message, setMessage] = useState("")
+  
+  const handleSend = () => {
+    if (!message.trim()) return
+    
+    onSend({
+      message: message.trim(),
+      selectedText: selectedText || undefined
+    })
+    
+    setMessage("")
+  }
   
   return (
-    <div className="flex h-screen">
-      {/* Chat Panel */}
-      <div className="w-1/2 border-r">
-        <ChatHistory messages={messages} />
-        <ChatInput 
-          onSend={handleSendMessage}
-          disabled={isStreaming}
-          placeholder={selectedText 
-            ? `Editing selected text (${selectedText.text.slice(0, 30)}...)`
-            : "Message canvas agent..."
+    <div className="space-y-2">
+      {selectedText && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-semibold text-blue-700">Selected:</span>
+            <span className="text-gray-500">
+              {selectedText.lineStart && selectedText.lineEnd
+                ? `Lines ${selectedText.lineStart}-${selectedText.lineEnd}`
+                : `${selectedText.start}-${selectedText.end}`}
+            </span>
+          </div>
+          <pre className="text-xs text-gray-700 overflow-x-auto">
+            {selectedText.text.slice(0, 100)}
+            {selectedText.text.length > 100 && "..."}
+          </pre>
+        </div>
+      )}
+      
+      <div className="flex gap-2">
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={
+            selectedText 
+              ? "Ask to modify the selected text..." 
+              : "Type your message..."
           }
+          disabled={disabled}
         />
-      </div>
-      
-      {/* Artifact Panel */}
-      <div className="w-1/2">
-        <ArtifactRenderer
-          artifact={artifact}
-          isStreaming={isStreaming}
-          streamingContent={streamingContent}
-          onArtifactUpdate={handleArtifactUpdate}
-          onVersionChange={handleVersionChange}
-          onTextSelect={handleTextSelect}  // NEW
-        />
+        <Button onClick={handleSend} disabled={disabled || !message.trim()}>
+          Send
+        </Button>
       </div>
     </div>
   )
 }
 ```
 
-**File**: `frontend/components/Canvas/ArtifactRenderer.tsx`
+---
+
+### 7. Visual Feedback for Streaming Updates (`frontend/components/Canvas/CodeRenderer.tsx`)
+
+**Task:** Highlight the region being updated during streaming
 
 ```typescript
-interface ArtifactRendererProps {
-  artifact: ArtifactV3 | null
-  isStreaming: boolean
-  streamingContent?: string
-  onArtifactUpdate: (content: string, index: number) => void
-  onVersionChange: (index: number) => void
-  onTextSelect?: (selection: SelectedText) => void  // NEW
-}
+import { Decoration, DecorationSet } from "@codemirror/view"
+import { StateField, StateEffect } from "@codemirror/state"
 
-export function ArtifactRenderer({ 
-  artifact, 
-  isStreaming, 
-  streamingContent,
-  onArtifactUpdate,
-  onVersionChange,
-  onTextSelect  // NEW
-}: ArtifactRendererProps) {
-  // ... existing code ...
+const partialUpdateEffect = StateEffect.define<{start: number, end: number}>()
+
+const partialUpdateField = StateField.define<DecorationSet>({
+  create() { return Decoration.none },
+  update(decorations, tr) {
+    decorations = decorations.map(tr.changes)
+    
+    for (let effect of tr.effects) {
+      if (effect.is(partialUpdateEffect)) {
+        const deco = Decoration.mark({
+          class: "partial-update-highlight"
+        }).range(effect.value.start, effect.value.end)
+        
+        decorations = Decoration.set([deco])
+      }
+    }
+    
+    return decorations
+  },
+  provide: f => EditorView.decorations.from(f)
+})
+
+// In CodeRenderer component:
+export function CodeRenderer({ 
+  code, 
+  isPartialUpdating, 
+  updateSelection 
+}: CodeRendererProps) {
   
-  return (
-    <div className="flex flex-col h-full bg-white">
-      <ArtifactHeader ... />
-      
-      <div className="flex-1 min-h-0 overflow-auto">
-        {displayContent.type === "code" ? (
-          <CodeRenderer
-            code={displayContent.code}
-            language={displayContent.language}
-            isStreaming={isStreaming}
-            onUpdate={(newCode) => onArtifactUpdate(newCode, artifact.currentIndex)}
-            onTextSelect={onTextSelect}  // NEW
-          />
-        ) : (
-          <TextRenderer
-            markdown={displayContent.fullMarkdown}
-            isStreaming={isStreaming}
-            onUpdate={(newMarkdown) => onArtifactUpdate(newMarkdown, artifact.currentIndex)}
-            onTextSelect={onTextSelect}  // NEW
-          />
-        )}
-      </div>
-    </div>
-  )
+  const extensions = [
+    ...getLanguageExtension(language),
+    partialUpdateField
+  ]
+  
+  useEffect(() => {
+    if (isPartialUpdating && updateSelection && editorViewRef.current) {
+      // Highlight the region being updated
+      editorViewRef.current.dispatch({
+        effects: partialUpdateEffect.of({
+          start: updateSelection.start,
+          end: updateSelection.end
+        })
+      })
+    }
+  }, [isPartialUpdating, updateSelection])
+  
+  // ... rest of component ...
 }
 ```
 
-**Implementation Steps**:
-1. Pass `handleTextSelect` from `useCanvasChat` → `CanvasChatContainer` → `ArtifactRenderer` → renderers
-2. Update `ChatInput` placeholder to show selected text preview
-3. Add visual indicator when text is selected (optional: highlight selected region)
+**CSS for highlighting:**
+```css
+/* globals.css */
+.partial-update-highlight {
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+```
 
 ---
 
-### 2.5 TypeScript Types
-**File**: `frontend/types/canvas.ts`
+## Testing Strategy
 
-**Enhancement**: Add partial edit types
+### Backend Tests (`backend/tests/test_partial_content_editing.py`)
 
-```typescript
-export interface SelectedText {
-  start: number
-  end: number
-  text: string
-}
-
-export interface PartialEditStartEvent {
-  originalStart: number
-  originalEnd: number
-  contentType: "code" | "text"
-}
-
-export interface PartialEditChunkEvent {
-  delta: string
-}
-
-export interface PartialEditEndEvent {
-  editedContent: string
-  originalStart: number
-  originalEnd: number
-}
-```
-
-**File**: `frontend/types/agui.ts`
-
-```typescript
-export interface CustomAGUIEvent extends AGUIEvent {
-  type: 'custom'
-  custom_type: string
-  data: any
-}
-
-// Add discriminated union for custom events
-export type CanvasCustomEvent =
-  | { custom_type: 'partial_edit_start'; data: PartialEditStartEvent }
-  | { custom_type: 'partial_edit_chunk'; data: PartialEditChunkEvent }
-  | { custom_type: 'partial_edit_end'; data: PartialEditEndEvent }
-  | { custom_type: 'artifact_streaming_start'; data: any }
-  // ... other custom events
-```
-
-**Implementation Steps**:
-1. Add `SelectedText` interface (may already exist)
-2. Add interfaces for partial edit event payloads
-3. Create discriminated union for type-safe custom event handling
-
----
-
-## 3. Testing Plan
-
-### 3.1 Backend Tests
-**New File**: `backend/tests/test_partial_editing.py`
-
+**1. Test Intent Detection**
 ```python
-import pytest
-import json
-from api.routes import app
-from fastapi.testclient import TestClient
+def test_partial_update_intent_detection():
+    """Test that selection + message triggers partial_update action"""
+    state = {
+        "messages": [{"role": "user", "content": "make this async"}],
+        "artifact": {...},  # existing artifact
+        "selectedText": {"start": 100, "end": 200, "text": "def foo():"}
+    }
+    
+    result = detect_intent_node(state)
+    assert result["artifactAction"] == "partial_update"
+```
 
-client = TestClient(app)
+**2. Test Prompt Building**
+```python
+def test_partial_update_prompt_context():
+    """Ensure prompt includes proper context window"""
+    agent = CanvasAgent()
+    state = {...}  # with selection
+    
+    prompt = agent._build_partial_update_prompt(state)
+    
+    assert "Context Before Selection" in prompt
+    assert "SELECTED TEXT" in prompt
+    assert "Context After Selection" in prompt
+```
 
-@pytest.mark.asyncio
-async def test_partial_edit_with_selection():
-    """Test partial editing when selectedText is provided"""
-    
-    # Initial artifact
-    artifact = {
-        "currentIndex": 0,
-        "contents": [{
-            "index": 0,
-            "type": "text",
-            "title": "Test Document",
-            "fullMarkdown": "This is the first paragraph.\n\nThis is the second paragraph.\n\nThis is the third paragraph."
-        }]
-    }
-    
-    # Select second paragraph
-    selected_text = {
-        "start": 29,
-        "end": 56,
-        "text": "This is the second paragraph."
-    }
-    
-    request_data = {
-        "thread_id": "test-thread-1",
-        "message": "Make it more formal",
-        "artifact": artifact,
-        "selectedText": selected_text,
-        "agent": "canvas"
-    }
+**3. Test Streaming Events**
+```python
+async def test_partial_update_streaming():
+    """Verify correct event sequence for partial updates"""
+    agent = CanvasAgent()
+    state = {...}  # with selection
     
     events = []
-    response = client.post("/canvas/chat", json=request_data, stream=True)
+    async for event in agent.run(state):
+        events.append(event)
     
-    for line in response.iter_lines():
-        if line.startswith(b"data: "):
-            event_data = json.loads(line[6:])
-            events.append(event_data)
-    
-    # Verify partial edit events
-    partial_start = next((e for e in events if e.get("custom_type") == "partial_edit_start"), None)
-    assert partial_start is not None
-    assert partial_start["data"]["originalStart"] == 29
-    assert partial_start["data"]["originalEnd"] == 56
-    
-    partial_chunks = [e for e in events if e.get("custom_type") == "partial_edit_chunk"]
-    assert len(partial_chunks) > 0
-    
-    partial_end = next((e for e in events if e.get("custom_type") == "partial_edit_end"), None)
-    assert partial_end is not None
-    assert "editedContent" in partial_end["data"]
-    
-    print("✓ Partial editing test passed")
-
-@pytest.mark.asyncio
-async def test_partial_edit_code_selection():
-    """Test partial editing with code artifact"""
-    
-    artifact = {
-        "currentIndex": 0,
-        "contents": [{
-            "index": 0,
-            "type": "code",
-            "title": "example.py",
-            "code": "def hello():\n    print('Hello')\n\ndef goodbye():\n    print('Goodbye')",
-            "language": "python"
-        }]
-    }
-    
-    # Select hello function
-    selected_text = {
-        "start": 0,
-        "end": 31,
-        "text": "def hello():\n    print('Hello')"
-    }
-    
-    request_data = {
-        "thread_id": "test-thread-2",
-        "message": "Add docstring",
-        "artifact": artifact,
-        "selectedText": selected_text,
-        "agent": "canvas"
-    }
-    
-    response = client.post("/canvas/chat", json=request_data, stream=True)
-    
-    # Verify code partial edit works
-    # ... similar assertions ...
-    
-    print("✓ Code partial editing test passed")
+    assert events[0].event_type == CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START
+    assert any(e.event_type == CanvasEventType.ARTIFACT_PARTIAL_UPDATE_CHUNK for e in events)
+    assert events[-1].event_type == CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE
 ```
 
-**Implementation Steps**:
-1. Create test cases for text and code partial editing
-2. Verify `partial_edit_start/chunk/end` events are emitted
-3. Test boundary calculations (start/end positions)
-4. Test version creation with spliced content
+---
+
+### Frontend Tests
+
+**1. Test Selection Capture**
+```typescript
+// Test that CodeMirror properly captures selection
+it('captures text selection with line numbers', () => {
+  const onSelectionChange = jest.fn()
+  render(<CodeRenderer 
+    code="line1\nline2\nline3" 
+    onSelectionChange={onSelectionChange}
+  />)
+  
+  // Simulate selection...
+  expect(onSelectionChange).toHaveBeenCalledWith({
+    start: 6,
+    end: 17,
+    text: "line2\nline3",
+    lineStart: 2,
+    lineEnd: 3
+  })
+})
+```
+
+**2. Test Partial Update Merging**
+```typescript
+// Test that partial updates correctly merge into content
+it('merges partial update into artifact content', () => {
+  const originalContent = "hello world\nfoo bar"
+  const selection = { start: 12, end: 19 }  // "foo bar"
+  const updatedContent = "baz qux"
+  
+  const result = mergePartialUpdate(selection, updatedContent, 'replace')
+  
+  expect(result).toBe("hello world\nbaz qux")
+})
+```
 
 ---
 
-### 3.2 Frontend Tests
-**Validation Tasks**:
+## User Experience Flow
 
-1. **Text Selection**:
-   - Select text in markdown renderer → verify `onTextSelect` called with correct positions
-   - Select code in Monaco editor → verify selection tracking
-   - Test edge cases: multi-line selections, special characters
+### Example Scenario: Edit a Function
 
-2. **Streaming Preview**:
-   - During partial edit, verify real-time content merging
-   - Verify cursor position doesn't jump during streaming
-   - Test undo/redo after partial edit
+**Step 1:** User opens Canvas with a Python script
+```python
+def calculate_sum(numbers):
+    total = 0
+    for num in numbers:
+        total += num
+    return total
+```
 
-3. **Version History**:
-   - After partial edit, verify new version created
-   - Verify navigation between versions works
-   - Verify partial edit reflected in diff view
+**Step 2:** User selects the loop portion:
+```python
+    for num in numbers:
+        total += num
+```
 
----
+**Step 3:** User types: "make this use list comprehension"
 
-## 4. Integration Points
+**Step 4:** Backend generates ONLY the modified section:
+```python
+    total = sum(numbers)
+```
 
-### Backend → Frontend
-1. **Selection to Backend**: Frontend sends `selectedText` in API request
-2. **Partial Edit Events**: Backend streams `partial_edit_start/chunk/end` custom events
-3. **Version Update**: Backend creates new artifact version with spliced content
+**Step 5:** Frontend merges the update, result:
+```python
+def calculate_sum(numbers):
+    total = 0
+    total = sum(numbers)
+    return total
+```
 
-### Frontend Rendering
-1. **Real-time Preview**: During streaming, frontend shows live content merging
-2. **Version Creation**: After `partial_edit_end`, frontend adds new version to artifact
-3. **Selection Clearing**: After edit completes, clear selection state
-
----
-
-## 5. Implementation Order
-
-### Phase 1: Backend Foundation
-1. ✅ Add `PartialEdit` TypedDict to state schema
-2. ✅ Update `detect_intent_node` to detect `partial_update` action
-3. ✅ Implement `_partial_update_artifact()` in `CanvasAgent`
-4. ✅ Implement `_build_partial_edit_prompt()` for context-aware editing
-5. ✅ Add partial edit event types to `event_types.py`
-6. ✅ Update `update_artifact_node` to finalize partial edits
-
-### Phase 2: Frontend Selection
-1. ✅ Add text selection tracking to `TextRenderer`
-2. ✅ Add selection tracking to `CodeRenderer` (Monaco)
-3. ✅ Update `useCanvasChat` to manage selection state
-4. ✅ Wire selection callbacks through component hierarchy
-
-### Phase 3: Frontend Streaming
-1. ✅ Add partial edit event handling in `useCanvasChat`
-2. ✅ Implement real-time preview during streaming
-3. ✅ Implement version creation on `partial_edit_end`
-4. ✅ Add TypeScript types for partial edit events
-
-### Phase 4: Testing & Refinement
-1. ✅ Write backend test for partial editing flow
-2. ✅ Manual testing: select text → edit → verify result
-3. ✅ Test edge cases: boundary positions, multi-line, special chars
-4. ✅ Performance testing: large documents, rapid edits
+**Note:** LLM might need refinement to remove redundant lines. Consider adding post-processing.
 
 ---
 
-## 6. Success Criteria
+## Dependencies
 
-✅ **User can select text/code in canvas artifact**
-✅ **Selection boundaries (start/end) calculated correctly**
-✅ **Backend receives selection context and generates edited portion only**
-✅ **Frontend streams partial edit in real-time at correct position**
-✅ **New artifact version created with correctly spliced content**
-✅ **Version history shows partial edit as distinct version**
-✅ **Works for both text (markdown) and code artifacts**
+### Backend
+- **No new dependencies required**
+- Uses existing: LangGraph, ag-ui, ollama
+
+### Frontend
+- **CodeMirror 6**: Already installed (`@uiw/react-codemirror`)
+- **Selection API**: Native browser API for text selection
+- **No new dependencies required**
 
 ---
 
-## 7. Future Enhancements
+## Edge Cases & Considerations
 
-- **Multi-region editing**: Select multiple non-contiguous regions
-- **Diff visualization**: Show before/after comparison in UI
-- **Undo/redo**: Fine-grained undo for partial edits
-- **Collaborative editing**: Multiple users editing different regions
-- **Smart context detection**: Auto-expand selection to include related code blocks
+### 1. Multi-line Selection in Code
+- **Issue:** Selection might span incomplete syntax blocks
+- **Solution:** LLM prompt instructs to maintain context and indentation
+
+### 2. Overlapping Updates
+- **Issue:** User sends another edit while one is streaming
+- **Solution:** Disable input during `isPartialUpdating` state
+
+### 3. Selection Drift
+- **Issue:** Character positions change if content is edited
+- **Solution:** Always capture selection immediately before sending request
+
+### 4. Empty Selection
+- **Issue:** User sends message without selecting text
+- **Solution:** Fall back to full artifact update behavior
+
+### 5. LLM Generates Too Much Content
+- **Issue:** LLM might ignore instruction and regenerate everything
+- **Solution:** 
+  - Stronger system prompt with examples
+  - Post-processing to extract only the relevant portion
+  - Validate output length against selection length
+
+---
+
+## Success Criteria
+
+✅ **Backend:**
+- [ ] `selectedText` with line numbers properly captured
+- [ ] Intent detection correctly identifies `partial_update` action
+- [ ] System prompt includes proper context window
+- [ ] Partial update streaming emits correct AG-UI events
+- [ ] Only modified section is generated by LLM
+
+✅ **Frontend:**
+- [ ] CodeMirror captures text selection with positions
+- [ ] Selected text displayed in chat input area
+- [ ] Partial update events properly received
+- [ ] Merging logic correctly replaces selected region
+- [ ] Visual feedback (highlighting) during streaming
+- [ ] Artifact versioning preserved
+
+✅ **Integration:**
+- [ ] End-to-end flow: select → edit → stream → merge
+- [ ] Works for both code and markdown artifacts
+- [ ] Performance: No lag during streaming merge
+- [ ] Error handling: Graceful fallback on failure
+
+---
+
+## Implementation Order
+
+### Phase 1: Backend Foundation (Day 1-2)
+1. Update `SelectedText` model with line numbers
+2. Add `partial_update` intent detection
+3. Implement `_build_partial_update_prompt` method
+4. Add new AG-UI event types
+
+### Phase 2: Backend Streaming (Day 2-3)
+1. Implement `_stream_partial_update` method
+2. Integrate into main `CanvasAgent.run` router
+3. Write backend tests
+
+### Phase 3: Frontend Selection (Day 3-4)
+1. Update TypeScript types
+2. Implement selection capture in `CodeRenderer`
+3. Implement selection capture in `TextRenderer`
+4. Update `ChatInput` to display selection context
+
+### Phase 4: Frontend Merging (Day 4-5)
+1. Enhance `CanvasContext` with partial update state
+2. Implement AG-UI event handlers in `useCanvasChat`
+3. Implement `mergePartialUpdate` logic
+4. Add visual feedback (highlighting)
+
+### Phase 5: Testing & Refinement (Day 5-6)
+1. Write frontend tests
+2. End-to-end manual testing
+3. Fix edge cases
+4. Performance optimization
+5. Update knowledge base documentation
+
+---
+
+## Knowledge Base Updates
+
+After implementation, update:
+- `/.docs/2-knowledge-base/canvas-implementation-summary.md` - Add partial editing section
+- `/.docs/2-knowledge-base/agui-protocol/protocol-spec.md` - Document new event types
+- `/.docs/2-knowledge-base/frontend/canvas-components.md` - Document selection handling
+- `/.docs/2-knowledge-base/backend/canvas-agent.md` - Document partial update logic
 
 ---
 
 ## References
 
-- Existing canvas implementation: [canvas-feature.md](canvas-feature.md)
-- Backend agent patterns: [.github/agents/backend.agent.md](../../.github/agents/backend.agent.md)
-- Frontend patterns: [.github/agents/frontend.agent.md](../../.github/agents/frontend.agent.md)
-- AG-UI protocol: `frontend/services/agui-client.ts`
-- LangGraph state: `backend/graphs/canvas_graph.py`
+- [Backend Agent Guide](../../.github/agents/backend.agent.md) - LangGraph patterns
+- [Frontend Agent Guide](../../.github/agents/frontend.agent.md) - AG-UI integration
+- [Canvas Implementation Summary](../.docs/2-knowledge-base/canvas-implementation-summary.md) - Current state
+- [LangGraph Docs](/langchain-ai/langgraph) - State management patterns
+- [AG-UI Protocol](/ag-ui-protocol/ag-ui) - Event-driven communication

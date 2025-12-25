@@ -7,15 +7,25 @@ import "@blocknote/shadcn/style.css"
 import { Loader2 } from "lucide-react"
 import { ArtifactContextMenu } from "./ArtifactContextMenu"
 import { useCanvasOptional } from "@/contexts/CanvasContext"
+import { SelectedText } from "@/types/canvas"
 
 interface TextRendererProps {
   markdown: string
   isStreaming: boolean
   onUpdate: (newMarkdown: string) => void
   onChatWithAgentClick?: (text: string) => void
+  onSelectionChange?: (selection: SelectedText | null) => void
+  isPartialUpdating?: boolean
 }
 
-export function TextRenderer({ markdown, isStreaming, onUpdate, onChatWithAgentClick }: TextRendererProps) {
+export function TextRenderer({ 
+  markdown, 
+  isStreaming, 
+  onUpdate, 
+  onChatWithAgentClick,
+  onSelectionChange,
+  isPartialUpdating 
+}: TextRendererProps) {
   const editor = useCreateBlockNote()
   const isUpdatingRef = useRef(false)
   const lastMarkdownRef = useRef<string>("")
@@ -74,7 +84,7 @@ export function TextRenderer({ markdown, isStreaming, onUpdate, onChatWithAgentC
     }
   }
   
-  // Handle text selection to show context menu
+  // Handle text selection to show context menu and report to parent
   useEffect(() => {
     const handleSelection = () => {
       if (!containerRef.current) return
@@ -85,6 +95,26 @@ export function TextRenderer({ markdown, isStreaming, onUpdate, onChatWithAgentC
       if (text && text.length > 0) {
         setSelectedText(text)
         
+        // Report selection to parent (for partial updates)
+        if (onSelectionChange) {
+          const range = selection?.getRangeAt(0)
+          if (range) {
+            // Get character positions relative to the full markdown content
+            const preSelectionRange = range.cloneRange()
+            if (containerRef.current) {
+              preSelectionRange.selectNodeContents(containerRef.current)
+              preSelectionRange.setEnd(range.startContainer, range.startOffset)
+              const start = preSelectionRange.toString().length
+              
+              onSelectionChange({
+                start,
+                end: start + text.length,
+                text
+              })
+            }
+          }
+        }
+        
         // Use the mouse position where selection started
         setMenuPosition({
           x: mousePositionRef.current.x,
@@ -93,6 +123,9 @@ export function TextRenderer({ markdown, isStreaming, onUpdate, onChatWithAgentC
         setShowContextMenu(true)
       } else {
         setShowContextMenu(false)
+        if (onSelectionChange) {
+          onSelectionChange(null)
+        }
       }
     }
     
@@ -185,11 +218,18 @@ export function TextRenderer({ markdown, isStreaming, onUpdate, onChatWithAgentC
         </div>
       )}
       
+      {isPartialUpdating && (
+        <div className="absolute top-6 right-6 z-10 bg-purple-500 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Updating selection...
+        </div>
+      )}
+      
       <div className="p-4">
         <BlockNoteView
           editor={editor}
           onChange={handleChange}
-          editable={!isStreaming}
+          editable={!isStreaming && !isPartialUpdating}
           theme="light"
           formattingToolbar={false}
         />

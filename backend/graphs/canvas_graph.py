@@ -1,5 +1,8 @@
+import logging
 from typing import TypedDict, Literal, Optional, List, Union, Dict
 from langgraph.graph import StateGraph, START, END
+
+logger = logging.getLogger(__name__)
 
 
 class ArtifactContentCode(TypedDict):
@@ -26,10 +29,12 @@ class ArtifactV3(TypedDict):
 
 
 class SelectedText(TypedDict):
-    """User selected text in artifact"""
-    start: int
-    end: int
-    text: str
+    """User selected text in artifact - supports both character and line-based selection"""
+    start: int                      # Character position start (0-indexed)
+    end: int                        # Character position end (0-indexed)
+    text: str                       # The actual selected text content
+    lineStart: Optional[int]        # Line number start (1-indexed) for code
+    lineEnd: Optional[int]          # Line number end (1-indexed) for code
 
 
 class CanvasGraphState(TypedDict):
@@ -39,7 +44,7 @@ class CanvasGraphState(TypedDict):
     run_id: str
     artifact: Optional[ArtifactV3]
     selectedText: Optional[SelectedText]
-    artifactAction: Optional[str]  # "create", "update", "rewrite"
+    artifactAction: Optional[str]  # "create", "update", "rewrite", "partial_update"
 
 
 def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
@@ -50,14 +55,23 @@ def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
     if not state["messages"]:
         return state
     
+    # Check if there's a text selection - this takes priority for partial updates
+    selected_text = state.get("selectedText")
+    artifact = state.get("artifact")
+    
+    if selected_text and artifact:
+        # User has selected text AND there's an existing artifact
+        # Default to "partial_update" action
+        state["artifactAction"] = "partial_update"
+        logger.info(f"Detected partial_update intent with selection: {selected_text.get('start')}-{selected_text.get('end')}")
+        return state
+    
     last_message = state["messages"][-1]["content"].lower()
     
     # Keywords suggesting artifact creation/manipulation
     create_keywords = ["create", "write", "generate", "make", "build"]
     update_keywords = ["update", "modify", "change", "edit", "fix"]
     rewrite_keywords = ["rewrite", "refactor", "redo", "restart"]
-    
-    artifact = state.get("artifact")
     
     if artifact:
         # Artifact exists, check for update/rewrite

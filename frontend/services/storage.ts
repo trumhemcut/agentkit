@@ -118,4 +118,20 @@ export class StorageService {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY);
   }
+
+  /**
+   * Update artifact_id for a thread
+   */
+  static updateThreadArtifactId(threadId: string, artifactId: string): void {
+    console.log('[StorageService] updateThreadArtifactId:', threadId, artifactId);
+    const thread = this.getThread(threadId);
+    if (!thread) {
+      console.error('[StorageService] Thread not found for artifact_id update:', threadId);
+      return;
+    }
+    
+    thread.artifactId = artifactId;
+    this.saveThread(thread);
+    console.log('[StorageService] Artifact ID saved to thread');
+  }
 }

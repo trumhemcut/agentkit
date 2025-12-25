@@ -22,7 +22,8 @@ class RunAgentInput(BaseModel):
     agent: Optional[str] = "chat"  # Optional agent selection
     
     # Canvas-specific optional fields (for unified endpoint)
-    artifact: Optional['ArtifactV3'] = None
+    artifact: Optional['ArtifactV3'] = None  # DEPRECATED: Use artifact_id instead
+    artifact_id: Optional[str] = None  # Server-side cached artifact ID
     selectedText: Optional['SelectedText'] = None
     action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
 
@@ -53,10 +54,12 @@ class ArtifactV3(BaseModel):
 
 
 class SelectedText(BaseModel):
-    """User selected text in artifact"""
-    start: int
-    end: int
-    text: str
+    """User selected text in artifact - supports both character and line-based selection"""
+    start: int = Field(..., description="Character position start (0-indexed)")
+    end: int = Field(..., description="Character position end (0-indexed)")
+    text: str = Field(..., description="Selected text content")
+    lineStart: Optional[int] = Field(None, description="Line number start (1-indexed) for code")
+    lineEnd: Optional[int] = Field(None, description="Line number end (1-indexed) for code")
 
 
 class CanvasMessageRequest(BaseModel):
@@ -64,7 +67,8 @@ class CanvasMessageRequest(BaseModel):
     thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     messages: List[Message]
-    artifact: Optional[ArtifactV3] = None
+    artifact: Optional[ArtifactV3] = None  # DEPRECATED: Use artifact_id instead
+    artifact_id: Optional[str] = None  # Server-side cached artifact ID
     selectedText: Optional[SelectedText] = None
     action: Optional[Literal["create", "update", "rewrite", "chat"]] = None
     model: Optional[str] = None  # Optional model selection

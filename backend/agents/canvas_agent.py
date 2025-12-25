@@ -6,6 +6,8 @@ from ag_ui.core import EventType, BaseEvent, CustomEvent, TextMessageStartEvent,
 from agents.base_agent import BaseAgent
 from graphs.canvas_graph import CanvasGraphState, ArtifactV3, ArtifactContentCode, ArtifactContentText
 from llm.provider_factory import LLMProviderFactory
+from protocols.event_types import CanvasEventType
+from cache.artifact_cache import artifact_cache
 
 logger = logging.getLogger(__name__)
 
@@ -33,32 +35,55 @@ class CanvasAgent(BaseAgent):
         """
         
         action = state.get("artifactAction", None)
-        logger.info(f"CanvasAgent.run started with action: {action}")
+        thread_id = state.get("thread_id")
+        artifact_id = state.get("artifact_id")
+        
+        logger.info(f"CanvasAgent.run started with action: {action}, artifact_id: {artifact_id}")
         logger.debug(f"State keys: {list(state.keys())}")
+        
+        # Retrieve artifact from cache if artifact_id is provided
+        if artifact_id:
+            cached_artifact = artifact_cache.get(artifact_id)
+            if cached_artifact:
+                state["artifact"] = cached_artifact
+                logger.info(f"Retrieved artifact from cache: {artifact_id}")
+            else:
+                logger.warning(f"Artifact ID provided but not found in cache: {artifact_id}")
+                # Don't fail - may be creating new artifact
         
         # If no action specified, determine if we should create artifact or just chat
         if action is None:
-            # Analyze user's intent
-            messages = state["messages"]
-            last_message = messages[-1]["content"] if messages else ""
-            
-            # Simple heuristic: if user asks to create/generate/write something, treat as artifact
-            artifact_intent_keywords = ["create", "generate", "write", "make", "build", "code", "script", "function", "document"]
-            should_create_artifact = any(keyword in last_message.lower() for keyword in artifact_intent_keywords)
-            
-            if should_create_artifact:
-                action = "create"
-                state["artifactAction"] = "create"
-                logger.info("Detected artifact creation intent from user message")
+            # Check if there's selected text - that's always a partial update
+            selected_text = state.get("selectedText")
+            if selected_text:
+                action = "partial_update"
+                state["artifactAction"] = "partial_update"
+                logger.info("Detected partial update intent from selected text")
             else:
-                # Respond with regular text message
-                logger.info("No artifact intent detected, responding with text")
-                async for event in self._respond_with_text(state):
-                    yield event
-                return
+                # Analyze user's intent from message
+                messages = state["messages"]
+                last_message = messages[-1]["content"] if messages else ""
+                
+                # Simple heuristic: if user asks to create/generate/write something, treat as artifact
+                artifact_intent_keywords = ["create", "generate", "write", "make", "build", "code", "script", "function", "document"]
+                should_create_artifact = any(keyword in last_message.lower() for keyword in artifact_intent_keywords)
+                
+                if should_create_artifact:
+                    action = "create"
+                    state["artifactAction"] = "create"
+                    logger.info("Detected artifact creation intent from user message")
+                else:
+                    # Respond with regular text message
+                    logger.info("No artifact intent detected, responding with text")
+                    async for event in self._respond_with_text(state):
+                        yield event
+                    return
         
         # Process artifact actions
-        if action == "create":
+        if action == "partial_update":
+            async for event in self._stream_partial_update(state):
+                yield event
+        elif action == "create":
             async for event in self._create_artifact(state):
                 yield event
         elif action == "update":
@@ -131,6 +156,7 @@ class CanvasAgent(BaseAgent):
         """Generate new artifact from scratch"""
         messages = state["messages"]
         last_message = messages[-1]["content"]
+        thread_id = state.get("thread_id")
         logger.info(f"Creating new artifact, message length: {len(last_message)}")
         
         # Determine artifact type from context
@@ -156,7 +182,10 @@ class CanvasAgent(BaseAgent):
         if artifact_type == "code":
             language = self._detect_language(last_message, "")
         
-        # Emit TEXT_MESSAGE_START with artifact metadata
+        # Generate artifact_id for caching
+        artifact_id = str(uuid.uuid4())
+        
+        # Emit TEXT_MESSAGE_START with artifact metadata including artifact_id
         yield TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
@@ -164,6 +193,7 @@ class CanvasAgent(BaseAgent):
             metadata={
                 "message_type": "artifact",
                 "artifact_type": artifact_type,
+                "artifact_id": artifact_id,  # Send artifact_id to frontend
                 "language": language,
                 "title": "Generating artifact..."  # Will update when complete
             }
@@ -217,15 +247,22 @@ class CanvasAgent(BaseAgent):
             "contents": [artifact_content_obj]
         }
         
+        # Cache the artifact on server-side
+        artifact_cache.store(artifact, thread_id, artifact_id)
+        logger.info(f"Artifact cached with ID: {artifact_id}")
+        
         # Update state
         state["artifact"] = artifact
+        state["artifact_id"] = artifact_id  # Store artifact_id in state
         logger.info(f"Artifact created successfully: {artifact_title} (index: {artifact['currentIndex']})")
     
     async def _update_artifact(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """Update specific parts of existing artifact"""
         messages = state["messages"]
         current_artifact = state.get("artifact")
-        logger.info(f"Updating artifact, has existing: {current_artifact is not None}")
+        thread_id = state.get("thread_id")
+        artifact_id = state.get("artifact_id")
+        logger.info(f"Updating artifact, has existing: {current_artifact is not None}, artifact_id: {artifact_id}")
         
         if not current_artifact:
             # No artifact to update, create new one
@@ -256,7 +293,7 @@ class CanvasAgent(BaseAgent):
         updated_content = ""
         message_id = str(uuid.uuid4())
         
-        # Emit TEXT_MESSAGE_START with artifact metadata
+        # Emit TEXT_MESSAGE_START with artifact metadata including artifact_id
         yield TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
@@ -264,6 +301,7 @@ class CanvasAgent(BaseAgent):
             metadata={
                 "message_type": "artifact",
                 "artifact_type": current_content["type"],
+                "artifact_id": artifact_id,  # Send artifact_id to frontend
                 "language": current_content.get("language"),
                 "title": current_content["title"]
             }
@@ -311,6 +349,16 @@ class CanvasAgent(BaseAgent):
             "currentIndex": new_index,
             "contents": [*current_artifact["contents"], new_content_obj]
         }
+        
+        # Update cache
+        if artifact_id:
+            artifact_cache.update(artifact_id, updated_artifact)
+            logger.info(f"Artifact cache updated: {artifact_id}")
+        else:
+            # If no artifact_id, create new one and cache
+            artifact_id = artifact_cache.store(updated_artifact, thread_id)
+            state["artifact_id"] = artifact_id
+            logger.info(f"New artifact cached with ID: {artifact_id}")
         
         state["artifact"] = updated_artifact
         logger.info(f"Artifact updated successfully: {current_content['title']} (version: {new_index})")
@@ -540,3 +588,192 @@ Instructions:
 - Maintain document structure and tone
 - Keep existing formatting unless asked to change it
 - Output ONLY the updated content in markdown format"""
+    
+    def _build_partial_update_prompt(self, state: CanvasGraphState) -> str:
+        """Build context-aware prompt for partial content updates"""
+        
+        artifact = state["artifact"]
+        selected_text = state["selectedText"]
+        current_content = artifact["contents"][artifact["currentIndex"] - 1]
+        
+        # Get full content
+        full_content = (current_content.get("code") or 
+                        current_content.get("fullMarkdown") or "")
+        
+        selection_start = selected_text["start"]
+        selection_end = selected_text["end"]
+        
+        # Extract context window (e.g., 200 chars before/after)
+        context_window = 200
+        context_before = full_content[max(0, selection_start - context_window):selection_start]
+        context_after = full_content[selection_end:min(len(full_content), selection_end + context_window)]
+        
+        artifact_type = current_content["type"]
+        language = current_content.get("language", "text")
+        
+        prompt = f"""You are editing a specific section of content in a canvas artifact.
+
+**Task:** Modify ONLY the selected portion based on the user's request.
+
+**Artifact Type:** {artifact_type}
+**Language:** {language}
+
+**Context Before Selection:**
+```
+{context_before}
+```
+
+**SELECTED TEXT (to be modified):**
+```
+{selected_text["text"]}
+```
+
+**Context After Selection:**
+```
+{context_after}
+```
+
+**User Request:** {state["messages"][-1]["content"]}
+
+**CRITICAL Instructions:**
+1. Return ONLY the modified version of the selected text
+2. Maintain the same indentation and formatting style as the original
+3. Do NOT include the surrounding context in your response
+4. Do NOT regenerate the entire content
+5. Focus solely on the user's requested change to the selected section
+6. Preserve line breaks and whitespace patterns from the original selection
+
+**Output Format:**
+- For code: Return only the modified code block without any markdown code fences
+- For text: Return only the modified paragraph/section without extra formatting
+- NO explanations, NO surrounding context, ONLY the replacement text
+"""
+        
+        return prompt
+    
+    async def _stream_partial_update(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
+        """Stream partial content update for selected region"""
+        
+        logger.info("Starting partial content update stream")
+        selected_text = state["selectedText"]
+        thread_id = state.get("thread_id")
+        artifact_id = state.get("artifact_id")
+        
+        # Build specialized prompt
+        system_prompt = self._build_partial_update_prompt(state)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": state["messages"][-1]["content"]}
+        ]
+        
+        # Emit start event with artifact_id
+        yield CustomEvent(
+            event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START,
+            data={
+                "artifact_id": artifact_id,  # Include artifact_id
+                "selection": {
+                    "start": selected_text["start"],
+                    "end": selected_text["end"]
+                },
+                "strategy": "replace"
+            }
+        )
+        
+        logger.info(f"Streaming partial update for selection {selected_text['start']}-{selected_text['end']}, artifact_id: {artifact_id}")
+        
+        # Stream the partial update
+        updated_content = ""
+        async for chunk in self.llm.astream(messages):
+            if hasattr(chunk, 'content') and chunk.content:
+                updated_content += chunk.content
+                
+                # Stream chunks to frontend
+                yield CustomEvent(
+                    event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_CHUNK,
+                    data={
+                        "chunk": chunk.content,
+                        "artifact_id": artifact_id,  # Include artifact_id
+                        "selection": {
+                            "start": selected_text["start"],
+                            "end": selected_text["end"]
+                        }
+                    }
+                )
+        
+        logger.info(f"Partial update complete, generated {len(updated_content)} characters")
+        
+        # Emit completion event with full updated section
+        yield CustomEvent(
+            event_type=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE,
+            data={
+                "artifact_id": artifact_id,  # Include artifact_id
+                "selection": {
+                    "start": selected_text["start"],
+                    "end": selected_text["end"]
+                },
+                "updatedContent": updated_content,
+                "strategy": "replace"
+            }
+        )
+        
+        # Update artifact in state with merged content
+        self._merge_partial_update(state, updated_content)
+        
+        # Update cache
+        updated_artifact = state.get("artifact")
+        if artifact_id and updated_artifact:
+            artifact_cache.update(artifact_id, updated_artifact)
+            logger.info(f"Artifact cache updated after partial update: {artifact_id}")
+        elif updated_artifact and thread_id:
+            # If no artifact_id, create new one
+            artifact_id = artifact_cache.store(updated_artifact, thread_id)
+            state["artifact_id"] = artifact_id
+            logger.info(f"New artifact cached after partial update: {artifact_id}")
+        
+        logger.info("Artifact state updated with partial change")
+    
+    def _merge_partial_update(self, state: CanvasGraphState, updated_content: str) -> None:
+        """Merge partial update into artifact state"""
+        
+        artifact = state["artifact"]
+        selected_text = state["selectedText"]
+        current_content = artifact["contents"][artifact["currentIndex"] - 1]
+        
+        # Get full content
+        full_content = (current_content.get("code") or 
+                        current_content.get("fullMarkdown") or "")
+        
+        # Replace selected region with updated content
+        new_content = (
+            full_content[:selected_text["start"]] +
+            updated_content +
+            full_content[selected_text["end"]:]
+        )
+        
+        # Create new version of artifact
+        new_index = len(artifact["contents"]) + 1
+        
+        if current_content["type"] == "code":
+            new_content_obj: ArtifactContentCode = {
+                "index": new_index,
+                "type": "code",
+                "title": current_content["title"],
+                "code": new_content,
+                "language": current_content["language"]
+            }
+        else:
+            new_content_obj: ArtifactContentText = {
+                "index": new_index,
+                "type": "text",
+                "title": current_content["title"],
+                "fullMarkdown": new_content
+            }
+        
+        # Update artifact with new version
+        updated_artifact: ArtifactV3 = {
+            "currentIndex": new_index,
+            "contents": [*artifact["contents"], new_content_obj]
+        }
+        
+        state["artifact"] = updated_artifact
+        logger.debug(f"Created artifact version {new_index} with partial update merged")

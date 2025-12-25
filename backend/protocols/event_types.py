@@ -11,5 +11,10 @@ class CanvasEventType:
     ARTIFACT_VERSION_CHANGED = "artifact_version_changed"
     SELECTION_CONTEXT = "selection_context"
     THINKING = "thinking"
+    
+    # Partial update events
+    ARTIFACT_PARTIAL_UPDATE_START = "artifact_partial_update_start"
+    ARTIFACT_PARTIAL_UPDATE_CHUNK = "artifact_partial_update_chunk"
+    ARTIFACT_PARTIAL_UPDATE_COMPLETE = "artifact_partial_update_complete"
 
 __all__ = ["EventType", "CanvasEventType"]

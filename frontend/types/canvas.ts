@@ -18,6 +18,7 @@ export type ArtifactContent = ArtifactContentCode | ArtifactContentText
 export interface ArtifactV3 {
   currentIndex: number
   contents: ArtifactContent[]
+  artifact_id?: string
 }
 
 export interface SelectedText {

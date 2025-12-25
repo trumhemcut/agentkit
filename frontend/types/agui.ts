@@ -77,6 +77,7 @@ export interface TextMessageStartEvent extends BaseEvent {
   metadata?: {
     message_type?: 'text' | 'artifact';
     artifact_type?: 'code' | 'text' | 'document';
+    artifact_id?: string;
     language?: string;
     title?: string;
   };

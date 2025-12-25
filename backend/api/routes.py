@@ -9,6 +9,7 @@ from graphs.canvas_graph import create_canvas_graph
 from llm.ollama_client import ollama_client
 from agents.agent_registry import agent_registry
 from config import settings
+from cache.artifact_cache import artifact_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -130,11 +131,25 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
             elif agent_id == "canvas":
                 # Use CanvasAgent for text + artifact conversations
                 from agents.canvas_agent import CanvasAgent
+                
+                # Handle artifact retrieval: prioritize artifact_id over artifact
+                artifact = None
+                if input_data.artifact_id:
+                    # Retrieve from cache using artifact_id
+                    artifact = artifact_cache.get(input_data.artifact_id)
+                    if not artifact:
+                        logger.warning(f"Artifact ID provided but not found in cache: {input_data.artifact_id}")
+                elif input_data.artifact:
+                    # Legacy: client sent full artifact (will be deprecated)
+                    logger.warning("Client sent full artifact instead of artifact_id. Consider updating frontend.")
+                    artifact = input_data.artifact.model_dump()
+                
                 state = {
                     "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
                     "thread_id": input_data.thread_id,
                     "run_id": input_data.run_id,
-                    "artifact": input_data.artifact.model_dump() if input_data.artifact else None,
+                    "artifact": artifact,
+                    "artifact_id": input_data.artifact_id,  # Pass artifact_id to agent
                     "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
                     "artifactAction": input_data.action
                 }
@@ -210,12 +225,25 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
         )
         
         try:
+            # Handle artifact retrieval: prioritize artifact_id over artifact
+            artifact = None
+            if input_data.artifact_id:
+                # Retrieve from cache using artifact_id
+                artifact = artifact_cache.get(input_data.artifact_id)
+                if not artifact:
+                    logger.warning(f"Artifact ID provided but not found in cache: {input_data.artifact_id}")
+            elif input_data.artifact:
+                # Legacy: client sent full artifact (will be deprecated)
+                logger.warning("Client sent full artifact instead of artifact_id. Consider updating frontend.")
+                artifact = input_data.artifact.model_dump()
+            
             # Prepare state
             state = {
                 "messages": [msg.model_dump() for msg in input_data.messages],
                 "thread_id": input_data.thread_id,
                 "run_id": input_data.run_id,
-                "artifact": input_data.artifact.model_dump() if input_data.artifact else None,
+                "artifact": artifact,
+                "artifact_id": input_data.artifact_id,  # Pass artifact_id to agent
                 "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
                 "artifactAction": input_data.action
             }

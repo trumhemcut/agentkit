@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Message, isArtifactMessage } from '@/types/chat';
+import { useCanvasOptional } from '@/contexts/CanvasContext';
 
 export interface CanvasMode {
   isActive: boolean;
@@ -20,15 +21,21 @@ export function useCanvasMode(): UseCanvasModeReturn {
   const [isActive, setIsActive] = useState(false);
   const [currentArtifactMessage, setCurrentArtifactMessage] = useState<Message | null>(null);
 
+  const canvasContext = useCanvasOptional();
+
   const activateCanvas = useCallback((message: Message) => {
     if (!isArtifactMessage(message)) {
       console.warn('Attempted to activate canvas with non-artifact message');
       return;
     }
-    
+
     setIsActive(true);
     setCurrentArtifactMessage(message);
-  }, []);
+
+    if (message.artifactId && canvasContext) {
+      canvasContext.setArtifactId(message.artifactId);
+    }
+  }, [canvasContext]);
 
   const deactivateCanvas = useCallback(() => {
     setIsActive(false);
@@ -40,9 +47,13 @@ export function useCanvasMode(): UseCanvasModeReturn {
       console.warn('Attempted to update artifact with non-artifact message');
       return;
     }
-    
+
     setCurrentArtifactMessage(message);
-  }, []);
+
+    if (message.artifactId && canvasContext) {
+      canvasContext.setArtifactId(message.artifactId);
+    }
+  }, [canvasContext]);
 
   return {
     isActive,

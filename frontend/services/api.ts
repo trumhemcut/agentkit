@@ -165,6 +165,7 @@ export interface CanvasRequest {
   run_id: string;
   messages: Message[];
   artifact?: ArtifactV3;
+  artifact_id?: string;
   selectedText?: SelectedText;
   action?: "create" | "update" | "rewrite" | "chat";
   model?: string;
@@ -192,6 +193,7 @@ export async function sendCanvasMessage(
   threadId: string,
   runId: string,
   artifact: ArtifactV3 | undefined,
+  artifactId: string | undefined,
   selectedText: SelectedText | undefined,
   action: "create" | "update" | "rewrite" | "chat" | undefined,
   model: string | undefined,
@@ -211,6 +213,7 @@ export async function sendCanvasMessage(
       run_id: runId,
       messages: messages,
       artifact: artifact,
+      artifact_id: artifactId,
       selectedText: selectedText,
       action: action,
       model: model,
@@ -222,6 +225,7 @@ export async function sendCanvasMessage(
       runId, 
       messageCount: messages.length,
       hasArtifact: !!artifact,
+      artifactId: artifactId || 'undefined',
       action,
       model,
       agent: agentId
