@@ -33,9 +33,9 @@ export function AgentSelector() {
   
   if (loading) {
     return (
-      <Button variant="outline" className="min-w-[180px] justify-start" disabled>
-        <MessageCircle className="h-4 w-4 mr-2" />
-        <span>Loading...</span>
+      <Button variant="ghost" size="sm" disabled className="gap-2">
+        <MessageCircle className="h-4 w-4" />
+        <span className="hidden sm:inline">Loading agents...</span>
       </Button>
     );
   }
@@ -43,32 +43,30 @@ export function AgentSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="min-w-[180px] justify-between">
-          <div className="flex items-center">
-            {currentAgent && (
-              <>
-                {getIcon(currentAgent.icon)}
-                <span>{currentAgent.name}</span>
-              </>
-            )}
-          </div>
-          <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
+        <Button variant="ghost" size="sm" className="gap-2">
+          {currentAgent && getIcon(currentAgent.icon)}
+          <span className="hidden sm:inline">
+            {currentAgent?.name || 'Select Agent'}
+          </span>
+          <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[280px]">
+      <DropdownMenuContent align="start" className="w-[240px]">
         {availableAgents.map((agent) => (
           <DropdownMenuItem
             key={agent.id}
             onClick={() => setSelectedAgent(agent.id)}
-            className="flex flex-col items-start gap-1 py-3"
+            className="flex items-start gap-2 py-2 cursor-pointer"
           >
             <div className="flex items-center">
               {getIcon(agent.icon)}
-              <span className="font-medium">{agent.name}</span>
             </div>
-            <span className="text-sm text-muted-foreground pl-6">
-              {agent.description}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-medium">{agent.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {agent.description}
+              </span>
+            </div>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

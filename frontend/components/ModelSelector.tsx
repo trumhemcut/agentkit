@@ -62,7 +62,7 @@ export function ModelSelector() {
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[240px]">
+      <DropdownMenuContent align="start" className="w-[240px]">
         <DropdownMenuLabel>Select Model</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {models.map((model) => (
