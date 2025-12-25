@@ -33,23 +33,30 @@ export function useModelSelection() {
 
       // Fetch models from API
       const response: ModelsResponse = await fetchAvailableModels();
+      console.log('[useModelSelection] Loaded models from API:', response.models.map(m => m.id));
       setModels(response.models);
 
       // Load saved model from localStorage or use default
       const savedModel = localStorage.getItem(STORAGE_KEY);
+      console.log('[useModelSelection] Saved model from localStorage:', savedModel);
+      console.log('[useModelSelection] Default model from API:', response.default);
       const modelToSelect = savedModel || response.default;
+      console.log('[useModelSelection] Model to select:', modelToSelect);
 
       // Verify the model exists and is available
       const modelExists = response.models.find(
         m => m.id === modelToSelect && m.available
       );
+      console.log('[useModelSelection] Model exists and available:', !!modelExists);
 
       if (modelExists) {
+        console.log('[useModelSelection] Setting selected model to:', modelToSelect);
         setSelectedModel(modelToSelect);
       } else {
         // Fall back to first available model
         const firstAvailable = response.models.find(m => m.available);
         if (firstAvailable) {
+          console.log('[useModelSelection] Falling back to first available:', firstAvailable.id);
           setSelectedModel(firstAvailable.id);
           localStorage.setItem(STORAGE_KEY, firstAvailable.id);
         }
@@ -81,6 +88,7 @@ export function useModelSelection() {
     console.log('[useModelSelection] Selecting model:', modelId);
     setSelectedModel(modelId);
     localStorage.setItem(STORAGE_KEY, modelId);
+    console.log('[useModelSelection] Saved to localStorage. Verifying:', localStorage.getItem(STORAGE_KEY));
   };
 
   /**

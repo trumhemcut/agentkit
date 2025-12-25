@@ -37,6 +37,11 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
   const { selectedModel } = useModelSelection();
   const { selectedAgent } = useAgentSelection();
+  
+  // Debug log to track selectedModel changes
+  useEffect(() => {
+    console.log('[ChatContainer] selectedModel changed to:', selectedModel);
+  }, [selectedModel]);
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
@@ -286,7 +291,10 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       return;
     }
 
-    console.log('Sending message:', content);
+    console.log('[ChatContainer] Sending message:', content);
+    console.log('[ChatContainer] Selected model:', selectedModel);
+    console.log('[ChatContainer] Model from localStorage:', localStorage.getItem('selected-llm-model'));
+    console.log('[ChatContainer] Will send model to API:', selectedModel || undefined);
     setIsSending(true);
 
     // Get selected text from canvas context if available
