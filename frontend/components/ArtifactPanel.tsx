@@ -44,7 +44,7 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
 
   return (
     <Card className="flex flex-col h-full border-0 rounded-none shadow-none">
-      <CardHeader className="flex-none border-b bg-muted/30 py-3">
+      <CardHeader className="flex-none bg-muted/30 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon className="h-5 w-5 text-muted-foreground" />

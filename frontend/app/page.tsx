@@ -76,7 +76,7 @@ export default function Home() {
       }
     >
       <div className={canvasModeActive ? "grid grid-cols-3 h-full gap-0 canvas-grid-layout" : "flex h-full canvas-transition"}>
-        <div className={canvasModeActive ? "col-span-1 border-r h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}>
+        <div className={canvasModeActive ? "col-span-1 h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}>
           <ChatContainer 
             ref={chatContainerRef}
             threadId={currentThreadId}
