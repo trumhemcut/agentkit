@@ -164,16 +164,19 @@ class CanvasAgent(BaseAgent):
         
         # Stream artifact content as TEXT_MESSAGE with artifact metadata
         artifact_content = ""
-        artifact_title = "Untitled"
         message_id = str(uuid.uuid4())
         
         # Detect language early for code artifacts
         language = self._detect_language(last_message, "")
         
+        # Generate title using LLM before streaming
+        artifact_title = await self._generate_title_with_llm(last_message, language)
+        logger.debug(f"LLM-generated title: {artifact_title}")
+        
         # Generate artifact_id for caching
         artifact_id = str(uuid.uuid4())
         
-        # Emit TEXT_MESSAGE_START with artifact metadata including artifact_id
+        # Emit TEXT_MESSAGE_START with artifact metadata including artifact_id and inferred title
         yield TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
@@ -182,7 +185,7 @@ class CanvasAgent(BaseAgent):
                 "message_type": "artifact",
                 "artifact_id": artifact_id,  # Send artifact_id to frontend
                 "language": language,
-                "title": "Generating artifact..."  # Will update when complete
+                "title": artifact_title  # Use inferred title from message
             }
         )
         
@@ -443,6 +446,44 @@ class CanvasAgent(BaseAgent):
                 return line.strip()[:50]
         
         return "Artifact"
+    
+    async def _generate_title_with_llm(self, message: str, language: str) -> str:
+        """Generate a concise, meaningful title using LLM based on user's message"""
+        try:
+            title_prompt = f"""Generate a concise title (10 words max) for the content being requested. The title should be clear and descriptive.
+
+User request: {message}
+Language/Type: {language}
+
+Return ONLY the title, nothing else. No quotes, no explanation.
+
+Examples:
+- "Create a Python function to calculate fibonacci" -> "Fibonacci Calculator"
+- "Write a React component for todo list" -> "Todo List Component"
+- "Generate markdown documentation for API" -> "API Documentation"
+
+Title:"""
+            
+            response = await self.llm.ainvoke([{"role": "user", "content": title_prompt}])
+            title = response.content.strip().strip('"\'')
+            
+            # Validate and limit length
+            if title and len(title) > 0:
+                return title[:60]  # Max 60 chars
+            else:
+                logger.warning("LLM returned empty title, using fallback")
+                return self._fallback_title(message)
+                
+        except Exception as e:
+            logger.error(f"Error generating title with LLM: {e}")
+            return self._fallback_title(message)
+    
+    def _fallback_title(self, message: str) -> str:
+        """Fallback title generation if LLM fails"""
+        words = message.split()[:4]
+        title = " ".join(words).capitalize()
+        return title[:50] if title else "New Artifact"
+
     
     def _get_creation_prompt(self) -> str:
         """Get system prompt for artifact creation"""
