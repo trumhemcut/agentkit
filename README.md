@@ -1,19 +1,87 @@
 # AgentKit
 
-A modern multi-agent AI assistant built with **LangGraph** for orchestration and **AG-UI** for real-time agent-frontend communication.
+**A modern multi-agent AI assistant built with LangGraph and AG-UI**
+
+Experience powerful AI conversations with real-time streaming, multi-agent orchestration, and an intuitive canvas mode for complex interactions. Built for developers who want a flexible, extensible, and beautiful AI assistant.
+
+![AgentKit Chat Interface](chat_screen.png)
+*Full-screen chat interface with canvas mode for enhanced AI interactions*
+
+## ✨ Why AgentKit?
+
+- **🎨 Beautiful Canvas Mode**: Visualize agent thinking and create complex workflows in an intuitive interface
+- **⚡ Real-time Streaming**: Watch agents think and respond in real-time with AG-UI protocol
+- **🧠 Multi-Agent Intelligence**: LangGraph orchestration for sophisticated task handling
+- **🎯 Built for Developers**: Type-safe, well-documented, and easy to extend
+- **🌐 Run Anywhere**: Local-first with Ollama, extensible to any LLM provider
 
 ## 🚀 Features
 
-- **Multi-Agent Orchestration**: Powered by LangGraph for complex workflow management
-- **Real-time Streaming**: AG-UI protocol for live agent communication
-- **Modern UI**: NextJS + Shadcn UI for a beautiful, responsive interface
-- **Flexible LLM Integration**: Default Ollama support, extensible to OpenAI, Anthropic, and more
-- **Thread Management**: Create and manage multiple conversation threads
-- **Type-Safe**: Full TypeScript support on frontend, Python type hints on backend
-- **Observability**: Optional LangFuse integration for monitoring and debugging
-- **Local Storage**: Client-side persistence for threads and messages
+- **🎨 Canvas Mode**: Interactive full-screen canvas for visualizing agent workflows and complex interactions
+- **🔄 Multi-Agent Orchestration**: Powered by LangGraph for complex workflow management
+- **⚡ Real-time Streaming**: AG-UI protocol for live agent communication with instant feedback
+- **💬 Thread Management**: Create and manage multiple conversation threads seamlessly
+- **🎯 Modern UI**: NextJS + Shadcn UI for a beautiful, responsive, and accessible interface
+- **🔌 Flexible LLM Integration**: Default Ollama support, easily extensible to OpenAI, Anthropic, Azure, and more
+- **🛡️ Type-Safe**: Full TypeScript support on frontend, Python type hints on backend
+- **📊 Observability**: Optional LangFuse integration for monitoring and debugging agents
+- **💾 Local Storage**: Client-side persistence for threads and messages
 
-## 📋 Prerequisites
+## ⚡ Quick Start
+
+Get up and running in 5 minutes:
+
+### 1️⃣ Install Prerequisites
+
+```bash
+# Install Ollama (if not already installed)
+# macOS/Linux:
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull the default model
+ollama pull qwen:7b
+```
+
+### 2️⃣ Start Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+✅ Backend running at `http://localhost:8000`
+
+### 3️⃣ Start Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+✅ Open `http://localhost:3000` and start chatting!
+
+## 🎨 Canvas Mode
+
+AgentKit includes a powerful canvas mode that provides a full-screen, interactive workspace for complex agent interactions. Perfect for:
+
+- **Visual Workflows**: See how agents break down and execute complex tasks
+- **Code Generation**: Interactive code editing and iteration with AI
+- **Artifact Creation**: Generate and refine documents, designs, or structured content
+- **Multi-step Planning**: Visualize agent reasoning across multiple steps
+
+The canvas mode seamlessly integrates with the chat interface, automatically activating when agents need to present complex, structured outputs.
+
+---
+
+## 📋 Full Setup Guide
+
+For more detailed setup instructions, see below.
+
+### System Requirements
 
 - **Python 3.10+** (for backend)
 - **Node.js 18+** (for frontend)
@@ -47,9 +115,9 @@ User Input → Frontend (AG-UI Client) → Backend (FastAPI) → LangGraph Agent
 User Display ← Frontend ← AG-UI Events (SSE Stream) ← Backend ← Response
 ```
 
-## 🛠️ Quick Start
+## � Detailed Setup
 
-### 1. Backend Setup
+### Backend Setup
 
 ```bash
 # Navigate to backend directory
@@ -77,7 +145,7 @@ python main.py
 
 Backend will be available at `http://localhost:8000`
 
-### 2. Frontend Setup
+### Frontend Setup
 
 ```bash
 # Navigate to frontend directory
