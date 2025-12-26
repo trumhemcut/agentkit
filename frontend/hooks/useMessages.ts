@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Message, isArtifactMessage } from '@/types/chat';
 import { StorageService } from '@/services/storage';
+import { useAutoScroll } from './useAutoScroll';
 
 export interface UseMessagesOptions {
   onArtifactDetected?: (message: Message) => void;
@@ -17,31 +18,38 @@ export interface UseMessagesOptions {
 export function useMessages(threadId: string | null, options?: UseMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Use auto-scroll hook with messages as dependency
+  const { scrollRef, handleScroll, scrollToBottom, shouldAutoScroll } = useAutoScroll(
+    [messages],
+    { isInitialLoad }
+  );
 
   // Load messages when thread changes
   useEffect(() => {
     if (!threadId) {
       setMessages([]);
+      setIsInitialLoad(true);
       return;
     }
 
+    // Mark as initial load when loading thread messages
+    setIsInitialLoad(true);
+    
     const thread = StorageService.getThread(threadId);
     if (thread) {
       setMessages(thread.messages);
     } else {
       setMessages([]);
     }
+    
+    // After messages are loaded and rendered, mark initial load as complete
+    // Use a small delay to allow rendering to complete
+    setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
   }, [threadId]);
-
-  /**
-   * Scroll to bottom of messages
-   */
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
 
   /**
    * Add a new message
@@ -64,13 +72,6 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
     } else {
       console.warn('[useMessages] Cannot add message - threadId is null');
     }
-    
-    // Auto-scroll to bottom
-    setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 100);
   }, [threadId, options]); // Include options as dependency
 
   /**
@@ -136,5 +137,7 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
     clearMessages,
     scrollToBottom,
     scrollRef,
+    handleScroll,
+    shouldAutoScroll,
   };
 }

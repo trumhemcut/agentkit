@@ -31,7 +31,7 @@ export interface ChatContainerRef {
  * Main chat interface with message history and input
  */
 export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(function ChatContainer({ threadId, onUpdateThreadTitle, onRefreshThreads, onArtifactDetected, onEnableCanvas }, ref) {
-  const { messages, addMessage, updateMessage, removeMessage, scrollRef } = useMessages(threadId, {
+  const { messages, addMessage, updateMessage, removeMessage, scrollRef, handleScroll, scrollToBottom } = useMessages(threadId, {
     onArtifactDetected,
   });
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
@@ -316,6 +316,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     // Add user message to chat
     addMessage(userMessage);
+    
+    // Force scroll to bottom when user sends a message
+    setTimeout(() => scrollToBottom(true), 0);
 
     // Add pending agent message immediately
     const pendingMessage: ChatMessage = {
@@ -444,7 +447,12 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0 overflow-hidden">
-        <MessageHistory messages={messages} scrollRef={scrollRef} onEnableCanvas={onEnableCanvas} />
+        <MessageHistory 
+          messages={messages} 
+          scrollRef={scrollRef} 
+          onEnableCanvas={onEnableCanvas}
+          onScroll={handleScroll}
+        />
       </div>
       <ChatInput 
         ref={chatInputRef}

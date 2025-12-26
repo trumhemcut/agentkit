@@ -4,6 +4,37 @@
 
 ## Active Hooks
 
+### useAutoScroll
+
+**Location**: `hooks/useAutoScroll.ts`
+
+**Purpose**: Manages intelligent auto-scroll behavior for chat messages.
+
+**Features**:
+- Auto-scrolls when user is near bottom and new messages arrive
+- Preserves scroll position when user manually scrolls up
+- Skips auto-scroll on initial thread history load
+- Configurable scroll threshold (default: 100px from bottom)
+
+### API
+
+```typescript
+const {
+  scrollRef,        // Ref to attach to scrollable container
+  handleScroll,     // Scroll event handler
+  scrollToBottom,   // Function to manually scroll to bottom
+  shouldAutoScroll, // Whether auto-scroll is enabled
+  isNearBottom,     // Function to check if near bottom
+} = useAutoScroll([messages], { 
+  isInitialLoad: false,
+  scrollThreshold: 100 
+});
+```
+
+**See**: [useAutoScroll.md](./useAutoScroll.md) for detailed documentation.
+
+---
+
 ### useChatThreads
 
 **Location**: `hooks/useChatThreads.ts`
@@ -72,26 +103,57 @@ Refreshes thread list from LocalStorage (useful after external changes).
 
 **Location**: `hooks/useMessages.ts`
 
-**Purpose**: Manages message state for a specific thread.
+**Purpose**: Manages message state for a specific thread. Integrates with `useAutoScroll` for intelligent scroll behavior.
 
 ### API
 
 ```typescript
 const {
-  messages,       // All messages in thread
-  isLoading,      // Loading state
-  addMessage,     // Add new message
-  updateMessage,  // Update existing message
-  clearMessages,  // Clear all messages
-  scrollToBottom, // Scroll to bottom
-  scrollRef,      // Ref for scroll container
-} = useMessages(threadId);
+  messages,         // All messages in thread
+  isLoading,        // Loading state
+  addMessage,       // Add new message
+  updateMessage,    // Update existing message
+  removeMessage,    // Remove a message
+  clearMessages,    // Clear all messages
+  scrollToBottom,   // Scroll to bottom (from useAutoScroll)
+  scrollRef,        // Ref for scroll container (from useAutoScroll)
+  handleScroll,     // Scroll event handler (from useAutoScroll)
+  shouldAutoScroll, // Whether auto-scroll is enabled (from useAutoScroll)
+} = useMessages(threadId, { onArtifactDetected });
+```
+
+### Auto-Scroll Integration
+
+The hook automatically integrates `useAutoScroll` to provide:
+- Auto-scroll when new messages arrive (user or agent)
+- Preserved scroll position when user scrolls up
+- No auto-scroll on initial thread load or thread switching
+
+**Implementation**:
+```typescript
+// Inside useMessages
+const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+const { scrollRef, handleScroll, scrollToBottom } = useAutoScroll(
+  [messages],
+  { isInitialLoad }
+);
+
+// When thread changes, mark as initial load
+useEffect(() => {
+  if (!threadId) return;
+  
+  setIsInitialLoad(true);
+  // Load messages...
+  
+  setTimeout(() => setIsInitialLoad(false), 100);
+}, [threadId]);
 ```
 
 ### Methods
 
 #### `addMessage(message: Message)`
-Adds a new message to the thread and saves to storage.
+Adds a new message to the thread and saves to storage. Auto-scroll will trigger if user is near bottom.
 
 **Example**:
 ```typescript
@@ -105,7 +167,7 @@ addMessage({
 ```
 
 #### `updateMessage(messageId: string, updates: Partial<Message>)`
-Updates an existing message (useful for streaming).
+Updates an existing message (useful for streaming). Auto-scroll will trigger during streaming if user is near bottom.
 
 **Example**:
 ```typescript
@@ -113,6 +175,14 @@ updateMessage('msg-123', {
   content: 'Updated content',
   isStreaming: false 
 });
+```
+
+#### `removeMessage(messageId: string)`
+Removes a message from the thread and storage.
+
+**Example**:
+```typescript
+removeMessage('msg-123');
 ```
 
 #### `clearMessages()`

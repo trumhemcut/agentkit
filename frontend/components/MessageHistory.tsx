@@ -3,12 +3,13 @@
 import { MessageBubble } from './MessageBubble';
 import { Message } from '@/types/chat';
 import { MessageSquare } from 'lucide-react';
-import { RefObject } from 'react';
+import { RefObject, useImperativeHandle } from 'react';
 
 interface MessageHistoryProps {
   messages: Message[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   onEnableCanvas?: (message: Message) => void;
+  onScroll?: () => void;
 }
 
 /**
@@ -16,7 +17,7 @@ interface MessageHistoryProps {
  * 
  * Displays list of messages with auto-scroll
  */
-export function MessageHistory({ messages, scrollRef, onEnableCanvas }: MessageHistoryProps) {
+export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll }: MessageHistoryProps) {
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
@@ -30,7 +31,11 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas }: MessageH
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4" ref={scrollRef}>
+    <div 
+      className="h-full overflow-y-auto p-4 space-y-4" 
+      ref={scrollRef}
+      onScroll={onScroll}
+    >
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} />
       ))}
