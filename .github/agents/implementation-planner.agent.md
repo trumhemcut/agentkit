@@ -51,7 +51,8 @@ This agent **will not**:
   - **AG-UI Protocol**: Message formats, state contracts, event handlers
   - **Frontend Tasks**: Shadcn UI components, AG-UI visualization (for Frontend Agent)
   - **Dependencies**: Task order, integration points, handoff requirements
-- Store requirements in the folder `/.docs/1-implementation-plans/`
+- Store requirements plan in the folder `/.docs/1-implementation-plans/`
+- **File naming**: `/.docs/1-implementation-plans/{order}-{requirement-name}-plan.md`
 
 ## Creating Implementation Plans
 **Always use the requirements in `.docs/0-requirements/` as the basis for your plans.**

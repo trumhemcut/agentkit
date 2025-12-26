@@ -1,0 +1,1 @@
+Trong lúc chat, khi agent / user trả lời, thì thanh scrollbar ko tự động trượt xuống dưới cùng.
