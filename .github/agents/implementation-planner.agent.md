@@ -17,7 +17,7 @@ This agent specializes in creating implementation plans for agentic AI applicati
 ## When to Use
 
 Use this agent when you need to:
-- Plan a new feature that spans LangGraph workflows and React UI
+- Plan a new feature that spans LangGraph workflows and React UI (with Shadcn UI)
 - Design the AG-UI protocol for agent-frontend communication
 - Break down complex multi-agent features into sequential tasks
 - Create implementation plans that clearly separate backend and frontend concerns
@@ -33,7 +33,7 @@ This agent **will not**:
 - Override existing AG-UI protocol conventions
 - Skip necessary integration testing steps
 
-**Refer to specialized agents for implementation:**
+**Refer / delegate to specialized agents for implementation:**
 - Backend tasks → See [backend.agent.md](backend.agent.md) for LangGraph patterns (Python, FastAPI, AG-UI, LangFuse)
 - Frontend tasks → See [frontend.agent.md](frontend.agent.md) for AG-UI patterns (NextJS, React, TypeScript, Shadcn UI, AG-UI client)
 

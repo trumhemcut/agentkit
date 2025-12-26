@@ -98,6 +98,9 @@ You must identify **architecture flaws, code smells, anti-patterns, security ris
 
 ## Required Output Format (STRICT)
 
+- **Store the review output in the folder `/.docs/3-architecture-review/`**
+- **File naming**: `/.docs/3-architecture-review/{order}-{feature-name}-review.md`
+
 ### 1. Architecture Summary (Inferred)
 
 ### 2. Top 10 Findings (Ranked)
@@ -196,3 +199,8 @@ If requested:
 - Configuration & secrets management
 - Authentication / authorization logic
 - Logging, metrics, and tests
+
+---
+
+## Boundary
+- Never creating code directly (only review + advise)
