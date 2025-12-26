@@ -7,7 +7,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Bot, Check, ChevronDown, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -18,18 +18,22 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useModelSelection } from '@/hooks/useModelSelection';
+import { useModelStore, initializeModelStore } from '@/stores/modelStore';
 import { cn } from '@/lib/utils';
 
 export function ModelSelector() {
-  const {
-    models,
-    selectedModel,
-    selectedModelInfo,
-    loading,
-    error,
-    selectModel,
-  } = useModelSelection();
+  // Auto-initialize store on mount
+  useEffect(() => {
+    initializeModelStore();
+  }, []);
+
+  // Selective subscriptions for better performance
+  const selectedModel = useModelStore((state) => state.selectedModel);
+  const availableModels = useModelStore((state) => state.availableModels);
+  const loading = useModelStore((state) => state.loading);
+  const error = useModelStore((state) => state.error);
+  const setSelectedModel = useModelStore((state) => state.setSelectedModel);
+  const selectedModelInfo = useModelStore((state) => state.getSelectedModelInfo());
 
   // Show loading state
   if (loading) {
@@ -42,7 +46,7 @@ export function ModelSelector() {
   }
 
   // Show error state
-  if (error || models.length === 0) {
+  if (error || availableModels.length === 0) {
     return (
       <Button variant="ghost" size="sm" disabled className="gap-2">
         <Bot className="h-4 w-4" />
@@ -65,10 +69,10 @@ export function ModelSelector() {
       <DropdownMenuContent align="start" className="w-[240px]">
         <DropdownMenuLabel>Select Model</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {models.map((model) => (
+        {availableModels.map((model) => (
           <DropdownMenuItem
             key={model.id}
-            onClick={() => selectModel(model.id)}
+            onClick={() => setSelectedModel(model.id)}
             disabled={!model.available}
             className={cn(
               "flex items-start gap-2 py-2 cursor-pointer",

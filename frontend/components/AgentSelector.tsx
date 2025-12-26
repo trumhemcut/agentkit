@@ -5,8 +5,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAgentSelection } from '@/hooks/useAgentSelection';
+import { useAgentStore, initializeAgentStore } from '@/stores/agentStore';
 import { MessageCircle, Layout, ChevronDown } from 'lucide-react';
+import { useEffect } from 'react';
 
 /**
  * Agent selector component
@@ -15,7 +16,16 @@ import { MessageCircle, Layout, ChevronDown } from 'lucide-react';
  * Positioned in header similar to model selector
  */
 export function AgentSelector() {
-  const { selectedAgent, availableAgents, setSelectedAgent, loading } = useAgentSelection();
+  // Auto-initialize store on mount
+  useEffect(() => {
+    initializeAgentStore();
+  }, []);
+
+  // Selective subscriptions for better performance
+  const selectedAgent = useAgentStore((state) => state.selectedAgent);
+  const availableAgents = useAgentStore((state) => state.availableAgents);
+  const setSelectedAgent = useAgentStore((state) => state.setSelectedAgent);
+  const loading = useAgentStore((state) => state.loading);
   
   // Map icon names to lucide icons
   const getIcon = (iconName: string) => {

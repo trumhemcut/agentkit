@@ -5,8 +5,8 @@ import { MessageHistory } from './MessageHistory';
 import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
-import { useModelSelection } from '@/hooks/useModelSelection';
-import { useAgentSelection } from '@/hooks/useAgentSelection';
+import { useModelStore } from '@/stores/modelStore';
+import { useAgentStore } from '@/stores/agentStore';
 import { Message as ChatMessage } from '@/types/chat';
 import { Message as APIMessage, sendChatMessage, sendCanvasMessage } from '@/services/api';
 import { EventType, CanvasEventType } from '@/types/agui';
@@ -35,8 +35,10 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     onArtifactDetected,
   });
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
-  const { selectedModel } = useModelSelection();
-  const { selectedAgent } = useAgentSelection();
+  // Only subscribe to selectedModel - won't re-render on other model store changes
+  const selectedModel = useModelStore((state) => state.selectedModel);
+  // Only subscribe to selectedAgent - won't re-render on other agent store changes
+  const selectedAgent = useAgentStore((state) => state.selectedAgent);
   
   // Debug log to track selectedModel changes
   useEffect(() => {
