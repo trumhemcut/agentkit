@@ -34,14 +34,16 @@ export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }
     onEnableCanvas?.(message);
   };
 
+  const isThinking = (message.isPending || message.isStreaming) && message.content === '';
+
   return (
     <div className={cn("flex p-4 justify-start", canvasModeActive ? "gap-0" : "gap-3")}>
       {!canvasModeActive && <AvatarIcon role="agent" />}
       
-      <div className="flex flex-col gap-1 flex-1">
+      <div className={cn("flex flex-col gap-1", !isThinking && canvasModeActive ? "flex-1" : "max-w-[70%]")}>
         <Card className="bg-muted border-0">
           <CardContent className="p-3">
-            {(message.isPending || message.isStreaming) && message.content === '' ? (
+            {isThinking ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">Thinking...</span>
