@@ -13,6 +13,7 @@ import rehypeHighlight from 'rehype-highlight';
 interface AgentMessageBubbleProps {
   message: Message;
   onEnableCanvas?: (message: Message) => void;
+  canvasModeActive?: boolean;
 }
 
 /**
@@ -20,7 +21,7 @@ interface AgentMessageBubbleProps {
  * 
  * Displays an agent chat message with avatar and markdown-rendered content
  */
-export function AgentMessageBubble({ message, onEnableCanvas }: AgentMessageBubbleProps) {
+export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }: AgentMessageBubbleProps) {
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { 
@@ -34,16 +35,10 @@ export function AgentMessageBubble({ message, onEnableCanvas }: AgentMessageBubb
   };
 
   return (
-    <div className="flex gap-3 p-4 justify-start">
-      <AvatarIcon role="agent" />
+    <div className={cn("flex p-4 justify-start", canvasModeActive ? "gap-0" : "gap-3")}>
+      {!canvasModeActive && <AvatarIcon role="agent" />}
       
-      <div className="flex flex-col gap-1 max-w-[70%]">
-        {message.agentName && (
-          <span className="text-xs font-medium text-muted-foreground">
-            {message.agentName}
-          </span>
-        )}
-        
+      <div className="flex flex-col gap-1 flex-1">
         <Card className="bg-muted border-0">
           <CardContent className="p-3">
             {(message.isPending || message.isStreaming) && message.content === '' ? (

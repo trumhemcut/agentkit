@@ -453,6 +453,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           scrollRef={scrollRef} 
           onEnableCanvas={onEnableCanvas}
           onScroll={handleScroll}
+          canvasModeActive={canvasModeActive}
         />
       </div>
       <ChatInput 

@@ -7,6 +7,7 @@ import { AgentMessageBubble } from './AgentMessageBubble';
 interface MessageBubbleProps {
   message: Message;
   onEnableCanvas?: (message: Message) => void;
+  canvasModeActive?: boolean;
 }
 
 /**
@@ -14,10 +15,10 @@ interface MessageBubbleProps {
  * 
  * Routes to appropriate message bubble component based on message role
  */
-export function MessageBubble({ message, onEnableCanvas }: MessageBubbleProps) {
+export function MessageBubble({ message, onEnableCanvas, canvasModeActive }: MessageBubbleProps) {
   if (message.role === 'user') {
-    return <UserMessageBubble message={message} />;
+    return <UserMessageBubble message={message} canvasModeActive={canvasModeActive} />;
   }
   
-  return <AgentMessageBubble message={message} onEnableCanvas={onEnableCanvas} />;
+  return <AgentMessageBubble message={message} onEnableCanvas={onEnableCanvas} canvasModeActive={canvasModeActive} />;
 }

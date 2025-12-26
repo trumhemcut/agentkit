@@ -10,6 +10,7 @@ interface MessageHistoryProps {
   scrollRef?: RefObject<HTMLDivElement | null>;
   onEnableCanvas?: (message: Message) => void;
   onScroll?: () => void;
+  canvasModeActive?: boolean;
 }
 
 /**
@@ -17,7 +18,7 @@ interface MessageHistoryProps {
  * 
  * Displays list of messages with auto-scroll
  */
-export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll }: MessageHistoryProps) {
+export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive }: MessageHistoryProps) {
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
@@ -37,7 +38,7 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll }
       onScroll={onScroll}
     >
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} />
+        <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} canvasModeActive={canvasModeActive} />
       ))}
     </div>
   );
