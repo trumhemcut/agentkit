@@ -1,6 +1,6 @@
 # Knowledge Base
 
-**Last Updated**: December 23, 2025
+**Last Updated**: December 26, 2025
 
 ## Overview
 
@@ -44,11 +44,12 @@ This knowledge base contains comprehensive documentation for the AgentKit multi-
     │   ├── useAGUI.md         # AG-UI integration hook
     │   ├── useChatThreads.md  # Thread management
     │   └── useMessages.md     # Message state
-    └── services/               # Frontend services
-        ├── overview.md        # Service layer
-        ├── agui-client.md     # SSE client
-        ├── api.md             # Backend API client
-        └── storage.md         # LocalStorage service
+    ├── services/               # Frontend services
+    │   ├── overview.md        # Service layer
+    │   ├── agui-client.md     # SSE client
+    │   ├── api.md             # Backend API client
+    │   └── storage.md         # LocalStorage service
+    └── resizable-canvas-panels.md # Resizable canvas layout feature
 ```
 
 ## 🎯 Quick Navigation
@@ -75,6 +76,7 @@ This knowledge base contains comprehensive documentation for the AgentKit multi-
 - [Component Library](frontend/components/overview.md) - UI component architecture
 - [AG-UI Hooks](frontend/hooks/useAGUI.md) - Real-time agent integration
 - [Services](frontend/services/overview.md) - Frontend service layer
+- [Resizable Canvas Panels](frontend/resizable-canvas-panels.md) - Canvas layout customization
 
 ## 🔑 Key Concepts
 
@@ -185,4 +187,4 @@ Real-world usage scenarios
 
 ---
 
-*This knowledge base is actively maintained. Last major update: December 23, 2025*
+*This knowledge base is actively maintained. Last major update: December 26, 2025*

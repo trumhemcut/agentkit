@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatContainer, ChatContainerRef } from '@/components/ChatContainer';
 import { ArtifactPanel } from '@/components/ArtifactPanel';
+import { ResizableDivider } from '@/components/ResizableDivider';
 import { useChatThreads } from '@/hooks/useChatThreads';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useCanvasMode } from '@/hooks/useCanvasMode';
@@ -35,6 +36,9 @@ function HomeContent() {
   const canvasModeSidebarExpanded = !isCollapsed && canvasModeActive;
   
   const chatContainerRef = useRef<ChatContainerRef>(null);
+  
+  // Resizable panel widths (in percentages)
+  const [chatPanelWidth, setChatPanelWidth] = useState(33.33);
   
   // Get canvas context to load and set artifactId
   const { setArtifactId, loadArtifactById } = useCanvas();
@@ -79,6 +83,10 @@ function HomeContent() {
     deactivateCanvas();
     setCollapsed(false); // Restore sidebar when canvas closes
   };
+  
+  const handleResize = useCallback((leftWidth: number) => {
+    setChatPanelWidth(leftWidth);
+  }, []);
 
   return (
     <Layout
@@ -94,8 +102,11 @@ function HomeContent() {
         />
       }
     >
-      <div className={canvasModeActive ? "grid grid-cols-3 h-full gap-0 canvas-grid-layout" : "flex h-full canvas-transition"}>
-        <div className={canvasModeActive ? "col-span-1 h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}>
+      <div className={canvasModeActive ? "flex h-full canvas-grid-layout" : "flex h-full canvas-transition"}>
+        <div 
+          className={canvasModeActive ? "h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}
+          style={canvasModeActive ? { width: `${chatPanelWidth}%` } : undefined}
+        >
           <ChatContainer 
             ref={chatContainerRef}
             threadId={currentThreadId}
@@ -107,12 +118,23 @@ function HomeContent() {
           />
         </div>
         {canvasModeActive && currentArtifactMessage && (
-          <div className="col-span-2 h-full overflow-hidden">
-            <ArtifactPanel 
-              message={currentArtifactMessage} 
-              onClose={handleCloseCanvas}
+          <>
+            <ResizableDivider
+              onResize={handleResize}
+              minLeftWidth={20}
+              maxLeftWidth={70}
+              initialLeftWidth={chatPanelWidth}
             />
-          </div>
+            <div 
+              className="h-full overflow-hidden"
+              style={{ width: `${100 - chatPanelWidth}%` }}
+            >
+              <ArtifactPanel 
+                message={currentArtifactMessage} 
+                onClose={handleCloseCanvas}
+              />
+            </div>
+          </>
         )}
       </div>
     </Layout>

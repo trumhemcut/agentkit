@@ -20,10 +20,20 @@ Manages canvas state including:
 
 ### 3. Core Components
 
+#### Resizable Divider ([components/ResizableDivider.tsx](../../frontend/components/ResizableDivider.tsx))
+Draggable vertical divider for adjusting panel widths:
+- Minimum width: 20% (configurable)
+- Maximum width: 70% (configurable)
+- Default: 33.33% (1:2 ratio)
+- Visual grip indicator on hover
+- Smooth drag interaction with cursor feedback
+
 #### Canvas Layout ([components/Canvas/CanvasLayout.tsx](../components/Canvas/CanvasLayout.tsx))
-Split-view layout with 40/60 ratio:
-- Left: Chat panel
-- Right: Artifact panel
+Split-view layout with adjustable ratio:
+- Left: Chat panel (resizable from 20% to 70%)
+- Center: Resizable divider
+- Right: Artifact panel (automatically sized)
+- Layout persists during session
 
 #### Artifact Renderer ([components/Canvas/ArtifactRenderer.tsx](../components/Canvas/ArtifactRenderer.tsx))
 Main component for displaying artifacts:
