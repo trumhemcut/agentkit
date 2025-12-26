@@ -150,6 +150,8 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
     encoder = EventEncoder(accept=accept_header)
     
     async def event_generator():
+        import asyncio
+        
         # Send RUN_STARTED event
         yield encoder.encode(
             RunStartedEvent(
@@ -170,20 +172,45 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
             # Prepare state based on agent type
             state = prepare_state_for_agent(agent_id, input_data)
             
-            # Event buffer to collect streamed events
-            event_buffer = []
+            # Use async queue for real-time streaming
+            event_queue = asyncio.Queue()
+            graph_done = asyncio.Event()
+            graph_error = None
             
             async def event_callback(event):
                 """Callback invoked by graph nodes for streaming events"""
-                event_buffer.append(event)
+                await event_queue.put(event)
             
-            # Execute graph with streaming callback
-            config = {"configurable": {"event_callback": event_callback}}
-            await graph.ainvoke(state, config)
+            async def run_graph():
+                """Execute graph in background"""
+                nonlocal graph_error
+                try:
+                    config = {"configurable": {"event_callback": event_callback}}
+                    await graph.ainvoke(state, config)
+                except Exception as e:
+                    graph_error = e
+                finally:
+                    graph_done.set()
             
-            # Yield all collected events
-            for event in event_buffer:
-                yield encoder.encode(event)
+            # Start graph execution in background
+            graph_task = asyncio.create_task(run_graph())
+            
+            # Stream events as they arrive
+            while not graph_done.is_set() or not event_queue.empty():
+                try:
+                    # Wait for event with timeout to check if graph is done
+                    event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
+                    yield encoder.encode(event)
+                except asyncio.TimeoutError:
+                    # No event yet, check if graph is done
+                    continue
+            
+            # Wait for graph to complete
+            await graph_task
+            
+            # Check if there was an error during graph execution
+            if graph_error:
+                raise graph_error
             
             # Send RUN_FINISHED event
             yield encoder.encode(

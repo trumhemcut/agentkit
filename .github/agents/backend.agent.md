@@ -49,6 +49,7 @@ This agent **will not**:
 - Apply best practices for agent orchestration, collaboration, and debugging
 - Write modular, testable, and maintainable code
 - Include docstrings and comments for clarity
+- Must use async programming everywhere possible to avoid blocking, including agent nodes and workflows
 
 ## Folder structure would be like this:
 ```
