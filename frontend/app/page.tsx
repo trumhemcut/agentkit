@@ -94,7 +94,7 @@ function HomeContent() {
         <Sidebar
           threads={threads}
           currentThreadId={currentThreadId}
-          isCollapsed={isCollapsed}
+          isCollapsed={isCollapsed || canvasModeActive}
           onToggleCollapse={toggleCollapse}
           onNewChat={handleNewChat}
           onSelectThread={selectThread}
