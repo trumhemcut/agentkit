@@ -4,7 +4,7 @@
 Multi-agent chat application using **LangGraph** for orchestration and **AG-UI** for agent-frontend protocol communication.
 
 **Stack**: 
-- Backend: Python, FastAPI, LangGraph, AG-UI
+- Backend: Python, FastAPI, LangGraph, AG-UI, pytest
 - Frontend: TypeScript, NextJS, Shadcn UI, AG-UI
 
 ## Architecture
@@ -92,12 +92,11 @@ This project uses specialized chat agents for focused development:
 - Refer to .docs/1-implementation-plans/ for implementation plans
 - Refer to .docs/2-knowledge-base/ for comprehensive knowledge base
 
-**When you finish, always update the knowledge-base documentation in `/.docs/2-knowledge-base/` to reflect new patterns or components created in a well-organised manner**
-
-**Don't create any other guidance outside of the knowledge-base documentation.**
-
-**You must follow best practices for building NextJS apps with Shadcn UI and AG-UI integration.**
-**Always validate architecture decisions**
-**Always consider refactoring for better code quality and maintainability**
-
-**always use context7** to fetch latest document and code snippets.
+## Key consideration & practices
+- When you finish, always update the knowledge-base documentation in `/.docs/2-knowledge-base/` to reflect new patterns or components created in a well-organised manner
+- Don't create any other guidance outside of the knowledge-base documentation.
+- You must follow best practices for building NextJS apps with Shadcn UI and AG-UI integration.
+- Always validate architecture decisions
+- Always consider refactoring for better code quality and maintainability
+- Write meaningful logs
+- **always use context7** to fetch latest document and code snippets.

@@ -41,6 +41,7 @@ This agent **will not**:
 - **AG-UI Protocol** for agent-frontend communication
 - **Python** for implementation
 - **FastAPI** for API server (backend endpoint)
+- Testing with **pytest**
 - **LangFuse** for observability: optional
 
 ## Rules

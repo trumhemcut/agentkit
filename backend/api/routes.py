@@ -4,8 +4,7 @@ from fastapi.responses import StreamingResponse
 from ag_ui.core import EventType, RunStartedEvent, RunFinishedEvent, RunErrorEvent
 from ag_ui.encoder import EventEncoder
 from api.models import RunAgentInput, CanvasMessageRequest, ArtifactUpdate
-from graphs.chat_graph import create_chat_graph
-from graphs.canvas_graph import create_canvas_graph
+from graphs.graph_factory import graph_factory
 from llm.provider_client import provider_client
 from agents.agent_registry import agent_registry
 from config import settings
@@ -13,6 +12,40 @@ from cache.artifact_cache import artifact_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def prepare_state_for_agent(agent_id: str, input_data: RunAgentInput) -> dict:
+    """
+    Prepare initial state dictionary for graph execution
+    
+    Args:
+        agent_id: Agent identifier ("chat", "canvas", etc.)
+        input_data: Request data with messages, thread_id, run_id
+        
+    Returns:
+        State dict matching the agent's StateGraph schema
+    """
+    # Base state for all agents
+    state = {
+        "messages": [
+            {"role": msg.role, "content": msg.content} 
+            for msg in input_data.messages
+        ],
+        "thread_id": input_data.thread_id,
+        "run_id": input_data.run_id
+    }
+    
+    # Agent-specific state extensions
+    if agent_id == "canvas":
+        # Canvas agent needs additional artifact state
+        state.update({
+            "artifact": input_data.artifact.model_dump() if input_data.artifact else None,
+            "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
+            "artifact_id": input_data.artifact_id,
+            "artifactAction": input_data.action  # Will be detected by canvas graph if None
+        })
+    
+    return state
 
 
 @router.get("/agents")
@@ -96,6 +129,8 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
     - /chat/chat: Text-only conversations (ChatAgent)
     - /chat/canvas: Text + artifact generation (CanvasAgent)
     
+    All agents are executed through LangGraph workflows for consistent behavior.
+    
     Args:
         agent_id: Agent identifier (e.g., 'chat', 'canvas')
         input_data: Chat request with messages, thread_id, run_id, optional model
@@ -125,51 +160,30 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
         )
         
         try:
-            # Route to appropriate agent based on agent_id
-            if agent_id == "chat":
-                # Use ChatAgent for text-only conversations
-                from agents.chat_agent import ChatAgent
-                state = {
-                    "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
-                    "thread_id": input_data.thread_id,
-                    "run_id": input_data.run_id
-                }
-                chat_agent = ChatAgent(
-                    model=input_data.model,
-                    provider=input_data.provider
-                )
-                async for event in chat_agent.run(state):
-                    yield encoder.encode(event)
-                    
-            elif agent_id == "canvas":
-                # Use CanvasAgent for text + artifact conversations
-                from agents.canvas_agent import CanvasAgent
-                
-                # Handle artifact retrieval: prioritize artifact_id over artifact
-                artifact = None
-                if input_data.artifact:
-                    logger.info("Client sent full artifact object")
-                    artifact = input_data.artifact.model_dump()
-                else:
-                    logger.warning(f"Artifact ID provided but not found in cache: {input_data.artifact_id}")
-
-                state = {
-                    "messages": [{"role": msg.role, "content": msg.content} for msg in input_data.messages],
-                    "thread_id": input_data.thread_id,
-                    "run_id": input_data.run_id,
-                    "artifact": artifact,
-                    "artifact_id": input_data.artifact_id,  # Pass artifact_id to agent
-                    "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
-                    "artifactAction": input_data.action
-                }
-                canvas_agent = CanvasAgent(
-                    model=input_data.model,
-                    provider=input_data.provider
-                )
-                async for event in canvas_agent.run(state):
-                    yield encoder.encode(event)
-            else:
-                raise ValueError(f"Unknown agent: {agent_id}")
+            # Create graph dynamically based on agent_id
+            graph = graph_factory.create_graph(
+                agent_id=agent_id,
+                model=input_data.model,
+                provider=input_data.provider
+            )
+            
+            # Prepare state based on agent type
+            state = prepare_state_for_agent(agent_id, input_data)
+            
+            # Event buffer to collect streamed events
+            event_buffer = []
+            
+            async def event_callback(event):
+                """Callback invoked by graph nodes for streaming events"""
+                event_buffer.append(event)
+            
+            # Execute graph with streaming callback
+            config = {"configurable": {"event_callback": event_callback}}
+            await graph.ainvoke(state, config)
+            
+            # Yield all collected events
+            for event in event_buffer:
+                yield encoder.encode(event)
             
             # Send RUN_FINISHED event
             yield encoder.encode(

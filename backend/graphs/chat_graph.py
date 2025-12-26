@@ -3,16 +3,17 @@ from agents.base_agent import AgentState
 from agents.chat_agent import ChatAgent
 
 
-def create_chat_graph(model: str = None):
+def create_chat_graph(model: str = None, provider: str = None):
     """Create LangGraph state graph for chat agent with streaming support
     
     Args:
         model: Optional model name to use (e.g., 'qwen:7b', 'llama2:13b')
+        provider: Optional provider name (e.g., 'ollama', 'gemini', 'azure-openai')
     """
     workflow = StateGraph(AgentState)
     
-    # Create chat agent with optional model
-    chat_agent = ChatAgent(model=model)
+    # Create chat agent with optional model and provider
+    chat_agent = ChatAgent(model=model, provider=provider)
     
     async def chat_node(state: AgentState, config=None):
         """Wrapper node that dispatches agent events"""

@@ -5,6 +5,31 @@ from langgraph.graph import StateGraph, START, END
 logger = logging.getLogger(__name__)
 
 
+def prepare_canvas_state(state: "CanvasGraphState") -> "CanvasGraphState":
+    """
+    Prepare canvas state by handling artifact retrieval from cache
+    
+    This node resolves artifact_id to full artifact object if needed.
+    """
+    from cache.artifact_cache import artifact_cache
+    
+    artifact_id = state.get("artifact_id")
+    artifact = state.get("artifact")
+    
+    # If artifact_id is provided but no artifact, try to retrieve from cache
+    if artifact_id and not artifact:
+        cached_artifact = artifact_cache.get(artifact_id)
+        if cached_artifact:
+            logger.info(f"Retrieved artifact from cache: {artifact_id}")
+            state["artifact"] = cached_artifact
+        else:
+            logger.warning(f"Artifact ID provided but not found in cache: {artifact_id}")
+    elif artifact:
+        logger.info("Client sent full artifact object")
+    
+    return state
+
+
 class Artifact(TypedDict):
     """Simplified artifact structure"""
     artifact_id: str        # Unique identifier
@@ -77,9 +102,10 @@ def detect_intent_node(state: CanvasGraphState) -> CanvasGraphState:
 
 def route_to_handler(state: CanvasGraphState) -> str:
     """Route based on detected intent"""
-    if state.get("artifactAction"):
-        return "artifact_action"
-    return "chat_only"
+    action = state.get("artifactAction")
+    route = "artifact_action" if action else "chat_only"
+    logger.info(f"Routing to: {route} (artifactAction={action})")
+    return route
 
 
 def update_artifact_node(state: CanvasGraphState) -> CanvasGraphState:
@@ -88,29 +114,59 @@ def update_artifact_node(state: CanvasGraphState) -> CanvasGraphState:
     return state
 
 
-def chat_response_node(state: CanvasGraphState) -> CanvasGraphState:
-    """Handle non-artifact chat messages using regular chat agent"""
-    # This will be handled by the chat agent in the streaming response
-    # We just return the state as-is since streaming is handled at the route level
+async def chat_response_node(state: CanvasGraphState, config=None) -> CanvasGraphState:
+    """Handle non-artifact chat messages using regular chat agent with streaming"""
+    from agents.chat_agent import ChatAgent
+    
+    event_callback = config.get("configurable", {}).get("event_callback") if config else None
+    
+    # Use chat agent for non-artifact conversations
+    chat_agent = ChatAgent(model=None, provider=None)  # Uses defaults from state/config
+    
+    async for event in chat_agent.run(state):
+        if event_callback:
+            await event_callback(event)
+    
     return state
 
 
-def create_canvas_graph(model: str = None):
-    """Build canvas workflow graph"""
+def create_canvas_graph(model: str = None, provider: str = None):
+    """Build canvas workflow graph with streaming support
+    
+    Args:
+        model: Optional model name (e.g., 'qwen:7b', 'gemini-pro')
+        provider: Optional provider name (e.g., 'ollama', 'gemini', 'azure-openai')
+    """
     from agents.canvas_agent import CanvasAgent
     
-    canvas_agent = CanvasAgent(model=model)
+    canvas_agent = CanvasAgent(model=model, provider=provider)
     
     graph = StateGraph(CanvasGraphState)
     
+    # Async canvas node with streaming callback support
+    async def canvas_agent_node(state: CanvasGraphState, config=None):
+        """Wrapper node that dispatches agent events with streaming"""
+        event_callback = config.get("configurable", {}).get("event_callback") if config else None
+        
+        logger.info(f"Canvas agent node executing with action: {state.get('artifactAction')}")
+        
+        async for event in canvas_agent.run(state):
+            if event_callback:
+                await event_callback(event)
+        
+        logger.info(f"Canvas agent node completed")
+        return state
+    
     # Nodes
+    graph.add_node("prepare_state", prepare_canvas_state)
     graph.add_node("detect_intent", detect_intent_node)
-    graph.add_node("canvas_agent", canvas_agent.process_sync)  # Use sync version
+    graph.add_node("canvas_agent", canvas_agent_node)  # Use async version with callback
     graph.add_node("update_artifact", update_artifact_node)
     graph.add_node("chat_response", chat_response_node)
     
     # Edges
-    graph.add_edge(START, "detect_intent")
+    graph.add_edge(START, "prepare_state")
+    graph.add_edge("prepare_state", "detect_intent")
     
     graph.add_conditional_edges(
         "detect_intent",
