@@ -96,4 +96,8 @@ This project uses specialized chat agents for focused development:
 
 **Don't create any other guidance outside of the knowledge-base documentation.**
 
+**You must follow best practices for building NextJS apps with Shadcn UI and AG-UI integration.**
+**Always validate architecture decisions**
+**Always consider refactoring for better code quality and maintainability**
+
 **always use context7** to fetch latest document and code snippets.

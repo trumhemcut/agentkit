@@ -32,6 +32,8 @@ function HomeContent() {
     updateCurrentArtifact,
   } = useCanvasMode();
   
+  const canvasModeSidebarExpanded = !isCollapsed && canvasModeActive;
+  
   const chatContainerRef = useRef<ChatContainerRef>(null);
   
   // Get canvas context to load and set artifactId
@@ -84,7 +86,7 @@ function HomeContent() {
         <Sidebar
           threads={threads}
           currentThreadId={currentThreadId}
-          isCollapsed={isCollapsed || canvasModeActive}
+          isCollapsed={isCollapsed}
           onToggleCollapse={toggleCollapse}
           onNewChat={handleNewChat}
           onSelectThread={selectThread}
