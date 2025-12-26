@@ -218,6 +218,18 @@ useEffect(() => {
 
 ---
 
+## useAgentSelection
+
+⚠️ **DEPRECATED**: This hook has been migrated to `AgentSelectionContext` for proper state sharing.
+
+**Migration**: Use `useAgentSelection` from `@/contexts/AgentSelectionContext` instead.
+
+**Why Changed**: Multiple components using this hook created separate state instances, causing bugs where the UI showed one agent but sent API requests with a different agent.
+
+**See**: [State Management Guide](../state-management.md) for details on the Context migration.
+
+---
+
 ## Hook Composition Pattern
 
 These hooks are designed to work together:
