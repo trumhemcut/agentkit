@@ -39,10 +39,10 @@ Create a clean frontend architecture skeleton using Shadcn UI + NextJS to demons
 Create the foundational layout structure:
 
 **Files to Create/Modify:**
-- `frontend/components/Layout/AppLayout.tsx` - Main application layout wrapper
-- `frontend/components/Layout/Sidebar.tsx` - Left navigation sidebar (100% height)
-- `frontend/components/Layout/Header.tsx` - Top header bar
-- `frontend/components/Layout/MainContent.tsx` - Main content area wrapper
+- `frontend2/components/Layout/AppLayout.tsx` - Main application layout wrapper
+- `frontend2/components/Layout/Sidebar.tsx` - Left navigation sidebar (100% height)
+- `frontend2/components/Layout/Header.tsx` - Top header bar
+- `frontend2/components/Layout/MainContent.tsx` - Main content area wrapper
 
 **Requirements:**
 - AppLayout should use flexbox/grid for proper layout structure
@@ -88,7 +88,7 @@ npx shadcn@latest add textarea
 **Note:** Do NOT modify the generated component files - use them as-is with default styling.
 
 **Acceptance Criteria:**
-- [ ] All components installed in `frontend/components/ui/`
+- [ ] All components installed in `frontend2/components/ui/`
 - [ ] No modifications to generated Shadcn component files
 - [ ] TypeScript types are correctly imported
 
@@ -101,8 +101,8 @@ npx shadcn@latest add textarea
 Create a demonstration page that showcases all installed components:
 
 **Files to Create/Modify:**
-- `frontend/app/showcase/page.tsx` - Main showcase page
-- `frontend/components/Showcase/ComponentSection.tsx` - Reusable section wrapper for each component group
+- `frontend2/app/showcase/page.tsx` - Main showcase page
+- `frontend2/components/Showcase/ComponentSection.tsx` - Reusable section wrapper for each component group
 
 **Page Structure:**
 ```
@@ -198,8 +198,8 @@ Add content to the header bar:
 Update the main app page to use the new layout:
 
 **Files to Modify:**
-- `frontend/app/page.tsx` - Use AppLayout and redirect to showcase
-- `frontend/app/layout.tsx` - Update root layout if needed
+- `frontend2/app/page.tsx` - Use AppLayout and redirect to showcase
+- `frontend2/app/layout.tsx` - Update root layout if needed
 
 **Requirements:**
 - Wrap app content with AppLayout component
@@ -221,8 +221,7 @@ Update the main app page to use the new layout:
 Update documentation:
 
 **Files to Create/Modify:**
-- `frontend/README.md` - Add section about layout structure
-- `.docs/2-knowledge-base/frontend-layout-patterns.md` - Document the layout pattern
+- `frontend2/README.md` - Add section about layout structure
 
 **Content to Include:**
 - How to use AppLayout component
