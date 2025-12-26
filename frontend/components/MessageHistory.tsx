@@ -32,7 +32,7 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll }
 
   return (
     <div 
-      className="h-full overflow-y-auto p-4 space-y-4" 
+      className="h-full overflow-y-auto p-4 space-y-4"
       ref={scrollRef}
       onScroll={onScroll}
     >

@@ -103,6 +103,7 @@ function HomeContent() {
             onRefreshThreads={refreshThreads}
             onArtifactDetected={handleArtifactDetected}
             onEnableCanvas={activateCanvas}
+            canvasModeActive={canvasModeActive}
           />
         </div>
         {canvasModeActive && currentArtifactMessage && (
