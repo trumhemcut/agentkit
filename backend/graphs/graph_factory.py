@@ -9,6 +9,7 @@ import logging
 from typing import Optional, Callable
 from graphs.chat_graph import create_chat_graph
 from graphs.canvas_graph import create_canvas_graph
+from graphs.a2ui_graph import create_a2ui_graph
 from agents.agent_registry import agent_registry
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class GraphFactory:
     _graph_creators = {
         "chat": create_chat_graph,
         "canvas": create_canvas_graph,
+        "a2ui": create_a2ui_graph,
     }
     
     @classmethod

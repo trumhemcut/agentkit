@@ -5,6 +5,8 @@ import { MessageHistory } from './MessageHistory';
 import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
 import { useAGUI } from '@/hooks/useAGUI';
+import { useA2UIEvents } from '@/hooks/useA2UIEvents';
+import { isA2UIMessage } from '@/types/a2ui';
 import { useModelStore } from '@/stores/modelStore';
 import { useAgentStore } from '@/stores/agentStore';
 import { Message as ChatMessage } from '@/types/chat';
@@ -36,6 +38,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     onArtifactDetected,
   });
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
+  const { processA2UIMessage } = useA2UIEvents();
   // Only subscribe to selectedProvider - won't re-render on other model store changes
   const selectedProvider = useModelStore((state) => state.selectedProvider);
   // Only subscribe to selectedModel - won't re-render on other model store changes
@@ -87,6 +90,17 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   // Handle AG-UI events - register once, not per thread
   useEffect(() => {
     console.log('[ChatContainer] Registering AG-UI event handlers');
+    
+    // Handle all events to check for A2UI messages
+    const unsubscribeAll = on('*', (event) => {
+      // Check if this is an A2UI message and process it
+      if (isA2UIMessage(event)) {
+        console.log('[ChatContainer] A2UI message detected:', event);
+        // Associate A2UI surface with current agent message
+        const messageId = currentAgentMessageRef.current?.id;
+        processA2UIMessage(event, messageId);
+      }
+    });
     
     // Handle RUN_STARTED
     const unsubscribeStart = on(EventType.RUN_STARTED, (event) => {
@@ -275,6 +289,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     return () => {
       console.log('[ChatContainer] Unsubscribing all event handlers');
+      unsubscribeAll();
       unsubscribeStart();
       unsubscribeMessageStart();
       unsubscribeContent();
@@ -284,7 +299,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       unsubscribeRunError();
       unsubscribeCustom();
     };
-  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads, canvasContext]);
+  }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads, canvasContext, processA2UIMessage]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {

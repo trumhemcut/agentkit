@@ -9,7 +9,8 @@ Experience powerful AI conversations with real-time streaming, multi-agent orche
 
 ## ✨ Why AgentKit?
 
-- **🎨 Beautiful Canvas Mode**: Visualize agent thinking and create complex workflows in an intuitive interface
+- **�️ A2UI Protocol** ⭐ **NEW**: First framework to let agents generate interactive UI components (checkboxes, forms, buttons) directly in chat - the future of AI interaction
+- **�🎨 Beautiful Canvas Mode**: Visualize agent thinking and create complex workflows in an intuitive interface
 - **⚡ Real-time Streaming**: Watch agents think and respond in real-time with AG-UI protocol
 - **🧠 Multi-Agent Intelligence**: LangGraph orchestration for sophisticated task handling
 - **🎯 Built for Developers**: Type-safe, well-documented, and easy to extend
@@ -18,6 +19,7 @@ Experience powerful AI conversations with real-time streaming, multi-agent orche
 ## 🚀 Features
 
 - **🎨 Canvas Mode**: Interactive full-screen canvas for visualizing agent workflows and complex interactions
+- **🎛️ A2UI Protocol** ⭐ **NEW**: Agents can generate dynamic, interactive UI components (checkboxes, forms, buttons) directly in the chat - letting AI create native UI elements on-the-fly
 - **🔄 Multi-Agent Orchestration**: Powered by LangGraph for complex workflow management
 - **⚡ Real-time Streaming**: AG-UI protocol for live agent communication with instant feedback
 - **💬 Thread Management**: Create and manage multiple conversation threads seamlessly
@@ -74,6 +76,44 @@ AgentKit includes a powerful canvas mode that provides a full-screen, interactiv
 - **Multi-step Planning**: Visualize agent reasoning across multiple steps
 
 The canvas mode seamlessly integrates with the chat interface, automatically activating when agents need to present complex, structured outputs.
+
+## 🎛️ A2UI Protocol - Dynamic UI Generation ⭐
+
+**The future of AI interaction is here.** AgentKit is one of the first frameworks to implement the A2UI (Agent-to-UI) protocol, enabling AI agents to generate native UI components in real-time during conversations.
+
+### What is A2UI?
+
+Instead of just returning text, agents can now:
+
+- 🎯 **Generate Interactive Components**: Create checkboxes, buttons, forms, and more directly in the chat
+- 🔄 **Update State Dynamically**: Components maintain their own state and respond to user interactions
+- 🎨 **Mix Text and UI**: Seamlessly combine conversational responses with interactive elements
+- ⚡ **Stream in Real-time**: UI components appear progressively as agents generate them
+
+### Example Use Cases
+
+```bash
+# Agent creates a terms acceptance checkbox
+User: "Create a terms and conditions agreement"
+→ Agent generates: Interactive checkbox + Text explanation
+
+# Agent builds a preference form
+User: "Help me set up my profile preferences"
+→ Agent generates: Multiple checkboxes + Submit button
+
+# Agent creates a progress tracker
+User: "Track my learning goals"
+→ Agent generates: Checklist with dynamic state updates
+```
+
+### Try It Now
+
+```bash
+# Test the A2UI agent
+curl -N http://localhost:8000/a2ui/stream?message=Show+me+an+interactive+checkbox
+```
+
+The A2UI protocol opens up entirely new possibilities for human-AI interaction, making conversations more interactive, intuitive, and powerful.
 
 ---
 

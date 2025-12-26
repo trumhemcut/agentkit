@@ -9,6 +9,8 @@ import { Loader2, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { A2UIRenderer } from './A2UI/A2UIRenderer';
+import { useA2UIStore } from '@/stores/a2uiStore';
 
 interface AgentMessageBubbleProps {
   message: Message;
@@ -22,6 +24,9 @@ interface AgentMessageBubbleProps {
  * Displays an agent chat message with avatar and markdown-rendered content
  */
 export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }: AgentMessageBubbleProps) {
+  const getSurfacesByMessageId = useA2UIStore((state) => state.getSurfacesByMessageId);
+  const messageSurfaces = getSurfacesByMessageId(message.id);
+  
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { 
@@ -136,6 +141,15 @@ export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }
                 >
                   {message.content}
                 </ReactMarkdown>
+                
+                {/* Render A2UI components for this message */}
+                {messageSurfaces.length > 0 && (
+                  <div className="mt-3">
+                    {messageSurfaces.map((surface) => (
+                      <A2UIRenderer key={surface.id} surfaceId={surface.id} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

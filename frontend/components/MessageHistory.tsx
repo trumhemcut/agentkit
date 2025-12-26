@@ -3,7 +3,7 @@
 import { MessageBubble } from './MessageBubble';
 import { Message } from '@/types/chat';
 import { MessageSquare } from 'lucide-react';
-import { RefObject, useImperativeHandle } from 'react';
+import { RefObject } from 'react';
 
 interface MessageHistoryProps {
   messages: Message[];
@@ -16,7 +16,7 @@ interface MessageHistoryProps {
 /**
  * Message History component
  * 
- * Displays list of messages with auto-scroll
+ * Displays list of messages with auto-scroll and A2UI surfaces
  */
 export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive }: MessageHistoryProps) {
   if (messages.length === 0) {

@@ -13,6 +13,8 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 - [Hooks](hooks/overview.md) - React hooks for state management
 - [Services](services/overview.md) - API and storage services
 - [AG-UI Integration](hooks/useAGUI.md) - Real-time agent events
+- [A2UI Integration](a2ui-integration.md) - Declarative UI rendering from agents
+- [A2UI Quick Reference](a2ui-quick-reference.md) - Quick start guide for A2UI
 
 ## Project Structure
 
@@ -31,22 +33,32 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 │   ├── MessageBubble.tsx   # Message component
 │   ├── ChatInput.tsx       # Input box
 │   ├── AvatarIcon.tsx      # Avatar icons
+│   ├── A2UI/               # A2UI Components (NEW)
+│   │   ├── A2UIRenderer.tsx      # Surface renderer
+│   │   └── components/           # A2UI component library
+│   │       ├── A2UICheckbox.tsx  # Checkbox component
+│   │       └── ...               # More components
 │   └── ui/            # Shadcn UI components
 ├── hooks/              # Custom React hooks
 │   ├── useChatThreads.ts   # Thread management
 │   ├── useMessages.ts      # Message state
-│   └── useAGUI.ts          # AG-UI integration
+│   ├── useAGUI.ts          # AG-UI integration
+│   └── useA2UIEvents.ts    # A2UI event processing (NEW)
 ├── services/           # Service layer
 │   ├── storage.ts          # LocalStorage
 │   ├── agui-client.ts      # SSE client
 │   └── api.ts              # Backend API
+├── stores/             # Zustand stores
+│   ├── modelStore.ts       # Model selection
+│   ├── agentStore.ts       # Agent selection
+│   └── a2uiStore.ts        # A2UI state (NEW)
 ├── types/              # TypeScript types
 │   ├── agent.ts            # Agent types
 │   ├── agui.ts             # AG-UI event types
+│   ├── a2ui.ts             # A2UI types (NEW)
 │   └── chat.ts             # Chat types
 └── lib/                # Utilities
     └── utils.ts            # Helper functions
-  /types
 ```
 
 ## Core Components
@@ -73,6 +85,11 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
   - Event subscription
   - Connection state
   - Real-time updates
+
+- [`useA2UIEvents`](a2ui-integration.md#event-processing) - A2UI event processing (NEW)
+  - Process A2UI messages from SSE stream
+  - Update A2UI store with surface/data changes
+  - Handle surface lifecycle
   
 - [`useChatThreads`](hooks/overview.md#usechatthreads) - Thread management
   - Create/delete threads

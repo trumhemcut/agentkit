@@ -51,6 +51,17 @@ class AgentRegistry:
             sub_agents=["generator", "editor"],
             features=["artifacts", "code-generation", "multi-step"]
         ))
+        
+        # Register A2UIAgent
+        self.register_agent(AgentMetadata(
+            id="a2ui",
+            name="A2UI Agent",
+            description="Agent that generates interactive UI components using A2UI protocol",
+            icon="layout-grid",
+            available=True,
+            sub_agents=[],
+            features=["ui-components", "interactive", "a2ui-protocol"]
+        ))
     
     def register_agent(self, metadata: AgentMetadata):
         """Register a new agent"""
