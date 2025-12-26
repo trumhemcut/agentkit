@@ -21,6 +21,7 @@ export interface ChatRequest {
   run_id: string;
   messages: Message[];
   model?: string;
+  provider?: string;  // Provider selection
   agent?: string;
 }
 
@@ -48,6 +49,7 @@ export async function sendChatMessage(
   threadId: string,
   runId: string,
   model: string | undefined,
+  provider: string | undefined,
   agent: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
@@ -61,10 +63,11 @@ export async function sendChatMessage(
       run_id: runId,
       messages: messages,
       model: model,
+      provider: provider,  // Include provider
       agent: agentId, // Keep for backward compatibility
     };
 
-    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model, agent: agentId });
+    console.log('[API] Sending chat request:', { threadId, runId, messageCount: messages.length, model, provider, agent: agentId });
 
     const response = await fetch(`${API_BASE_URL}/api/chat/${agentId}`, {
       method: 'POST',
@@ -169,6 +172,7 @@ export interface CanvasRequest {
   selectedText?: SelectedText;
   action?: "create" | "update" | "rewrite" | "chat";
   model?: string;
+  provider?: string;  // Provider selection
   agent?: string;
 }
 
@@ -197,6 +201,7 @@ export async function sendCanvasMessage(
   selectedText: SelectedText | undefined,
   action: "create" | "update" | "rewrite" | "chat" | undefined,
   model: string | undefined,
+  provider: string | undefined,
   agent: string | undefined,
   onEvent: (event: any) => void
 ): Promise<void> {
@@ -217,6 +222,7 @@ export async function sendCanvasMessage(
       selectedText: selectedText,
       action: action,
       model: model,
+      provider: provider,  // Include provider
       agent: agentId, // Keep for backward compatibility
     };
 
@@ -228,6 +234,7 @@ export async function sendCanvasMessage(
       artifactId: artifactId || 'undefined',
       action,
       model,
+      provider,
       agent: agentId
     });
 
@@ -368,15 +375,24 @@ export async function fetchAvailableModels(): Promise<ModelsResponse> {
     console.error('[API] Error fetching models:', error);
     // Return default fallback if API fails
     return {
+      providers: [
+        {
+          id: 'ollama',
+          name: 'Ollama',
+          available: true
+        }
+      ],
       models: [
         {
           id: 'qwen:7b',
           name: 'Qwen 7B',
           size: '7B parameters',
-          available: true
+          available: true,
+          provider: 'ollama'
         }
       ],
-      default: 'qwen:7b'
+      default_provider: 'ollama',
+      default_model: 'qwen:7b'
     };
   }
 }

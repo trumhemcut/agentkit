@@ -6,7 +6,7 @@ from ag_ui.encoder import EventEncoder
 from api.models import RunAgentInput, CanvasMessageRequest, ArtifactUpdate
 from graphs.chat_graph import create_chat_graph
 from graphs.canvas_graph import create_canvas_graph
-from llm.ollama_client import ollama_client
+from llm.provider_client import provider_client
 from agents.agent_registry import agent_registry
 from config import settings
 from cache.artifact_cache import artifact_cache
@@ -44,10 +44,20 @@ async def list_agents():
 
 @router.get("/models")
 async def list_models():
-    """List available Ollama models"""
+    """List available models from all providers"""
     try:
-        models_data = await ollama_client.list_available_models()
+        models_data = await provider_client.list_all_models()
         return models_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
+
+
+@router.get("/models/{provider}")
+async def list_provider_models(provider: str):
+    """List models from a specific provider"""
+    try:
+        models = await provider_client.get_models_by_provider(provider)
+        return {"models": models}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
 
@@ -124,7 +134,10 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                     "thread_id": input_data.thread_id,
                     "run_id": input_data.run_id
                 }
-                chat_agent = ChatAgent(model=input_data.model)
+                chat_agent = ChatAgent(
+                    model=input_data.model,
+                    provider=input_data.provider
+                )
                 async for event in chat_agent.run(state):
                     yield encoder.encode(event)
                     
@@ -149,7 +162,10 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                     "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
                     "artifactAction": input_data.action
                 }
-                canvas_agent = CanvasAgent(model=input_data.model)
+                canvas_agent = CanvasAgent(
+                    model=input_data.model,
+                    provider=input_data.provider
+                )
                 async for event in canvas_agent.run(state):
                     yield encoder.encode(event)
             else:

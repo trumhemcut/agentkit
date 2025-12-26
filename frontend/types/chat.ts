@@ -44,15 +44,25 @@ export interface ConversationState {
   error: string | null;
 }
 
-// LLM Model types
+// LLM Provider and Model types
+export interface LLMProvider {
+  id: string;
+  name: string;
+  available: boolean;
+}
+
 export interface LLMModel {
   id: string;
   name: string;
   size: string;
   available: boolean;
+  provider: string;  // Provider association (e.g., "ollama", "gemini")
 }
 
 export interface ModelsResponse {
+  providers: LLMProvider[];  // List of available providers
   models: LLMModel[];
-  default: string;
+  default_provider: string;  // Default provider (e.g., "ollama")
+  default_model: string;
+  errors?: Array<{ provider: string; error: string }>;
 }

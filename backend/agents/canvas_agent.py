@@ -8,6 +8,7 @@ from graphs.canvas_graph import CanvasGraphState, Artifact
 from llm.provider_factory import LLMProviderFactory
 from protocols.event_types import CanvasEventType
 from cache.artifact_cache import artifact_cache
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,17 +16,26 @@ logger = logging.getLogger(__name__)
 class CanvasAgent(BaseAgent):
     """Agent that generates and modifies artifacts"""
     
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, provider: str = None):
         """
-        Initialize CanvasAgent with optional model parameter
+        Initialize CanvasAgent with optional model and provider parameters
         
         Args:
-            model: Model name to use (e.g., "qwen:7b", "qwen:4b")
+            model: Model name to use (e.g., "qwen:7b", "gemini-1.5-flash")
+                   Falls back to default if not provided
+            provider: Provider type ("ollama", "gemini")
                    Falls back to default if not provided
         """
-        logger.info(f"Initializing CanvasAgent with model: {model or 'default'}")
-        provider = LLMProviderFactory.get_provider("ollama", model=model)
-        self.llm = provider.get_model()
+        self.provider_type = provider or settings.DEFAULT_PROVIDER
+        self.model_name = model or settings.DEFAULT_MODEL
+        
+        logger.info(f"Initializing CanvasAgent with provider: {self.provider_type}, model: {self.model_name}")
+        
+        provider_instance = LLMProviderFactory.get_provider(
+            provider_type=self.provider_type,
+            model=self.model_name
+        )
+        self.llm = provider_instance.get_model()
         logger.debug(f"CanvasAgent initialized successfully with LLM provider, model ${self.llm.model}")
     
     async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:

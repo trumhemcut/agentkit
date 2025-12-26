@@ -28,12 +28,18 @@ export function ModelSelector() {
   }, []);
 
   // Selective subscriptions for better performance
+  const selectedProvider = useModelStore((state) => state.selectedProvider);
   const selectedModel = useModelStore((state) => state.selectedModel);
-  const availableModels = useModelStore((state) => state.availableModels);
+  const getProviderModels = useModelStore((state) => state.getProviderModels);
   const loading = useModelStore((state) => state.loading);
   const error = useModelStore((state) => state.error);
   const setSelectedModel = useModelStore((state) => state.setSelectedModel);
   const selectedModelInfo = useModelStore((state) => state.getSelectedModelInfo());
+  
+  // Filter models by selected provider
+  const availableModels = selectedProvider 
+    ? getProviderModels(selectedProvider)
+    : [];
 
   // Show loading state
   if (loading) {

@@ -35,6 +35,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     onArtifactDetected,
   });
   const { isConnected, on, getClient, setConnectionState } = useAGUI();
+  // Only subscribe to selectedProvider - won't re-render on other model store changes
+  const selectedProvider = useModelStore((state) => state.selectedProvider);
   // Only subscribe to selectedModel - won't re-render on other model store changes
   const selectedModel = useModelStore((state) => state.selectedModel);
   // Only subscribe to selectedAgent - won't re-render on other agent store changes
@@ -42,8 +44,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   
   // Debug log to track selectedModel changes
   useEffect(() => {
+    console.log('[ChatContainer] selectedProvider changed to:', selectedProvider);
     console.log('[ChatContainer] selectedModel changed to:', selectedModel);
-  }, [selectedModel]);
+  }, [selectedProvider, selectedModel]);
   const [isSending, setIsSending] = useState(false);
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
@@ -385,6 +388,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           selectedTextData,
           undefined, // action - let backend determine
           selectedModel || undefined,
+          selectedProvider || undefined,
           selectedAgent,
           (event) => {
             client.processEvent(event);
@@ -399,6 +403,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           threadId,
           runId,
           selectedModel || undefined,
+          selectedProvider || undefined,
           selectedAgent,
           (event) => {
             // Process each event through the AGUI client

@@ -9,9 +9,17 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = False
     
-    # LLM settings
+    # LLM settings - Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen:7b"
+    
+    # LLM settings - Gemini
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    
+    # Default provider
+    DEFAULT_PROVIDER: str = "ollama"
+    DEFAULT_MODEL: str = "qwen:7b"
     
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

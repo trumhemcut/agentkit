@@ -18,6 +18,7 @@ class RunAgentInput(BaseModel):
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     messages: List[Message]
     model: Optional[str] = None  # Optional model selection
+    provider: Optional[str] = None  # Optional provider selection
     agent: Optional[str] = "chat"  # Optional agent selection
     
     # Canvas-specific optional fields (for unified endpoint)
@@ -55,6 +56,7 @@ class CanvasMessageRequest(BaseModel):
     selectedText: Optional[SelectedText] = None
     action: Optional[Literal["create", "update", "partial_update", "chat"]] = None
     model: Optional[str] = None  # Optional model selection
+    provider: Optional[str] = None  # Optional provider selection
     agent: Optional[str] = "canvas"  # Optional agent selection
 
 
