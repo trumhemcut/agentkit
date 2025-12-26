@@ -36,7 +36,7 @@ class CanvasAgent(BaseAgent):
             model=self.model_name
         )
         self.llm = provider_instance.get_model()
-        logger.debug(f"CanvasAgent initialized successfully with LLM provider, model ${self.llm.model}")
+        logger.debug(f"CanvasAgent initialized successfully with LLM provider: {self.provider_type}, model: {self.model_name}")
     
     async def run(self, state: CanvasGraphState) -> AsyncGenerator[BaseEvent, None]:
         """

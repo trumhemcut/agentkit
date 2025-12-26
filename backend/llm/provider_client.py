@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional
 from llm.ollama_client import ollama_client
 from llm.gemini_client import gemini_client
+from llm.azure_openai_client import azure_openai_client
 from config import settings
 
 
@@ -12,7 +13,7 @@ class ProviderClient:
         List models from all providers or specific provider
         
         Args:
-            provider_filter: Optional provider name to filter by ("ollama", "gemini")
+            provider_filter: Optional provider name to filter by ("ollama", "gemini", "azure-openai")
         
         Returns:
             Dict with providers, models, and defaults
@@ -57,6 +58,25 @@ class ProviderClient:
                 "id": "gemini",
                 "name": "Gemini",
                 "available": has_gemini_models
+            })
+        
+        # Fetch Azure OpenAI models
+        if not provider_filter or provider_filter == "azure-openai":
+            azure_data = azure_openai_client.list_models()
+            has_azure_models = "error" not in azure_data and len(azure_data.get("models", [])) > 0
+            
+            if "error" in azure_data:
+                errors.append({"provider": "azure-openai", "error": azure_data["error"]})
+            else:
+                for model in azure_data.get("models", []):
+                    model["provider"] = "azure-openai"
+                    all_models.append(model)
+            
+            # Always add Azure OpenAI to providers list (even if unavailable)
+            providers.append({
+                "id": "azure-openai",
+                "name": "Azure OpenAI",
+                "available": has_azure_models
             })
         
         return {

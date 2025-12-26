@@ -1,0 +1,1 @@
+Tương tự như Gemini, hãy support Azure Open AI

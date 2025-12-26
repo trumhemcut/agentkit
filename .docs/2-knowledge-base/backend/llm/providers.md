@@ -1,18 +1,26 @@
 # LLM Provider Documentation
 
-**Last Updated**: December 23, 2025
+**Last Updated**: December 26, 2025
 
 ## Overview
 
-The LLM provider system supports dynamic model selection, allowing users to choose different language models at runtime. Currently supports **Ollama** provider with multiple Qwen models.
+The LLM provider system supports dynamic model selection, allowing users to choose different language models at runtime. Currently supports:
+- **Ollama** - Local models (e.g., Qwen)
+- **Gemini** - Google's Gemini models
+- **Azure OpenAI** - Microsoft Azure-hosted OpenAI models
 
 ## Architecture
 
 ### Components
 
 1. **OllamaProvider** (`llm/ollama_provider.py`) - LangChain Ollama integration
-2. **LLMProviderFactory** (`llm/provider_factory.py`) - Provider instantiation
-3. **OllamaClient** (`llm/ollama_client.py`) - Direct Ollama API interaction
+2. **GeminiProvider** (`llm/gemini_provider.py`) - LangChain Gemini integration
+3. **AzureOpenAIProvider** (`llm/azure_openai_provider.py`) - LangChain Azure OpenAI integration
+4. **LLMProviderFactory** (`llm/provider_factory.py`) - Provider instantiation
+5. **OllamaClient** (`llm/ollama_client.py`) - Direct Ollama API interaction
+6. **GeminiClient** (`llm/gemini_client.py`) - Gemini model listing
+7. **AzureOpenAIClient** (`llm/azure_openai_client.py`) - Azure OpenAI model listing
+8. **ProviderClient** (`llm/provider_client.py`) - Unified API for all providers
 
 ## Provider Factory
 
@@ -25,11 +33,14 @@ Factory pattern for creating LLM provider instances with optional model selectio
 ```python
 from llm.provider_factory import LLMProviderFactory
 
-# Default model (from settings)
-provider = LLMProviderFactory.get_provider("ollama")
-
-# Specific model
+# Ollama provider
 provider = LLMProviderFactory.get_provider("ollama", model="qwen:7b")
+
+# Gemini provider
+provider = LLMProviderFactory.get_provider("gemini", model="gemini-2.5-flash")
+
+# Azure OpenAI provider
+provider = LLMProviderFactory.get_provider("azure-openai", model="gpt-4")
 ```
 
 ### Implementation
@@ -42,14 +53,18 @@ class LLMProviderFactory:
         Get LLM provider instance
         
         Args:
-            provider_type: Type of provider ("ollama" supported currently)
-            model: Optional model name to use with the provider
+            provider_type: Type of provider ("ollama", "gemini", "azure-openai")
+            model: Optional model name or deployment name to use with the provider
         
         Returns:
             Provider instance
         """
         if provider_type == "ollama":
             return OllamaProvider(model=model)
+        elif provider_type == "gemini":
+            return GeminiProvider(model=model)
+        elif provider_type == "azure-openai":
+            return AzureOpenAIProvider(deployment=model)
         raise ValueError(f"Unknown provider: {provider_type}")
 ```
 
@@ -492,10 +507,245 @@ async for event in agent.run(state):
    - Allow override via environment variables
    - Document supported models
 
+---
+
+## Azure OpenAI Provider
+
+**File**: `backend/llm/azure_openai_provider.py`
+
+Wraps LangChain's AzureChatOpenAI for integration with Microsoft Azure-hosted OpenAI models.
+
+### Features
+
+- Support for GPT-4, GPT-3.5, and other Azure OpenAI models
+- Deployment-based model access
+- Streaming support
+- Configurable API version
+
+### Usage
+
+```python
+from llm.azure_openai_provider import AzureOpenAIProvider
+
+# Use configured deployment
+provider = AzureOpenAIProvider()
+llm = provider.get_model()
+
+# Use specific deployment
+provider = AzureOpenAIProvider(deployment="gpt-4-deployment")
+llm = provider.get_model()
+
+# Use specific model
+provider = AzureOpenAIProvider(model="gpt-4")
+llm = provider.get_model()
+```
+
+### Implementation
+
+```python
+class AzureOpenAIProvider:
+    def __init__(self, model: str = None, deployment: str = None):
+        """
+        Initialize Azure OpenAI provider
+        
+        Args:
+            model: Model name (e.g., "gpt-4", "gpt-35-turbo", "gpt-4o")
+            deployment: Azure deployment name (overrides settings)
+        """
+        deployment_name = deployment or settings.AZURE_OPENAI_DEPLOYMENT
+        model_name = model or settings.AZURE_OPENAI_MODEL
+        
+        self.model = AzureChatOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            openai_api_version=settings.AZURE_OPENAI_API_VERSION,
+            deployment_name=deployment_name,
+            openai_api_key=settings.AZURE_OPENAI_API_KEY,
+            model=model_name,
+            streaming=True,
+            temperature=0.7
+        )
+    
+    def get_model(self):
+        return self.model
+```
+
+### Configuration
+
+**Settings** (`backend/config.py`):
+
+```python
+class Settings(BaseSettings):
+    # Azure OpenAI settings
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
+    AZURE_OPENAI_DEPLOYMENT: str = ""
+    AZURE_OPENAI_MODEL: str = "gpt-4"
+```
+
+**Environment Variables** (`.env`):
+
+```bash
+AZURE_OPENAI_API_KEY=your_azure_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-4-deployment
+AZURE_OPENAI_MODEL=gpt-4
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+```
+
+### Azure OpenAI Client
+
+**File**: `backend/llm/azure_openai_client.py`
+
+Provides model listing functionality for Azure OpenAI.
+
+**Key Points**:
+- Azure OpenAI uses deployments, not direct model listing
+- Returns configured deployment + common Azure models
+- Graceful error handling for missing credentials
+
+```python
+class AzureOpenAIClient:
+    def list_models(self):
+        """
+        List available Azure OpenAI models/deployments
+        
+        Returns:
+            dict: Models list, default model, and any errors
+        """
+        models = []
+        
+        # Add configured deployment
+        if settings.AZURE_OPENAI_DEPLOYMENT:
+            models.append({
+                "id": settings.AZURE_OPENAI_DEPLOYMENT,
+                "name": f"{settings.AZURE_OPENAI_MODEL} (Deployment)",
+                "provider": "azure-openai",
+                "is_deployment": True
+            })
+        
+        # Add common models
+        common_models = ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-35-turbo"]
+        for model_id in common_models:
+            models.append({
+                "id": model_id,
+                "name": model_id.upper(),
+                "provider": "azure-openai",
+                "is_deployment": False
+            })
+        
+        return {"models": models, "default": settings.AZURE_OPENAI_DEPLOYMENT}
+```
+
+### Supported Models
+
+| Model ID | Name | Description |
+|----------|------|-------------|
+| `gpt-4` | GPT-4 | Most capable GPT-4 model |
+| `gpt-4-turbo` | GPT-4 Turbo | Faster GPT-4 with 128k context |
+| `gpt-4o` | GPT-4o | Latest multimodal GPT-4 model |
+| `gpt-35-turbo` | GPT-3.5 Turbo | Fast and efficient model |
+| `gpt-4-32k` | GPT-4 32K | GPT-4 with extended context |
+
+**Note**: Availability depends on Azure region and subscription.
+
+### Azure Setup Guide
+
+1. **Create Azure OpenAI Resource**
+   - Go to Azure Portal
+   - Create Azure OpenAI resource
+   - Note endpoint URL
+
+2. **Deploy Model**
+   - Go to Model deployments
+   - Create new deployment
+   - Select model (e.g., GPT-4)
+   - Name deployment
+
+3. **Get Credentials**
+   - Go to Keys and Endpoint
+   - Copy API key
+   - Copy endpoint URL
+
+4. **Configure AgentKit**
+   - Add credentials to `.env`
+   - Restart backend
+
+### Dependencies
+
+**File**: `backend/requirements.txt`
+
+```txt
+langchain-openai>=0.2.0  # LangChain Azure OpenAI integration
+openai>=1.0.0            # Official OpenAI SDK (supports Azure)
+azure-identity>=1.15.0   # Azure authentication
+```
+
+---
+
+## Provider Client (Unified API)
+
+**File**: `backend/llm/provider_client.py`
+
+Unified client that aggregates models from all providers (Ollama, Gemini, Azure OpenAI).
+
+### Usage
+
+```python
+from llm.provider_client import provider_client
+
+# List all models from all providers
+data = await provider_client.list_all_models()
+
+# List models from specific provider
+ollama_models = await provider_client.get_models_by_provider("ollama")
+gemini_models = await provider_client.get_models_by_provider("gemini")
+azure_models = await provider_client.get_models_by_provider("azure-openai")
+```
+
+### Response Format
+
+```json
+{
+  "providers": [
+    {"id": "ollama", "name": "Ollama", "available": true},
+    {"id": "gemini", "name": "Gemini", "available": true},
+    {"id": "azure-openai", "name": "Azure OpenAI", "available": true}
+  ],
+  "models": [
+    {
+      "id": "qwen:7b",
+      "name": "Qwen 7B",
+      "provider": "ollama",
+      "available": true
+    },
+    {
+      "id": "gpt-4",
+      "name": "GPT-4",
+      "provider": "azure-openai",
+      "available": true
+    }
+  ],
+  "default_provider": "ollama",
+  "default_model": "qwen:7b",
+  "errors": []
+}
+```
+
+### Error Handling
+
+- Graceful degradation if a provider is unavailable
+- Returns errors per provider
+- Other providers continue to work
+
+---
+
 ## Future Enhancements
 
-- Support for additional providers (OpenAI, Anthropic, etc.)
+- Support for additional providers (Anthropic Claude, etc.)
 - Model performance metrics display
 - Automatic model selection based on query complexity
 - Model caching and optimization
 - Multi-model ensemble responses
+- Provider health monitoring
+- Cost tracking for cloud providers

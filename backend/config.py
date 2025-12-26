@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
     
+    # LLM settings - Azure OpenAI
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
+    AZURE_OPENAI_DEPLOYMENT: str = ""
+    AZURE_OPENAI_MODEL: str = "gpt-4"
+    
     # Default provider
     DEFAULT_PROVIDER: str = "ollama"
     DEFAULT_MODEL: str = "qwen:7b"
