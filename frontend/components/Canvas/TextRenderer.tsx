@@ -175,10 +175,9 @@ export function TextRenderer({
     // Close menu
     setShowContextMenu(false)
     
-    // Set selected text in context (if available)
-    if (setSelectedTextForChat) {
-      setSelectedTextForChat(text)
-    }
+    // Note: We don't need to set selectedTextForChat here
+    // The selection is already set by onSelectionChange callback
+    // This preserves the full SelectedText object with start/end positions
     
     // Clear selection first to avoid focus conflicts
     setTimeout(() => {

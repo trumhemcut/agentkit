@@ -24,7 +24,8 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
     artifact, 
     isPartialUpdateActive, 
     partialUpdateBuffer, 
-    partialUpdateSelection 
+    partialUpdateSelection,
+    setSelectedTextForChat
   } = useCanvas();
 
   if (!isArtifactMessage(message)) {
@@ -32,11 +33,25 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
     return null;
   }
 
+  // Selection change handler
+  const handleSelectionChange = (selection: any) => {
+    console.log('[ArtifactPanel] Selection changed:', selection);
+    if (selection && setSelectedTextForChat) {
+      setSelectedTextForChat(selection);
+    }
+  };
+
   // Use artifact from context if available, otherwise use message content
   const displayContent = useMemo(() => {
     // If partial update is active, show the preview of the update
     if (isPartialUpdateActive && partialUpdateSelection && artifact) {
       const { start, end } = partialUpdateSelection;
+      console.log('[ArtifactPanel] Preview update:', {
+        start, 
+        end, 
+        bufferLength: partialUpdateBuffer.length,
+        contentLength: artifact.content.length
+      });
       return (
         artifact.content.substring(0, start) +
         partialUpdateBuffer +
@@ -133,6 +148,7 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
                 markdown={displayContent}
                 isStreaming={isStreaming}
                 onUpdate={() => {}} // Read-only for now
+                onSelectionChange={handleSelectionChange}
               />
             )}
           </div>

@@ -267,7 +267,13 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       
       switch (customEvent.name) {
         case 'artifact_partial_update_start':
-          console.log('[ChatContainer] Partial update started:', customEvent.value);
+          console.log('[ChatContainer] Partial update START event:', {
+            selection: customEvent.value.selection,
+            hasStart: customEvent.value.selection && 'start' in customEvent.value.selection,
+            hasEnd: customEvent.value.selection && 'end' in customEvent.value.selection,
+            startValue: customEvent.value.selection?.start,
+            endValue: customEvent.value.selection?.end
+          });
           if (customEvent.value?.selection) {
             canvasContext.startPartialUpdate(customEvent.value.selection);
           }
@@ -374,14 +380,16 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     console.log('API messages:', apiMessages);
 
     // Prepare selected text if available from canvas context
-    const selectedTextData = selectedTextForChat ? {
-      start: 0,
-      end: selectedTextForChat.length,
-      text: selectedTextForChat
-    } : undefined;
+    // Use the full SelectedText object which includes actual start/end positions
+    const selectedTextData = selectedTextForChat;
 
     if (selectedTextData) {
-      console.log('Selected text from canvas:', selectedTextData);
+      console.log('[ChatContainer] Selected text from canvas:', {
+        start: selectedTextData.start,
+        end: selectedTextData.end,
+        textLength: selectedTextData.text.length,
+        textPreview: selectedTextData.text.substring(0, 50) + '...'
+      });
     }
 
     // Generate unique run ID
