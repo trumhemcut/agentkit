@@ -97,20 +97,87 @@ export function TextRenderer({
         
         // Report selection to parent (for partial updates)
         if (onSelectionChange) {
-          const range = selection?.getRangeAt(0)
-          if (range) {
-            // Get character positions relative to the full markdown content
-            const preSelectionRange = range.cloneRange()
-            if (containerRef.current) {
-              preSelectionRange.selectNodeContents(containerRef.current)
-              preSelectionRange.setEnd(range.startContainer, range.startOffset)
-              const start = preSelectionRange.toString().length
+          // Calculate position based on the actual markdown content, not DOM
+          // The selected text needs to be found in the source markdown
+          const selectedText = text
+          
+          // Find the position in the original markdown
+          const markdownIndex = markdown.indexOf(selectedText)
+          
+          if (markdownIndex !== -1) {
+            // Found exact match - use these positions
+            onSelectionChange({
+              start: markdownIndex,
+              end: markdownIndex + selectedText.length,
+              text: selectedText
+            })
+          } else {
+            // If exact match not found, try to find it by removing markdown formatting
+            // This handles cases where headers/bold/italic affect the DOM rendering
+            // We need to search more intelligently in the markdown
+            
+            // Simple approach: search for the text in markdown with some tolerance
+            // for whitespace differences
+            const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
+            let bestMatch = -1
+            let bestMatchLength = 0
+            
+            // Search through the markdown for the best match
+            for (let i = 0; i < markdown.length; i++) {
+              const remainingMarkdown = markdown.substring(i)
+              // Extract plain text from this position
+              const plainText = remainingMarkdown
+                .replace(/^#+\s+/gm, '') // Remove headers
+                .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+                .replace(/\*([^*]+)\*/g, '$1') // Remove italic
+                .replace(/`([^`]+)`/g, '$1') // Remove inline code
               
+              const normalized = plainText.substring(0, selectedText.length * 2)
+                .replace(/\s+/g, ' ').trim()
+              
+              if (normalized.startsWith(normalizedSelected)) {
+                // Find the actual end position in markdown
+                let charCount = 0
+                let endPos = i
+                const targetLength = selectedText.length
+                
+                while (charCount < targetLength && endPos < markdown.length) {
+                  const char = markdown[endPos]
+                  // Skip markdown formatting characters
+                  if (char !== '#' && char !== '*' && char !== '`' && 
+                      char !== '[' && char !== ']' && char !== '(' && char !== ')') {
+                    charCount++
+                  }
+                  endPos++
+                }
+                
+                bestMatch = i
+                bestMatchLength = endPos - i
+                break
+              }
+            }
+            
+            if (bestMatch !== -1) {
               onSelectionChange({
-                start,
-                end: start + text.length,
-                text
+                start: bestMatch,
+                end: bestMatch + bestMatchLength,
+                text: markdown.substring(bestMatch, bestMatch + bestMatchLength)
               })
+            } else {
+              // Fallback: use DOM-based calculation as last resort
+              const range = selection?.getRangeAt(0)
+              if (range && containerRef.current) {
+                const preSelectionRange = range.cloneRange()
+                preSelectionRange.selectNodeContents(containerRef.current)
+                preSelectionRange.setEnd(range.startContainer, range.startOffset)
+                const start = preSelectionRange.toString().length
+                
+                onSelectionChange({
+                  start,
+                  end: start + selectedText.length,
+                  text: selectedText
+                })
+              }
             }
           }
         }
@@ -134,7 +201,7 @@ export function TextRenderer({
     return () => {
       document.removeEventListener('selectionchange', handleSelection)
     }
-  }, [])
+  }, [markdown, onSelectionChange])
   
   const handleChatWithAgent = (text: string) => {
     // Remove all previous yellow highlights from the entire document
