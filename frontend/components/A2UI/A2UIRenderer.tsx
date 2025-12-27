@@ -1,13 +1,17 @@
 import React from 'react';
 import { useA2UIStore } from '@/stores/a2uiStore';
 import { A2UICheckbox } from './components/A2UICheckbox';
+import { A2UIButton } from './components/A2UIButton';
+import { A2UIText } from './components/A2UIText';
+import { A2UIInput } from './components/A2UIInput';
 import type { A2UIComponent } from '@/types/a2ui';
 
 interface A2UIRendererProps {
   surfaceId: string;
+  onAction?: (actionName: string, context: Record<string, any>) => void;
 }
 
-export const A2UIRenderer: React.FC<A2UIRendererProps> = ({ surfaceId }) => {
+export const A2UIRenderer: React.FC<A2UIRendererProps> = ({ surfaceId, onAction }) => {
   const surface = useA2UIStore((state) => state.getSurface(surfaceId));
   
   if (!surface || !surface.isRendering || !surface.rootComponentId) {
@@ -36,6 +40,40 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({ surfaceId }) => {
       case 'Checkbox':
         return (
           <A2UICheckbox
+            key={component.id}
+            id={component.id}
+            props={props}
+            dataModel={surface.dataModel}
+            surfaceId={surfaceId}
+          />
+        );
+      
+      case 'Button':
+        return (
+          <A2UIButton
+            key={component.id}
+            id={component.id}
+            props={props}
+            dataModel={surface.dataModel}
+            surfaceId={surfaceId}
+            onAction={onAction}
+          />
+        );
+      
+      case 'Text':
+        return (
+          <A2UIText
+            key={component.id}
+            id={component.id}
+            props={props}
+            dataModel={surface.dataModel}
+            surfaceId={surfaceId}
+          />
+        );
+      
+      case 'Input':
+        return (
+          <A2UIInput
             key={component.id}
             id={component.id}
             props={props}

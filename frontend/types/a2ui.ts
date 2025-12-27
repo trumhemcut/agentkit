@@ -4,6 +4,45 @@ export interface A2UIComponent {
   component: Record<string, any>;
 }
 
+// Component-specific prop types
+export interface CheckboxProps {
+  label?: { literalString?: string; path?: string };
+  value?: { path?: string };
+}
+
+export interface ButtonProps {
+  label?: { literalString?: string; path?: string };
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  onClick?: { action?: string };
+}
+
+export interface TextProps {
+  content?: { literalString?: string; path?: string };
+  style?: 'body' | 'heading' | 'caption' | 'code';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
+
+export interface InputProps {
+  label?: { literalString?: string; path?: string };
+  placeholder?: { literalString?: string; path?: string };
+  value?: { path?: string };
+  type?: 'text' | 'email' | 'password' | 'number';
+}
+
+export interface ContainerProps {
+  children?: string[];
+}
+
+// Component type definitions
+export type ComponentType = 
+  | { Checkbox: CheckboxProps }
+  | { Button: ButtonProps }
+  | { Text: TextProps }
+  | { Input: InputProps }
+  | { Row: ContainerProps }
+  | { Column: ContainerProps }
+  | { Card: ContainerProps };
+
 // Message types
 export interface SurfaceUpdate {
   type: "surfaceUpdate";
@@ -35,11 +74,19 @@ export interface DeleteSurface {
   surfaceId: string;
 }
 
+export interface UserAction {
+  type: "userAction";
+  surfaceId: string;
+  actionName: string;
+  context: Record<string, any>;
+}
+
 export type A2UIMessage = 
   | SurfaceUpdate 
   | DataModelUpdate 
   | BeginRendering 
-  | DeleteSurface;
+  | DeleteSurface
+  | UserAction;
 
 // Helper to check if a message is A2UI
 export function isA2UIMessage(data: any): data is A2UIMessage {

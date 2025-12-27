@@ -252,3 +252,28 @@ def create_button_component(
             }
         }
     )
+
+
+def create_column_component(
+    component_id: str,
+    child_ids: List[str]
+) -> Component:
+    """
+    Create a column (vertical layout) container component.
+    
+    Args:
+        component_id: Unique ID for the column container
+        child_ids: List of child component IDs to render vertically
+    
+    Returns:
+        Component with column container configuration
+    """
+    return Component(
+        id=component_id,
+        component={
+            "Column": {
+                "children": child_ids
+            }
+        }
+    )
+

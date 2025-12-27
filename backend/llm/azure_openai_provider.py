@@ -2,6 +2,7 @@
 
 from langchain_openai import AzureChatOpenAI
 from config import settings
+from typing import List, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,3 +62,15 @@ class AzureOpenAIProvider:
             AzureChatOpenAI: LangChain Azure OpenAI model
         """
         return self.model
+    
+    def get_model_with_tools(self, tools: List[Dict[str, Any]]):
+        """
+        Get model with tools bound for tool calling.
+        
+        Args:
+            tools: List of tool schemas in OpenAI function calling format
+        
+        Returns:
+            LangChain model with tools bound
+        """
+        return self.model.bind_tools(tools)

@@ -18,11 +18,12 @@ def create_a2ui_graph(model: str = None, provider: str = None):
     Create LangGraph workflow for A2UI agent.
     
     This is a simple single-node graph since the A2UI agent doesn't require
-    complex multi-agent orchestration. It just generates UI components directly.
+    complex multi-agent orchestration. It uses LLM + tool calling to dynamically
+    generate UI components based on user prompts.
     
     Args:
-        model: Not used by A2UI agent (no LLM needed for basic UI generation)
-        provider: Not used by A2UI agent
+        model: Model name to use for component generation (e.g., "gpt-4o", "qwen:7b")
+        provider: Provider type (e.g., "azure-openai", "ollama", "gemini")
     
     Returns:
         Compiled LangGraph workflow
@@ -32,8 +33,13 @@ def create_a2ui_graph(model: str = None, provider: str = None):
     # Create state graph
     workflow = StateGraph(AgentState)
     
-    # Create A2UI agent instance
-    a2ui_agent = A2UIAgent()
+    # Create A2UI agent instance with specified model and provider
+    # Use defaults if not provided
+    agent_provider = provider if provider else "ollama"
+    agent_model = model if model else "qwen:7b"
+    
+    logger.info(f"Initializing A2UI agent with provider={agent_provider}, model={agent_model}")
+    a2ui_agent = A2UIAgent(provider=agent_provider, model=agent_model)
     
     # Define agent node
     async def a2ui_node(state: AgentState, config=None):

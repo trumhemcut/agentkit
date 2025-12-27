@@ -11,11 +11,13 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { A2UIRenderer } from './A2UI/A2UIRenderer';
 import { useA2UIStore } from '@/stores/a2uiStore';
+import { a2uiActionService } from '@/services/a2uiActionService';
 
 interface AgentMessageBubbleProps {
   message: Message;
   onEnableCanvas?: (message: Message) => void;
   canvasModeActive?: boolean;
+  threadId?: string | null;
 }
 
 /**
@@ -23,9 +25,12 @@ interface AgentMessageBubbleProps {
  * 
  * Displays an agent chat message with avatar and markdown-rendered content
  */
-export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }: AgentMessageBubbleProps) {
+export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive, threadId }: AgentMessageBubbleProps) {
   const getSurfacesByMessageId = useA2UIStore((state) => state.getSurfacesByMessageId);
   const messageSurfaces = getSurfacesByMessageId(message.id);
+  
+  // Create action callback for A2UI interactions
+  const handleA2UIAction = a2uiActionService.createActionCallback(threadId || undefined);
   
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -146,7 +151,7 @@ export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive }
                 {messageSurfaces.length > 0 && (
                   <div className="mt-3">
                     {messageSurfaces.map((surface) => (
-                      <A2UIRenderer key={surface.id} surfaceId={surface.id} />
+                      <A2UIRenderer key={surface.id} surfaceId={surface.id} onAction={handleA2UIAction} />
                     ))}
                   </div>
                 )}
