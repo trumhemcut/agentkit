@@ -33,8 +33,6 @@ function HomeContent() {
     updateCurrentArtifact,
   } = useCanvasMode();
   
-  const canvasModeSidebarExpanded = !isCollapsed && canvasModeActive;
-  
   const chatContainerRef = useRef<ChatContainerRef>(null);
   
   // Resizable panel widths (in percentages)
@@ -59,7 +57,7 @@ function HomeContent() {
         setArtifactId(message.artifactId);
       }
     }
-    setCollapsed(true); // Collapse sidebar when canvas mode activates
+    setCollapsed(true); // Auto-collapse sidebar when canvas mode activates
   }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed]);
   
   const handleNewChat = () => {
@@ -94,7 +92,7 @@ function HomeContent() {
         <Sidebar
           threads={threads}
           currentThreadId={currentThreadId}
-          isCollapsed={isCollapsed || canvasModeActive}
+          isCollapsed={isCollapsed}
           onToggleCollapse={toggleCollapse}
           onNewChat={handleNewChat}
           onSelectThread={selectThread}
