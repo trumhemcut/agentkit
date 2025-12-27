@@ -44,7 +44,8 @@ export function ArtifactPanel({ message, onClose }: ArtifactPanelProps) {
   // Use artifact from context if available, otherwise use message content
   const displayContent = useMemo(() => {
     // If partial update is active, show the preview of the update
-    if (isPartialUpdateActive && partialUpdateSelection && artifact) {
+    // BUT only if we have actual content in the buffer to avoid clearing selection
+    if (isPartialUpdateActive && partialUpdateSelection && artifact && partialUpdateBuffer.length > 0) {
       const { start, end } = partialUpdateSelection;
       console.log('[ArtifactPanel] Preview update:', {
         start, 
