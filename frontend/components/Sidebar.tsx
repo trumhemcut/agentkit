@@ -116,10 +116,10 @@ export function Sidebar({
             onClick={onNewChat} 
             variant="ghost"
             size="icon" 
-            className="w-10 h-10 mx-auto hover:bg-gray-200"
+            className="size-10 mx-auto hover:bg-gray-200"
             title="New Chat"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="size-5" />
           </Button>
         )}
       </div>
@@ -129,18 +129,18 @@ export function Sidebar({
           <Button 
             variant="ghost"
             size="icon" 
-            className="w-10 h-10 hover:bg-gray-200"
+            className="size-10 hover:bg-gray-200"
             title="Search"
           >
-            <Search className="h-5 w-5" />
+            <Search className="size-5" />
           </Button>
           <Button 
             variant="ghost"
             size="icon" 
-            className="w-10 h-10 hover:bg-gray-200"
+            className="size-10 hover:bg-gray-200"
             title="Discover"
           >
-            <Sparkles className="h-5 w-5" />
+            <Sparkles className="size-5" />
           </Button>
         </div>
       )}

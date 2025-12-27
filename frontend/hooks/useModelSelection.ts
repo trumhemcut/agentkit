@@ -39,8 +39,8 @@ export function useModelSelection() {
       // Load saved model from localStorage or use default
       const savedModel = localStorage.getItem(STORAGE_KEY);
       console.log('[useModelSelection] Saved model from localStorage:', savedModel);
-      console.log('[useModelSelection] Default model from API:', response.default);
-      const modelToSelect = savedModel || response.default;
+      console.log('[useModelSelection] Default model from API:', response.default_model);
+      const modelToSelect = savedModel || response.default_model;
       console.log('[useModelSelection] Model to select:', modelToSelect);
 
       // Verify the model exists and is available
