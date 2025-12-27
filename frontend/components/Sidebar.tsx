@@ -98,8 +98,6 @@ export function Sidebar({
         )}
       </div>
 
-      <Separator />
-
       {/* New Chat Button */}
       <div className="p-2 shrink-0">
         {!isCollapsed ? (
@@ -112,42 +110,38 @@ export function Sidebar({
             <span className="font-medium">New chat</span>
           </Button>
         ) : (
-          <Button 
-            onClick={onNewChat} 
-            variant="ghost"
-            size="icon" 
-            className="size-10 mx-auto hover:bg-gray-200"
-            title="New Chat"
-          >
-            <Plus className="size-5" />
-          </Button>
+          <div className="flex flex-col items-center gap-2">
+            <Button 
+              onClick={onNewChat} 
+              variant="ghost"
+              size="icon" 
+              className="size-10 hover:bg-gray-200"
+              title="New Chat"
+            >
+              <Plus className="size-5" />
+            </Button>
+            <Button 
+              variant="ghost"
+              size="icon" 
+              className="size-10 hover:bg-gray-200"
+              title="Search"
+            >
+              <Search className="size-5" />
+            </Button>
+            <Button 
+              variant="ghost"
+              size="icon" 
+              className="size-10 hover:bg-gray-200"
+              title="Discover"
+            >
+              <Sparkles className="size-5" />
+            </Button>
+          </div>
         )}
       </div>
 
-      {isCollapsed && (
-        <div className="flex flex-col items-center gap-2 p-2 shrink-0">
-          <Button 
-            variant="ghost"
-            size="icon" 
-            className="size-10 hover:bg-gray-200"
-            title="Search"
-          >
-            <Search className="size-5" />
-          </Button>
-          <Button 
-            variant="ghost"
-            size="icon" 
-            className="size-10 hover:bg-gray-200"
-            title="Discover"
-          >
-            <Sparkles className="size-5" />
-          </Button>
-        </div>
-      )}
-
       {!isCollapsed && (
         <>
-          <Separator />
           <div className="px-4 py-2 shrink-0">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Your chats
