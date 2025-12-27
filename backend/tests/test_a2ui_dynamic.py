@@ -63,16 +63,18 @@ class TestComponentToolRegistry:
     def test_registry_initialization(self):
         """Test registry has default tools"""
         registry = ComponentToolRegistry()
-        assert len(registry.get_all_tools()) == 2  # CheckboxTool + MultipleCheckboxesTool
+        assert len(registry.get_all_tools()) == 4  # Checkbox, MultipleCheckboxes, Button, TextInput
         assert registry.get_tool("create_checkbox") is not None
         assert registry.get_tool("create_checkboxes") is not None
+        assert registry.get_tool("create_button") is not None
+        assert registry.get_tool("create_textinput") is not None
     
     def test_get_tool_schemas(self):
         """Test tool schema generation"""
         registry = ComponentToolRegistry()
         schemas = registry.get_tool_schemas()
         
-        assert len(schemas) == 2  # Two default tools
+        assert len(schemas) == 4  # Four default tools
         assert schemas[0]["type"] == "function"
         assert "name" in schemas[0]["function"]
         assert "description" in schemas[0]["function"]
@@ -103,7 +105,7 @@ class TestComponentToolRegistry:
         registry.register_tool(custom_tool)
         
         assert registry.get_tool("create_custom") is not None
-        assert len(registry.get_all_tools()) == 3  # 2 default + custom
+        assert len(registry.get_all_tools()) == 5  # 4 default + custom
 
 
 class TestMultipleCheckboxesTool:
@@ -153,6 +155,84 @@ class TestMultipleCheckboxesTool:
         assert contents[0].value_boolean == True
         assert contents[1].value_boolean == False
         assert contents[2].value_boolean == True
+
+
+class TestButtonTool:
+    """Test button tool"""
+    
+    def test_button_generation(self):
+        """Test generating a button"""
+        from tools.a2ui_tools import ButtonTool
+        
+        tool = ButtonTool()
+        result = tool.generate_component(
+            label="Submit",
+            action_name="submit_form"
+        )
+        
+        assert "component" in result
+        assert "data_model" in result
+        assert "component_id" in result
+        assert result["component"].id == result["component_id"]
+        assert "Button" in result["component"].component
+    
+    def test_button_default_action(self):
+        """Test button with default action"""
+        from tools.a2ui_tools import ButtonTool
+        
+        tool = ButtonTool()
+        result = tool.generate_component(label="Click Me")
+        
+        # Should have default action_name
+        assert result["component"].component["Button"]["onPress"]["action"] == "button_click"
+
+
+class TestTextInputTool:
+    """Test text input tool"""
+    
+    def test_textinput_generation(self):
+        """Test generating a text input"""
+        from tools.a2ui_tools import TextInputTool
+        
+        tool = TextInputTool()
+        result = tool.generate_component(
+            placeholder="Enter your name",
+            label="Full Name"
+        )
+        
+        assert "component" in result
+        assert "data_model" in result
+        assert "component_id" in result
+        assert result["component"].id == result["component_id"]
+        assert "TextInput" in result["component"].component
+    
+    def test_textinput_multiline(self):
+        """Test generating a multiline text input (textarea)"""
+        from tools.a2ui_tools import TextInputTool
+        
+        tool = TextInputTool()
+        result = tool.generate_component(
+            placeholder="Enter your comments",
+            label="Comments",
+            multiline=True
+        )
+        
+        # Check multiline is set
+        assert result["component"].component["TextInput"]["multiline"] == True
+    
+    def test_textinput_with_custom_path(self):
+        """Test text input with custom data path"""
+        from tools.a2ui_tools import TextInputTool
+        
+        tool = TextInputTool()
+        result = tool.generate_component(
+            placeholder="Enter email",
+            data_path="/form/user/email"
+        )
+        
+        assert result["data_model"]["path"] == "/form/user"
+        assert result["data_model"]["contents"][0].key == "email"
+        assert result["data_model"]["contents"][0].value_string == ""
 
 
 @pytest.mark.asyncio

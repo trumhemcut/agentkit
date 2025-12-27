@@ -136,6 +136,102 @@ Interactive checkbox component with data binding.
 - `label`: Either `literalString` (static text) or `path` (from data model)
 - `value.path`: JSON Pointer path to boolean value in data model
 
+### Button
+
+Interactive button component with action triggering.
+
+**A2UI Definition:**
+```json
+{
+  "id": "submit-btn",
+  "component": {
+    "Button": {
+      "label": { "literalString": "Submit" },
+      "onPress": { "action": "submit_form" }
+    }
+  }
+}
+```
+
+**Features:**
+- Triggers custom actions via `onAction` callback
+- Supports multiple variants (default, destructive, outline, etc.)
+- Built with Shadcn UI `Button` component
+
+**Props:**
+- `label`: Button text (literalString or path)
+- `onPress.action`: Action name to trigger
+- `variant`: Optional button style variant
+
+### TextInput
+
+Text input or textarea component with data binding.
+
+**A2UI Definition (Single-line):**
+```json
+{
+  "id": "name-input",
+  "component": {
+    "TextInput": {
+      "label": { "literalString": "Full Name" },
+      "placeholder": { "literalString": "Enter your name" },
+      "value": { "path": "/form/name" },
+      "multiline": false
+    }
+  }
+}
+```
+
+**A2UI Definition (Multi-line textarea):**
+```json
+{
+  "id": "comments-input",
+  "component": {
+    "TextInput": {
+      "label": { "literalString": "Comments" },
+      "placeholder": { "literalString": "Enter your comments" },
+      "value": { "path": "/form/comments" },
+      "multiline": true
+    }
+  }
+}
+```
+
+**Features:**
+- Two-way data binding via JSON Pointer paths
+- Automatic switch between `<Input>` and `<Textarea>` based on `multiline` prop
+- Updates data model on user input
+- Built with Shadcn UI `Input` and `Textarea` components
+
+**Props:**
+- `label`: Optional label text above input (literalString or path)
+- `placeholder`: Placeholder text when empty
+- `value.path`: JSON Pointer path to string value in data model
+- `multiline`: Boolean flag for textarea (default: false)
+
+**Implementation:**
+```typescript
+// Component: A2UITextInput.tsx
+{isMultiline ? (
+  <Textarea
+    id={id}
+    value={value}
+    onChange={handleChange}
+    placeholder={placeholderText}
+    rows={4}
+    className="resize-y"
+  />
+) : (
+  <Input
+    id={id}
+    type="text"
+    value={value}
+    onChange={handleChange}
+    placeholder={placeholderText}
+  />
+)}
+```
+
 ### Container Components (Row, Column, Card)
 
 Layout components for organizing child components.

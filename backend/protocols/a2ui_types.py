@@ -277,3 +277,41 @@ def create_column_component(
         }
     )
 
+
+def create_textinput_component(
+    component_id: str,
+    placeholder: str,
+    value_path: str,
+    label: str = None,
+    multiline: bool = False
+) -> Component:
+    """
+    Create a text input component.
+    
+    Args:
+        component_id: Unique ID for the text input
+        placeholder: Placeholder text when empty
+        value_path: Path in data model where value is stored
+        label: Optional label text above input
+        multiline: Whether to allow multiple lines (textarea)
+    
+    Returns:
+        Component with text input configuration
+    """
+    input_config = {
+        "placeholder": {"literalString": placeholder},
+        "value": {"path": value_path},
+        "multiline": multiline
+    }
+    
+    if label:
+        input_config["label"] = {"literalString": label}
+    
+    return Component(
+        id=component_id,
+        component={
+            "TextInput": input_config
+        }
+    )
+
+

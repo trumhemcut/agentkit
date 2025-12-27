@@ -18,7 +18,8 @@ from protocols.a2ui_types import (
     DataContent,
     create_checkbox_component,
     create_text_component,
-    create_button_component
+    create_button_component,
+    create_textinput_component
 )
 
 
@@ -253,6 +254,172 @@ class MultipleCheckboxesTool(BaseComponentTool):
         }
 
 
+class ButtonTool(BaseComponentTool):
+    """Tool to generate button components"""
+    
+    @property
+    def name(self) -> str:
+        return "create_button"
+    
+    @property
+    def description(self) -> str:
+        return """Create a button UI component. Use this when user wants:
+        - A clickable button
+        - An action button (submit, cancel, confirm, etc.)
+        - A button to trigger an action
+        
+        Examples:
+        - "Create a submit button"
+        - "Add a button to confirm"
+        - "Make a cancel button"
+        """
+    
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "description": "Text to display on the button"
+                },
+                "action_name": {
+                    "type": "string",
+                    "description": "Name of action to trigger (e.g., 'submit', 'cancel', 'confirm')",
+                    "default": "button_click"
+                }
+            },
+            "required": ["label"]
+        }
+    
+    def generate_component(
+        self,
+        label: str,
+        action_name: str = "button_click",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate button component"""
+        
+        # Generate unique component ID
+        component_id = f"button-{uuid.uuid4().hex[:8]}"
+        
+        # Create button component
+        component = create_button_component(
+            component_id=component_id,
+            label_text=label,
+            action_name=action_name
+        )
+        
+        # Buttons don't need data model (they trigger actions, not store state)
+        data_model = {
+            "path": "/ui",
+            "contents": []
+        }
+        
+        return {
+            "component": component,
+            "data_model": data_model,
+            "component_id": component_id
+        }
+
+
+class TextInputTool(BaseComponentTool):
+    """Tool to generate text input components"""
+    
+    @property
+    def name(self) -> str:
+        return "create_textinput"
+    
+    @property
+    def description(self) -> str:
+        return """Create a text input UI component. Use this when user wants:
+        - A text input field (textbox)
+        - An input for entering text
+        - A text area for multiple lines
+        - A form input field
+        
+        Examples:
+        - "Create a text input for name"
+        - "Add a textbox for email"
+        - "Make a text area for comments"
+        - "Input field for phone number"
+        """
+    
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "placeholder": {
+                    "type": "string",
+                    "description": "Placeholder text shown when input is empty"
+                },
+                "label": {
+                    "type": "string",
+                    "description": "Label text above the input (optional)"
+                },
+                "multiline": {
+                    "type": "boolean",
+                    "description": "Whether to allow multiple lines (textarea)",
+                    "default": False
+                },
+                "data_path": {
+                    "type": "string",
+                    "description": "Path in data model to store value (e.g., '/form/name')",
+                    "default": None
+                }
+            },
+            "required": ["placeholder"]
+        }
+    
+    def generate_component(
+        self,
+        placeholder: str,
+        label: Optional[str] = None,
+        multiline: bool = False,
+        data_path: Optional[str] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate text input component"""
+        
+        # Generate unique component ID
+        component_id = f"textinput-{uuid.uuid4().hex[:8]}"
+        
+        # Generate data path if not provided
+        if not data_path:
+            data_path = f"/ui/{component_id}/value"
+        
+        # Create text input component
+        component = create_textinput_component(
+            component_id=component_id,
+            placeholder=placeholder,
+            value_path=data_path,
+            label=label,
+            multiline=multiline
+        )
+        
+        # Create initial data model
+        path_parts = data_path.split('/')
+        data_key = path_parts[-1]
+        parent_path = '/'.join(path_parts[:-1]) if len(path_parts) > 1 else "/"
+        
+        data_model = {
+            "path": parent_path,
+            "contents": [
+                DataContent(
+                    key=data_key,
+                    value_string=""  # Initialize with empty string
+                )
+            ]
+        }
+        
+        return {
+            "component": component,
+            "data_model": data_model,
+            "component_id": component_id
+        }
+
+
 class ComponentToolRegistry:
     """Registry for all A2UI component tools"""
     
@@ -264,6 +431,8 @@ class ComponentToolRegistry:
         """Register default component tools"""
         self.register_tool(CheckboxTool())
         self.register_tool(MultipleCheckboxesTool())
+        self.register_tool(ButtonTool())
+        self.register_tool(TextInputTool())
     
     def register_tool(self, tool: BaseComponentTool):
         """Register a component tool"""

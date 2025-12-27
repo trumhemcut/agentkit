@@ -29,6 +29,13 @@ export interface InputProps {
   type?: 'text' | 'email' | 'password' | 'number';
 }
 
+export interface TextInputProps {
+  label?: { literalString?: string; path?: string };
+  placeholder?: { literalString?: string; path?: string };
+  value?: { path?: string };
+  multiline?: boolean;
+}
+
 export interface ContainerProps {
   children?: string[];
 }
@@ -39,6 +46,7 @@ export type ComponentType =
   | { Button: ButtonProps }
   | { Text: TextProps }
   | { Input: InputProps }
+  | { TextInput: TextInputProps }
   | { Row: ContainerProps }
   | { Column: ContainerProps }
   | { Card: ContainerProps };

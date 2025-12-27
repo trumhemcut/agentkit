@@ -4,6 +4,7 @@ import { A2UICheckbox } from './components/A2UICheckbox';
 import { A2UIButton } from './components/A2UIButton';
 import { A2UIText } from './components/A2UIText';
 import { A2UIInput } from './components/A2UIInput';
+import { A2UITextInput } from './components/A2UITextInput';
 import type { A2UIComponent } from '@/types/a2ui';
 
 interface A2UIRendererProps {
@@ -74,6 +75,17 @@ export const A2UIRenderer: React.FC<A2UIRendererProps> = ({ surfaceId, onAction 
       case 'Input':
         return (
           <A2UIInput
+            key={component.id}
+            id={component.id}
+            props={props}
+            dataModel={surface.dataModel}
+            surfaceId={surfaceId}
+          />
+        );
+      
+      case 'TextInput':
+        return (
+          <A2UITextInput
             key={component.id}
             id={component.id}
             props={props}

@@ -221,7 +221,15 @@ Guidelines:
   Examples: "3 checkboxes for flight plan", "create checkboxes for morning, afternoon, evening"
   When user mentions a number (e.g., "3 checkboxes") or lists multiple items, use create_checkboxes
   
-- Extract specific labels from user's request when possible
+- For BUTTON: use create_button tool
+  Examples: "create a submit button", "add a confirm button", "button to cancel"
+  Extract button action from context (submit, cancel, confirm, etc.)
+  
+- For TEXT INPUT: use create_textinput tool
+  Examples: "text input for name", "textbox for email", "input field for phone"
+  Set multiline=true for "text area" or "comments" requests
+  
+- Extract specific labels/placeholders from user's request when possible
   Example: "checkboxes for flight HN→SG, SG→DN, DN→HN" 
   -> labels: ["Chuyến bay HN → SG", "Chuyến bay SG → DN", "Chuyến bay DN → HN"]
 
