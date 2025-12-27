@@ -7,9 +7,7 @@ from agents.canvas_agent import CanvasAgent
 from graphs.canvas_graph import (
     CanvasGraphState,
     detect_intent_node,
-    ArtifactV3,
-    ArtifactContentCode,
-    ArtifactContentText,
+    Artifact,
     SelectedText
 )
 from protocols.event_types import CanvasEventType
@@ -554,6 +552,309 @@ class TestContextWindow:
         # Should include context before, even if after is empty
         assert "Context Before Selection" in prompt
         assert "def bar():" in prompt
+
+
+class TestSelectionAtDifferentPositions:
+    """Test partial updates work correctly at different content positions - Bug fix verification"""
+    
+    def test_merge_at_start_position(self):
+        """Test partial update at the very start of content (position 0)"""
+        agent = CanvasAgent()
+        
+        original_content = "def foo():\n    return 42\n\ndef bar():\n    return 100"
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "make it async"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-1",
+                "title": "Test Functions",
+                "content": original_content,
+                "language": "python"
+            },
+            "selectedText": {
+                "start": 0,
+                "end": 10,  # "def foo():"
+                "text": "def foo():",
+                "lineStart": 1,
+                "lineEnd": 1
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "async def foo():"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Check that replacement happened at correct position
+        assert new_content.startswith("async def foo():"), f"Expected to start with 'async def foo():', got: {new_content[:20]}"
+        assert "\n    return 42" in new_content, "Should preserve content after selection"
+        assert "def bar():" in new_content, "Should preserve content far after selection"
+        
+        # Verify structure is maintained
+        expected_content = "async def foo():\n    return 42\n\ndef bar():\n    return 100"
+        assert new_content == expected_content, f"Content mismatch:\nExpected: {expected_content}\nGot: {new_content}"
+    
+    def test_merge_at_middle_position(self):
+        """Test partial update in the middle of content - Primary bug location"""
+        agent = CanvasAgent()
+        
+        original_content = "def foo():\n    return 42\n\ndef bar():\n    return 100\n\ndef baz():\n    return 200"
+        
+        # Select the middle function
+        middle_function_start = original_content.index("def bar():")
+        middle_function_end = middle_function_start + len("def bar():\n    return 100")
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "make bar return 999"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-2",
+                "title": "Test Functions",
+                "content": original_content,
+                "language": "python"
+            },
+            "selectedText": {
+                "start": middle_function_start,
+                "end": middle_function_end,
+                "text": "def bar():\n    return 100",
+                "lineStart": 4,
+                "lineEnd": 5
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "def bar():\n    return 999"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Check that content before selection is preserved
+        assert new_content.startswith("def foo():\n    return 42"), "Content before selection should be preserved"
+        
+        # Check that replacement happened at correct position
+        assert "return 999" in new_content, "Updated content should be present"
+        assert "return 100" not in new_content, "Old content should be replaced"
+        
+        # Check that content after selection is preserved
+        assert "def baz():\n    return 200" in new_content, "Content after selection should be preserved"
+        
+        # Verify exact structure
+        expected_content = "def foo():\n    return 42\n\ndef bar():\n    return 999\n\ndef baz():\n    return 200"
+        assert new_content == expected_content, f"Content mismatch:\nExpected: {expected_content}\nGot: {new_content}"
+    
+    def test_merge_at_end_position(self):
+        """Test partial update at the end of content"""
+        agent = CanvasAgent()
+        
+        original_content = "def foo():\n    return 42\n\ndef bar():\n    return 100"
+        
+        # Select the last function
+        last_function_start = original_content.index("def bar():")
+        last_function_end = len(original_content)
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "add error handling"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-3",
+                "title": "Test Functions",
+                "content": original_content,
+                "language": "python"
+            },
+            "selectedText": {
+                "start": last_function_start,
+                "end": last_function_end,
+                "text": "def bar():\n    return 100",
+                "lineStart": 4,
+                "lineEnd": 5
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "def bar():\n    try:\n        return 100\n    except Exception as e:\n        return 0"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Check that content before selection is preserved
+        assert new_content.startswith("def foo():\n    return 42"), "Content before selection should be preserved"
+        
+        # Check that replacement happened at correct position
+        assert "try:" in new_content, "Updated content should be present"
+        assert "except Exception as e:" in new_content, "Updated content should be present"
+        
+        # Verify structure
+        expected_content = "def foo():\n    return 42\n\ndef bar():\n    try:\n        return 100\n    except Exception as e:\n        return 0"
+        assert new_content == expected_content, f"Content mismatch:\nExpected: {expected_content}\nGot: {new_content}"
+    
+    def test_merge_single_line_in_middle(self):
+        """Test updating a single line in the middle - precise selection"""
+        agent = CanvasAgent()
+        
+        original_content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
+        
+        # Select "Line 3"
+        line3_start = original_content.index("Line 3")
+        line3_end = line3_start + len("Line 3")
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "change line 3"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-4",
+                "title": "Test Lines",
+                "content": original_content,
+                "language": "text"
+            },
+            "selectedText": {
+                "start": line3_start,
+                "end": line3_end,
+                "text": "Line 3"
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "Modified Line 3"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Verify exact replacement
+        expected_content = "Line 1\nLine 2\nModified Line 3\nLine 4\nLine 5"
+        assert new_content == expected_content, f"Content mismatch:\nExpected: {expected_content}\nGot: {new_content}"
+        
+        # Ensure other lines are untouched
+        assert new_content.count("Line 1") == 1, "Line 1 should be unchanged"
+        assert new_content.count("Line 2") == 1, "Line 2 should be unchanged"
+        assert new_content.count("Line 4") == 1, "Line 4 should be unchanged"
+        assert new_content.count("Line 5") == 1, "Line 5 should be unchanged"
+        assert "Modified Line 3" in new_content, "Modified Line 3 should be present"
+    
+    def test_merge_with_multiline_selection_in_middle(self):
+        """Test updating multiple lines in the middle of content"""
+        agent = CanvasAgent()
+        
+        original_content = """# Header
+        
+## Section 1
+Content 1
+
+## Section 2
+Content 2
+
+## Section 3
+Content 3"""
+        
+        # Select Section 2 (header + content)
+        section2_start = original_content.index("## Section 2")
+        section2_end = original_content.index("## Section 3")
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "rewrite section 2"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-5",
+                "title": "Test Document",
+                "content": original_content,
+                "language": None
+            },
+            "selectedText": {
+                "start": section2_start,
+                "end": section2_end,
+                "text": original_content[section2_start:section2_end]
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "## Section 2 (Updated)\nNew content here\n\n"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Check structure
+        assert "# Header" in new_content, "Header should be preserved"
+        assert "## Section 1" in new_content, "Section 1 should be preserved"
+        assert "## Section 2 (Updated)" in new_content, "Updated section should be present"
+        assert "New content here" in new_content, "New content should be present"
+        assert "## Section 3" in new_content, "Section 3 should be preserved"
+        assert "Content 2" not in new_content, "Old Section 2 content should be replaced"
+    
+    def test_merge_preserves_unicode_and_special_chars(self):
+        """Test that merge correctly handles unicode and special characters"""
+        agent = CanvasAgent()
+        
+        original_content = "Hello 世界\nLine 2: émojis 🚀\nLine 3: symbols @#$%"
+        
+        # Select the emoji line
+        emoji_line_start = original_content.index("Line 2")
+        emoji_line_end = emoji_line_start + len("Line 2: émojis 🚀")
+        
+        state: CanvasGraphState = {
+            "messages": [{"role": "user", "content": "update emoji line"}],
+            "thread_id": "test-thread",
+            "run_id": "test-run",
+            "artifact": {
+                "artifact_id": "test-artifact-6",
+                "title": "Unicode Test",
+                "content": original_content,
+                "language": None
+            },
+            "selectedText": {
+                "start": emoji_line_start,
+                "end": emoji_line_end,
+                "text": "Line 2: émojis 🚀"
+            },
+            "artifactAction": "partial_update"
+        }
+        
+        # Simulate LLM generated update
+        updated_selection = "Line 2: more émojis 🎉✨"
+        
+        # Merge the update
+        agent._merge_partial_update(state, updated_selection)
+        
+        # Verify merge correctness
+        new_artifact = state["artifact"]
+        new_content = new_artifact["content"]
+        
+        # Verify unicode preservation
+        expected_content = "Hello 世界\nLine 2: more émojis 🎉✨\nLine 3: symbols @#$%"
+        assert new_content == expected_content, f"Content mismatch:\nExpected: {expected_content}\nGot: {new_content}"
+        assert "世界" in new_content, "Chinese characters should be preserved"
+        assert "🎉" in new_content, "New emoji should be present"
+        assert "@#$%" in new_content, "Special symbols should be preserved"
 
 
 if __name__ == "__main__":

@@ -38,12 +38,23 @@ def prepare_state_for_agent(agent_id: str, input_data: RunAgentInput) -> dict:
     # Agent-specific state extensions
     if agent_id == "canvas":
         # Canvas agent needs additional artifact state
+        selected_text_data = input_data.selectedText.model_dump() if input_data.selectedText else None
+        
+        # Diagnostic logging for selection tracking
+        if selected_text_data:
+            logger.info(f"[ROUTES] Received selectedText in request: start={selected_text_data.get('start')}, end={selected_text_data.get('end')}")
+            logger.info(f"[ROUTES] Selected text preview: '{selected_text_data.get('text', '')[:100]}...'")
+        else:
+            logger.debug(f"[ROUTES] No selectedText in request")
+        
         state.update({
             "artifact": input_data.artifact.model_dump() if input_data.artifact else None,
-            "selectedText": input_data.selectedText.model_dump() if input_data.selectedText else None,
+            "selectedText": selected_text_data,
             "artifact_id": input_data.artifact_id,
             "artifactAction": input_data.action  # Will be detected by canvas graph if None
         })
+        
+        logger.debug(f"[ROUTES] Canvas state prepared with artifact_id={input_data.artifact_id}, action={input_data.action}")
     
     return state
 

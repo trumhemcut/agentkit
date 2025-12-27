@@ -591,6 +591,24 @@ Instructions:
         selected_text = state["selectedText"]
         thread_id = state.get("thread_id")
         artifact_id = state.get("artifact_id")
+        artifact = state.get("artifact")
+        
+        # Diagnostic logging for selection tracking
+        logger.info(f"[PARTIAL_UPDATE] Received selection: start={selected_text['start']}, end={selected_text['end']}")
+        logger.info(f"[PARTIAL_UPDATE] Selected text preview: '{selected_text.get('text', '')[:100]}...'")
+        if artifact:
+            full_content = artifact.get('content', '')
+            logger.info(f"[PARTIAL_UPDATE] Full content length: {len(full_content)}")
+            logger.info(f"[PARTIAL_UPDATE] Selection length: {selected_text['end'] - selected_text['start']}")
+            # Verify selection boundaries are within content bounds
+            if selected_text['start'] < 0 or selected_text['end'] > len(full_content):
+                logger.error(f"[PARTIAL_UPDATE] INVALID SELECTION BOUNDARIES! start={selected_text['start']}, end={selected_text['end']}, content_length={len(full_content)}")
+            else:
+                # Extract actual content at selection position for verification
+                actual_selected = full_content[selected_text['start']:selected_text['end']]
+                logger.debug(f"[PARTIAL_UPDATE] Content at selection position: '{actual_selected[:100]}...'")
+        else:
+            logger.warning("[PARTIAL_UPDATE] No artifact in state!")
         
         # Build specialized prompt
         system_prompt = self._build_partial_update_prompt(state)
@@ -600,25 +618,30 @@ Instructions:
         ]
         
         # Emit start event with artifact_id
+        start_event_data = {
+            "artifact_id": artifact_id,  # Include artifact_id
+            "selection": {
+                "start": selected_text["start"],
+                "end": selected_text["end"]
+            },
+            "strategy": "replace"
+        }
+        logger.info(f"[PARTIAL_UPDATE] Emitting START event with data: {start_event_data}")
+        
         yield CustomEvent(
             name=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_START,
-            value={
-                "artifact_id": artifact_id,  # Include artifact_id
-                "selection": {
-                    "start": selected_text["start"],
-                    "end": selected_text["end"]
-                },
-                "strategy": "replace"
-            }
+            value=start_event_data
         )
         
         logger.info(f"Streaming partial update for selection {selected_text['start']}-{selected_text['end']}, artifact_id: {artifact_id}")
         
         # Stream the partial update
         updated_content = ""
+        chunk_count = 0
         async for chunk in self.llm.astream(messages):
             if hasattr(chunk, 'content') and chunk.content:
                 updated_content += chunk.content
+                chunk_count += 1
                 
                 # Stream chunks to frontend
                 yield CustomEvent(
@@ -633,23 +656,27 @@ Instructions:
                     }
                 )
         
-        logger.info(f"Partial update complete, generated {len(updated_content)} characters")
+        logger.info(f"[PARTIAL_UPDATE] Streaming complete: {chunk_count} chunks, {len(updated_content)} total characters generated")
         
         # Emit completion event with full updated section
+        complete_event_data = {
+            "artifact_id": artifact_id,  # Include artifact_id
+            "selection": {
+                "start": selected_text["start"],
+                "end": selected_text["end"]
+            },
+            "updatedContent": updated_content,
+            "strategy": "replace"
+        }
+        logger.info(f"[PARTIAL_UPDATE] Emitting COMPLETE event with selection: {selected_text['start']}-{selected_text['end']}, content length: {len(updated_content)}")
+        
         yield CustomEvent(
             name=CanvasEventType.ARTIFACT_PARTIAL_UPDATE_COMPLETE,
-            value={
-                "artifact_id": artifact_id,  # Include artifact_id
-                "selection": {
-                    "start": selected_text["start"],
-                    "end": selected_text["end"]
-                },
-                "updatedContent": updated_content,
-                "strategy": "replace"
-            }
+            value=complete_event_data
         )
         
         # Update artifact in state with merged content
+        logger.info(f"[PARTIAL_UPDATE] Merging updated content into artifact state...")
         self._merge_partial_update(state, updated_content)
         
         # Update cache
@@ -672,12 +699,30 @@ Instructions:
         selected_text = state["selectedText"]
         full_content = artifact["content"]
         
+        # Diagnostic logging before merge
+        logger.info(f"[MERGE] Original content length: {len(full_content)}")
+        logger.info(f"[MERGE] Selection range: {selected_text['start']}-{selected_text['end']}")
+        logger.info(f"[MERGE] Selection length: {selected_text['end'] - selected_text['start']}")
+        logger.info(f"[MERGE] Updated content length: {len(updated_content)}")
+        logger.info(f"[MERGE] Before selection: {len(full_content[:selected_text['start']])} chars")
+        logger.info(f"[MERGE] After selection: {len(full_content[selected_text['end']:])} chars")
+        
         # Replace selected region with updated content
-        new_content = (
-            full_content[:selected_text["start"]] +
-            updated_content +
-            full_content[selected_text["end"]:]
-        )
+        before = full_content[:selected_text["start"]]
+        after = full_content[selected_text["end"]:]
+        new_content = before + updated_content + after
+        
+        # Log merge result
+        logger.info(f"[MERGE] New content length: {len(new_content)}")
+        logger.info(f"[MERGE] Length delta: {len(new_content) - len(full_content)} chars")
+        logger.info(f"[MERGE] Merge formula: before({len(before)}) + updated({len(updated_content)}) + after({len(after)}) = {len(new_content)}")
+        
+        # Verify merge correctness
+        expected_length = len(before) + len(updated_content) + len(after)
+        if len(new_content) != expected_length:
+            logger.error(f"[MERGE] ERROR: Merge length mismatch! Expected {expected_length}, got {len(new_content)}")
+        else:
+            logger.debug(f"[MERGE] Merge verification passed")
         
         # Update artifact with new content
         updated_artifact: Artifact = {
@@ -688,4 +733,4 @@ Instructions:
         }
         
         state["artifact"] = updated_artifact
-        logger.debug(f"Artifact updated with partial update merged")
+        logger.info(f"[MERGE] Artifact state updated successfully")
