@@ -66,11 +66,8 @@ export function AgentSelector() {
           <DropdownMenuItem
             key={agent.id}
             onClick={() => setSelectedAgent(agent.id)}
-            className="flex items-start gap-2 py-2 cursor-pointer"
           >
-            <div className="flex items-center">
-              {getIcon(agent.icon)}
-            </div>
+            {getIcon(agent.icon)}
             <div className="flex flex-col gap-0.5">
               <span className="font-medium">{agent.name}</span>
               <span className="text-xs text-muted-foreground">

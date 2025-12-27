@@ -53,10 +53,6 @@ export function ProviderSelector() {
               key={provider.id}
               onClick={() => setSelectedProvider(provider.id)}
               disabled={!provider.available}
-              className={cn(
-                "flex items-center gap-2 cursor-pointer",
-                !provider.available && "opacity-50 cursor-not-allowed"
-              )}
             >
               <div className="flex h-5 w-5 items-center justify-center">
                 {selectedProvider === provider.id && (

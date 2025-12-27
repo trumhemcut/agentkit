@@ -80,10 +80,6 @@ export function ModelSelector() {
             key={model.id}
             onClick={() => setSelectedModel(model.id)}
             disabled={!model.available}
-            className={cn(
-              "flex items-start gap-2 py-2 cursor-pointer",
-              !model.available && "opacity-50 cursor-not-allowed"
-            )}
           >
             <div className="flex h-5 w-5 items-center justify-center">
               {selectedModel === model.id && (
