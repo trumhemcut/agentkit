@@ -315,3 +315,47 @@ def create_textinput_component(
     )
 
 
+def create_bar_chart_component(
+    component_id: str,
+    title: str,
+    description: str,
+    data_keys: List[str],
+    colors: Dict[str, str],
+    data_path: str
+) -> Component:
+    """
+    Create a bar chart component.
+    
+    Args:
+        component_id: Unique ID for the bar chart
+        title: Chart title
+        description: Chart description
+        data_keys: Keys for data series (e.g., ['desktop', 'mobile'])
+        colors: Color mapping for each key
+        data_path: Path to chart data in data model
+    
+    Returns:
+        Component with bar chart configuration
+    
+    Example:
+        component = create_bar_chart_component(
+            component_id="chart-abc123",
+            title="User Statistics",
+            description="Monthly user counts",
+            data_keys=["desktop", "mobile"],
+            colors={"desktop": "#2563eb", "mobile": "#60a5fa"},
+            data_path="/ui/chart-abc123/chartData"
+        )
+    """
+    return Component(
+        id=component_id,
+        component={
+            "BarChart": {
+                "title": {"literalString": title},
+                "description": {"literalString": description},
+                "dataKeys": {"literalString": ",".join(data_keys)},
+                "colors": {"literalMap": colors},
+                "data": {"path": data_path}
+            }
+        }
+    )

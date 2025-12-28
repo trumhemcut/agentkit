@@ -25,6 +25,7 @@ Pydantic models for A2UI protocol messages:
 - `create_checkbox_component()`: Create checkbox components
 - `create_text_component()`: Create text components
 - `create_button_component()`: Create button components
+- `create_bar_chart_component()`: Create bar chart components
 
 **Test Coverage**: 22/22 tests passing ✅
 
@@ -39,6 +40,56 @@ Encoder for converting A2UI messages to SSE/JSONL formats:
 - Message type detection with `is_a2ui_message()`
 
 **Test Coverage**: Included in protocol tests ✅
+
+### 2.5. Component Generation Tools (`backend/tools/a2ui_tools.py`)
+
+LLM-driven tools for generating A2UI components dynamically:
+
+**Features**:
+- BaseComponentTool abstract class for creating new tools
+- ComponentToolRegistry for managing tool lifecycle
+- Tool schemas in OpenAI function calling format
+- Automated component and data model generation
+
+**Available Tools**:
+- `CheckboxTool`: Generate checkbox components
+- `MultipleCheckboxesTool`: Generate multiple checkboxes
+- `ButtonTool`: Generate button components
+- `TextInputTool`: Generate text input fields
+- `BarChartTool`: Generate bar chart visualizations
+
+**Bar Chart Tool**:
+The `BarChartTool` enables LLM agents to create data visualizations from natural language:
+
+```python
+class BarChartTool(BaseComponentTool):
+    name = "create_bar_chart"
+    
+    # Generates components with:
+    # - title, description
+    # - data array with category and values
+    # - data_keys for series (e.g., ['desktop', 'mobile'])
+    # - colors mapping for custom styling
+    # - automatic data model initialization
+```
+
+**Example Usage**:
+```python
+tool = BarChartTool()
+result = tool.generate_component(
+    title="User Statistics",
+    description="Monthly users",
+    data=[
+        {"category": "Jan", "desktop": 186, "mobile": 80},
+        {"category": "Feb", "desktop": 305, "mobile": 200},
+    ],
+    data_keys=["desktop", "mobile"],
+    colors={"desktop": "#2563eb", "mobile": "#60a5fa"}
+)
+# Returns: component, data_model, component_id
+```
+
+**Test Coverage**: See `tests/test_bar_chart_tool.py` ✅
 
 ### 3. A2UI Agent (`backend/agents/a2ui_agent.py`)
 
@@ -138,6 +189,155 @@ data: {"type":"TEXT_MESSAGE_START",...}
 data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Check the box above"}
 data: {"type":"TEXT_MESSAGE_END",...}
 ```
+
+## Bar Chart Component
+
+### Overview
+
+The Bar Chart component enables data visualization in A2UI applications using the Shadcn UI Chart components built on Recharts.
+
+**Backend Tool**: `BarChartTool` in `backend/tools/a2ui_tools.py`  
+**Protocol Helper**: `create_bar_chart_component()` in `backend/protocols/a2ui_types.py`
+
+### Features
+
+- **LLM-Driven Generation**: Agent generates charts from natural language
+- **Multiple Data Series**: Support for comparing multiple datasets (e.g., desktop vs mobile)
+- **Custom Colors**: Specify colors for each data series
+- **Responsive Design**: Charts adapt to container size
+- **Type Safety**: Full Pydantic validation
+
+### Component Structure
+
+**A2UI Message Format**:
+```json
+{
+  "type": "surfaceUpdate",
+  "surfaceId": "surface-abc",
+  "components": [{
+    "id": "bar-chart-xyz123",
+    "component": {
+      "BarChart": {
+        "title": {"literalString": "User Statistics"},
+        "description": {"literalString": "Monthly active users"},
+        "dataKeys": {"literalString": "desktop,mobile"},
+        "colors": {
+          "literalMap": {
+            "desktop": "#2563eb",
+            "mobile": "#60a5fa"
+          }
+        },
+        "data": {"path": "/ui/bar-chart-xyz123/chartData"}
+      }
+    }
+  }]
+}
+```
+
+**Data Model Format**:
+```json
+{
+  "type": "dataModelUpdate",
+  "surfaceId": "surface-abc",
+  "path": "/ui/bar-chart-xyz123",
+  "contents": [{
+    "key": "chartData",
+    "valueMap": {
+      "data": [
+        {"category": "Jan", "desktop": 186, "mobile": 80},
+        {"category": "Feb", "desktop": 305, "mobile": 200},
+        {"category": "Mar", "desktop": 237, "mobile": 120}
+      ],
+      "dataKeys": ["desktop", "mobile"]
+    }
+  }]
+}
+```
+
+### Usage Example
+
+**Agent Prompt**: "Create a bar chart showing Q1 sales data"
+
+**Generated Component**:
+```python
+from tools.a2ui_tools import BarChartTool
+
+tool = BarChartTool()
+result = tool.generate_component(
+    title="Q1 Sales Data",
+    description="Revenue vs Profit",
+    data=[
+        {"category": "Jan", "revenue": 50000, "profit": 15000},
+        {"category": "Feb", "revenue": 60000, "profit": 18000},
+        {"category": "Mar", "revenue": 55000, "profit": 16500}
+    ],
+    data_keys=["revenue", "profit"],
+    colors={"revenue": "#10b981", "profit": "#3b82f6"}
+)
+# Returns: {component, data_model, component_id}
+```
+
+### LLM Tool Schema
+
+The bar chart tool is automatically available to LLM agents through the ComponentToolRegistry:
+
+```python
+{
+  "type": "function",
+  "function": {
+    "name": "create_bar_chart",
+    "description": "Create a bar chart visualization component...",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "data": {"type": "array"},
+        "data_keys": {"type": "array"},
+        "colors": {"type": "object"}
+      },
+      "required": ["title", "data", "data_keys"]
+    }
+  }
+}
+```
+
+### Testing
+
+**Unit Tests** (`tests/test_bar_chart_tool.py`):
+- Tool schema validation
+- Component generation logic
+- Data model creation
+- Custom colors and paths
+- Registry integration
+
+**Integration Tests** (`tests/test_a2ui_bar_chart_integration.py`):
+- End-to-end chart generation from agent
+- A2UI event streaming
+- Data model updates
+- Rendering signals
+
+**Run Tests**:
+```bash
+# Unit tests
+pytest backend/tests/test_bar_chart_tool.py -v
+
+# Integration tests
+pytest backend/tests/test_a2ui_bar_chart_integration.py -v
+```
+
+### Future Extensions
+
+After bar chart is working on frontend, consider adding:
+
+1. **Line Chart**: Time-series data visualization
+2. **Pie Chart**: Proportional data display
+3. **Area Chart**: Cumulative trends
+4. **Mixed Charts**: Combining multiple chart types
+5. **Interactive Features**: Click handlers, tooltips, drill-downs
+6. **Export Options**: Download as PNG/SVG
+
+**Reference**: https://ui.shadcn.com/docs/components/chart
 
 ## Testing Results
 

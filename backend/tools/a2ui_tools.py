@@ -19,7 +19,8 @@ from protocols.a2ui_types import (
     create_checkbox_component,
     create_text_component,
     create_button_component,
-    create_textinput_component
+    create_textinput_component,
+    create_bar_chart_component
 )
 
 
@@ -420,6 +421,120 @@ class TextInputTool(BaseComponentTool):
         }
 
 
+class BarChartTool(BaseComponentTool):
+    """Tool to generate bar chart components"""
+    
+    @property
+    def name(self) -> str:
+        return "create_bar_chart"
+    
+    @property
+    def description(self) -> str:
+        return """Create a bar chart visualization component. Use this when user wants:
+        - Display numeric data as bar chart
+        - Compare data across categories
+        - Visualize trends or comparisons
+        - Show statistics or metrics
+        """
+    
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Chart title"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Chart description (optional)",
+                    "default": ""
+                },
+                "data": {
+                    "type": "array",
+                    "description": "Array of data points with category and values",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string"},
+                            "values": {"type": "object"}
+                        }
+                    }
+                },
+                "data_keys": {
+                    "type": "array",
+                    "description": "Keys for data series to display (e.g., ['desktop', 'mobile'])",
+                    "items": {"type": "string"}
+                },
+                "colors": {
+                    "type": "object",
+                    "description": "Color mapping for each data key",
+                    "default": {}
+                },
+                "data_path": {
+                    "type": "string",
+                    "description": "Path in data model to store chart data",
+                    "default": None
+                }
+            },
+            "required": ["title", "data", "data_keys"]
+        }
+    
+    def generate_component(
+        self,
+        title: str,
+        data: List[Dict[str, Any]],
+        data_keys: List[str],
+        description: str = "",
+        colors: Optional[Dict[str, str]] = None,
+        data_path: Optional[str] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate bar chart component structure"""
+        
+        # Generate unique component ID
+        component_id = f"bar-chart-{uuid.uuid4().hex[:8]}"
+        
+        # Generate data path if not provided
+        if not data_path:
+            data_path = f"/ui/{component_id}/chartData"
+        
+        # Create bar chart component
+        component = create_bar_chart_component(
+            component_id=component_id,
+            title=title,
+            description=description,
+            data_keys=data_keys,
+            colors=colors or {},
+            data_path=data_path
+        )
+        
+        # Create initial data model with chart data
+        path_parts = data_path.split('/')
+        data_key = path_parts[-1]
+        parent_path = '/'.join(path_parts[:-1]) if len(path_parts) > 1 else "/"
+        
+        data_model = {
+            "path": parent_path,
+            "contents": [
+                DataContent(
+                    key=data_key,
+                    value_map={
+                        "data": data,
+                        "dataKeys": data_keys
+                    }
+                )
+            ]
+        }
+        
+        return {
+            "component": component,
+            "data_model": data_model,
+            "component_id": component_id
+        }
+
+
 class ComponentToolRegistry:
     """Registry for all A2UI component tools"""
     
@@ -433,6 +548,7 @@ class ComponentToolRegistry:
         self.register_tool(MultipleCheckboxesTool())
         self.register_tool(ButtonTool())
         self.register_tool(TextInputTool())
+        self.register_tool(BarChartTool())
     
     def register_tool(self, tool: BaseComponentTool):
         """Register a component tool"""

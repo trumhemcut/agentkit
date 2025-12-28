@@ -36,6 +36,14 @@ export interface TextInputProps {
   multiline?: boolean;
 }
 
+export interface BarChartProps {
+  title: { literalString: string };
+  description?: { literalString: string };
+  dataKeys: { literalString: string };
+  colors?: { literalMap: Record<string, string> };
+  data: { path: string };
+}
+
 export interface ContainerProps {
   children?: string[];
 }
@@ -47,9 +55,13 @@ export type ComponentType =
   | { Text: TextProps }
   | { Input: InputProps }
   | { TextInput: TextInputProps }
+  | { BarChart: BarChartProps }
   | { Row: ContainerProps }
   | { Column: ContainerProps }
   | { Card: ContainerProps };
+
+// Data model type
+export type A2UIDataModel = Record<string, any>;
 
 // Message types
 export interface SurfaceUpdate {

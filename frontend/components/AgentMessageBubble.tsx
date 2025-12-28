@@ -66,7 +66,7 @@ export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive, 
           </div>
         )}
         
-        <Card className="bg-muted border-0">
+        <Card className="bg-muted border-0 py-0">
           <CardContent className="p-3">
             {isThinking ? (
               <div className="flex items-center gap-2">
