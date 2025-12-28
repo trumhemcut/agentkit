@@ -9,7 +9,7 @@ import { ProviderSelector } from './ProviderSelector';
  */
 export function Header() {
   return (
-    <header className="bg-background shadow-sm">
+    <header className="relative z-50 bg-background border-b border-border">
       <div className="flex h-16 items-center px-6 justify-start gap-4">
         <AgentSelector />
         <ProviderSelector />

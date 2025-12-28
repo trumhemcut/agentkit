@@ -17,9 +17,9 @@ export function Layout({ sidebar, children }: LayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {sidebar}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden relative">
         <Header />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden relative z-10">
           {children}
         </main>
       </div>
