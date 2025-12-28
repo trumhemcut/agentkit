@@ -60,6 +60,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
   } = useCanvasMode();
   
   const chatContainerRef = useRef<ChatContainerRef>(null);
+  const isCreatingNewThreadRef = useRef(false);
   
   // Resizable panel widths (in percentages)
   const [chatPanelWidth, setChatPanelWidth] = useState(33.33);
@@ -100,24 +101,39 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     setCollapsed(true); // Auto-collapse sidebar when canvas mode activates
   }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed]);
   
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
+    // Mark that we're creating a new thread
+    isCreatingNewThreadRef.current = true;
+    
+    // Deactivate canvas mode first
+    deactivateCanvas();
+    
     // Create a new thread if there's no current thread or if the current thread has messages
     const hasNoThread = !currentThread;
     const hasMessages = currentThread && currentThread.messages.length > 0;
     
     if (hasNoThread || hasMessages) {
       const newThread = createThread();
-      // Navigate to new thread URL
-      router.push(`/thread/${newThread.id}`);
-      // Deactivate canvas mode when starting a new chat
-      deactivateCanvas();
-    }
-    
-    // Focus on input after a short delay to ensure the component is rendered
-    setTimeout(() => {
+      
+      // Only update URL if thread was created successfully
+      if (newThread && newThread.id) {
+        // Update URL without causing full navigation
+        // This prevents component remount and sidebar state changes
+        window.history.pushState({}, '', `/thread/${newThread.id}`);
+      }
+      
+      // Clear the flag after state updates complete
+      requestAnimationFrame(() => {
+        isCreatingNewThreadRef.current = false;
+        // Focus input after DOM updates
+        chatContainerRef.current?.focusInput();
+      });
+    } else {
+      // If current thread is empty, just focus input
+      isCreatingNewThreadRef.current = false;
       chatContainerRef.current?.focusInput();
-    }, 100);
-  };
+    }
+  }, [currentThread, createThread, deactivateCanvas]);
 
   const handleSelectThread = useCallback((threadId: string) => {
     selectThread(threadId);

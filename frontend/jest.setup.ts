@@ -7,6 +7,11 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+// Mock performance.getEntriesByType for performance tracking
+if (!global.performance.getEntriesByType) {
+  global.performance.getEntriesByType = jest.fn(() => []);
+}
+
 // Mock react-markdown to avoid ESM issues
 jest.mock('react-markdown', () => ({
   __esModule: true,
