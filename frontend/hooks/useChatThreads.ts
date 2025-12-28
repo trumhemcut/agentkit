@@ -8,8 +8,10 @@ import { StorageService } from '@/services/storage';
  * Hook for managing chat threads
  * 
  * Provides thread CRUD operations and state management
+ * 
+ * @param initialThreadId - Optional thread ID from URL params to initialize with
  */
-export function useChatThreads() {
+export function useChatThreads(initialThreadId?: string) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,13 +33,17 @@ export function useChatThreads() {
       StorageService.saveThread(newThread);
       setThreads([newThread]);
       setCurrentThreadId(newThread.id);
+    } else if (initialThreadId) {
+      // If initialThreadId provided from URL, use it
+      const threadExists = loadedThreads.some(t => t.id === initialThreadId);
+      setCurrentThreadId(threadExists ? initialThreadId : loadedThreads[0].id);
     } else {
       // Select the most recent thread
       setCurrentThreadId(loadedThreads[0].id);
     }
     
     setIsLoading(false);
-  }, []);
+  }, [initialThreadId]);
 
   /**
    * Create a new thread

@@ -91,10 +91,17 @@ export const useAgentStore = create<AgentStore>()(
   )
 );
 
-// Auto-load agents on first access
+// Auto-load agents on first access (client-side only)
 let hasInitialized = false;
 export const initializeAgentStore = () => {
+  // Only run on client-side
+  if (typeof window === 'undefined') return;
   if (hasInitialized) return;
+  
   hasInitialized = true;
-  useAgentStore.getState().loadAgents();
+  
+  // Small delay to ensure component is mounted
+  setTimeout(() => {
+    useAgentStore.getState().loadAgents();
+  }, 0);
 };

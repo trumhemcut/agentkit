@@ -316,42 +316,57 @@ export async function sendCanvasMessage(
  * @returns Promise with AgentsResponse containing list of agents and default agent
  */
 export async function fetchAvailableAgents(): Promise<AgentsResponse> {
+  // Client-side only check
+  if (typeof window === 'undefined') {
+    console.warn('[API] fetchAvailableAgents called on server-side, returning defaults');
+    return getDefaultAgentsResponse();
+  }
+
   try {
-    console.log('[API] Fetching available agents...');
-    const response = await fetch(`${API_BASE_URL}/api/agents`);
+    console.log('[API] Fetching available agents from:', `${API_BASE_URL}/api/agents`);
+    const response = await fetch(`${API_BASE_URL}/api/agents`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch agents: ${response.statusText}`);
     }
     
     const data: AgentsResponse = await response.json();
-    console.log('[API] Available agents:', data);
+    console.log('[API] Available agents loaded:', data.agents.length);
     return data;
   } catch (error) {
     console.error('[API] Error fetching agents:', error);
-    // Return default fallback if API fails
-    return {
-      agents: [
-        {
-          id: 'chat',
-          name: 'Chat Agent',
-          description: 'General purpose conversational agent',
-          icon: 'message-circle',
-          sub_agents: [],
-          features: ['conversation', 'streaming']
-        },
-        {
-          id: 'canvas',
-          name: 'Canvas Agent',
-          description: 'Multi-agent system with artifact generation and editing',
-          icon: 'layout',
-          sub_agents: ['generator', 'editor'],
-          features: ['artifacts', 'code-generation', 'multi-step']
-        }
-      ],
-      default: 'chat'
-    };
+    console.warn('[API] Using fallback agents. Is backend running at', API_BASE_URL + '?');
+    return getDefaultAgentsResponse();
   }
+}
+
+function getDefaultAgentsResponse(): AgentsResponse {
+  return {
+    agents: [
+      {
+        id: 'chat',
+        name: 'Chat Agent',
+        description: 'General purpose conversational agent',
+        icon: 'message-circle',
+        sub_agents: [],
+        features: ['conversation', 'streaming']
+      },
+      {
+        id: 'canvas',
+        name: 'Canvas Agent',
+        description: 'Multi-agent system with artifact generation and editing',
+        icon: 'layout',
+        sub_agents: ['generator', 'editor'],
+        features: ['artifacts', 'code-generation', 'multi-step']
+      }
+    ],
+    default: 'chat'
+  };
 }
 
 /**
