@@ -62,6 +62,17 @@ class AgentRegistry:
             sub_agents=[],
             features=["ui-components", "interactive", "a2ui-protocol"]
         ))
+        
+        # Register Insurance Supervisor Agent
+        self.register_agent(AgentMetadata(
+            id="insurance-supervisor",
+            name="Insurance Supervisor",
+            description="Multi-agent system for insurance queries with specialized agents for policies, claims, quotes, and customer support",
+            icon="shield",
+            available=True,
+            sub_agents=["policy_agent", "claims_agent", "quoting_agent", "support_agent"],
+            features=["insurance", "supervisor-pattern", "multi-agent", "vietnamese", "quoting"]
+        ))
     
     def register_agent(self, metadata: AgentMetadata):
         """Register a new agent"""

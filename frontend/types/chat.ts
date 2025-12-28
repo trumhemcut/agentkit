@@ -8,6 +8,7 @@ export interface Message {
   content: string;
   timestamp: number;
   agentName?: string;
+  agentId?: string; // Agent ID (e.g., 'insurance-supervisor')
   isStreaming?: boolean;
   isPending?: boolean; // True when waiting for server response
   
@@ -19,6 +20,13 @@ export interface Message {
   language?: string;  // for code artifacts
   title?: string;
   artifactId?: string; // Artifact ID from backend
+  
+  // Metadata for agent-specific information
+  metadata?: {
+    selected_specialist?: string;
+    specialist_name?: string;
+    [key: string]: any;
+  };
 }
 
 // Helper type guard

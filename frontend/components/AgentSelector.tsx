@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAgentStore, initializeAgentStore } from '@/stores/agentStore';
-import { MessageCircle, Layout, ChevronDown } from 'lucide-react';
+import { MessageCircle, Layout, Shield, ChevronDown } from 'lucide-react';
 import { useEffect } from 'react';
 
 /**
@@ -34,6 +34,8 @@ export function AgentSelector() {
         return <MessageCircle className="h-4 w-4 mr-2" />;
       case 'layout':
         return <Layout className="h-4 w-4 mr-2" />;
+      case 'shield':
+        return <Shield className="h-4 w-4 mr-2" />;
       default:
         return <MessageCircle className="h-4 w-4 mr-2" />;
     }

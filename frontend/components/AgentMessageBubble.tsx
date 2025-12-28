@@ -12,6 +12,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { A2UIRenderer } from './A2UI/A2UIRenderer';
 import { useA2UIStore } from '@/stores/a2uiStore';
 import { a2uiActionService } from '@/services/a2uiActionService';
+import { InsuranceSupervisorIndicator } from './InsuranceSupervisorIndicator';
 
 interface AgentMessageBubbleProps {
   message: Message;
@@ -45,12 +46,26 @@ export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive, 
   };
 
   const isThinking = (message.isPending || message.isStreaming) && message.content === '';
+  
+  // Check if this is an insurance supervisor message
+  const isInsuranceSupervisor = message.agentId === 'insurance-supervisor';
+  const selectedSpecialist = message.metadata?.selected_specialist as string | undefined;
 
   return (
     <div className={cn("flex p-4 justify-start", canvasModeActive ? "gap-0" : "gap-3")}>
       {!canvasModeActive && <AvatarIcon role="agent" />}
       
       <div className={cn("flex flex-col gap-1", !isThinking && canvasModeActive ? "flex-1" : "max-w-[70%]")}>
+        {/* Show insurance supervisor indicator if applicable */}
+        {isInsuranceSupervisor && !isThinking && (
+          <div className="mb-2">
+            <InsuranceSupervisorIndicator 
+              specialist={selectedSpecialist}
+              isActive={message.isStreaming}
+            />
+          </div>
+        )}
+        
         <Card className="bg-muted border-0">
           <CardContent className="p-3">
             {isThinking ? (

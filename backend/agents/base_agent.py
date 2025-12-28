@@ -7,6 +7,7 @@ class AgentState(TypedDict, total=False):
     messages: List[Dict[str, str]]
     thread_id: str
     run_id: str
+    selected_specialist: str  # For supervisor pattern routing
 
 
 class BaseAgent(ABC):
