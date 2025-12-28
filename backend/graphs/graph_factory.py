@@ -10,6 +10,7 @@ from typing import Optional, Callable
 from graphs.chat_graph import create_chat_graph
 from graphs.canvas_graph import create_canvas_graph
 from graphs.a2ui_graph import create_a2ui_graph
+from graphs.a2ui_loop_graph import create_a2ui_loop_graph
 from graphs.insurance_supervisor_graph import create_insurance_supervisor_graph
 from agents.agent_registry import agent_registry
 
@@ -24,6 +25,7 @@ class GraphFactory:
         "chat": create_chat_graph,
         "canvas": create_canvas_graph,
         "a2ui": create_a2ui_graph,
+        "a2ui-loop": create_a2ui_loop_graph,  # A2UI with tool-calling loop
         "insurance-supervisor": create_insurance_supervisor_graph,
     }
     

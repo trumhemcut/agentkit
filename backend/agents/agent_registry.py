@@ -63,6 +63,17 @@ class AgentRegistry:
             features=["ui-components", "interactive", "a2ui-protocol"]
         ))
         
+        # Register A2UI Loop Agent
+        self.register_agent(AgentMetadata(
+            id="a2ui-loop",
+            name="A2UI Agent (Loop)",
+            description="Multi-component UI generation with tool-calling loop pattern for complex forms",
+            icon="layout-grid",
+            available=True,
+            sub_agents=[],
+            features=["ui-components", "multi-component", "tool-loop", "react-pattern", "complex-ui"]
+        ))
+        
         # Register Insurance Supervisor Agent
         self.register_agent(AgentMetadata(
             id="insurance-supervisor",
