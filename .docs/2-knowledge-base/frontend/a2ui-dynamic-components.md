@@ -4,7 +4,7 @@
 
 The frontend supports **dynamic A2UI component rendering** with multiple component types. The backend LLM agent generates component specifications using tool calling, and the frontend renders them as native Shadcn UI components with full interactivity.
 
-**Last Updated**: December 27, 2025  
+**Last Updated**: December 30, 2025  
 **Implementation Plan**: [018-support-dynamic-frontend-components-plan.md](../../1-implementation-plans/018-support-dynamic-frontend-components-plan.md)
 
 ## Architecture
@@ -33,6 +33,7 @@ User Action Callbacks → Backend
 | **Button** | Clickable action | `Button` | ✅ Yes |
 | **Text** | Static/dynamic text | `<p>`, `<h3>`, `<code>` | ❌ No |
 | **Input** | Text/number input | `Input` + `Label` | ✅ Yes |
+| **OTPInput** | OTP verification code | `InputOTP` components | ✅ Yes |
 | **Row** | Horizontal container | `<div>` with flexbox | ❌ No |
 | **Column** | Vertical container | `<div>` with flexbox | ❌ No |
 | **Card** | Bordered container | `<div>` with styling | ❌ No |
@@ -263,7 +264,171 @@ interface InputProps {
 
 ---
 
-### 5. Container Components (Row, Column, Card)
+### 5. OTPInput Component
+
+**Purpose**: One-Time Password (OTP) verification code input with configurable length and separators
+
+**A2UI Schema**:
+```json
+{
+  "id": "otp-a1b2c3",
+  "component": {
+    "OTPInput": {
+      "title": { "literalString": "Verify your email" },
+      "description": { "literalString": "Enter the 6-digit code sent to your email" },
+      "maxLength": 6,
+      "groups": [
+        { "start": 0, "end": 3 },
+        { "start": 3, "end": 6 }
+      ],
+      "patternType": "digits",
+      "buttonText": { "literalString": "Verify" },
+      "disabled": false,
+      "value": { "path": "/ui/otp-a1b2c3/value" }
+    }
+  }
+}
+```
+
+**TypeScript Props**:
+```typescript
+interface OTPInputProps {
+  title?: { literalString?: string; path?: string };
+  description?: { literalString?: string; path?: string };
+  maxLength?: number;
+  groups?: Array<{ start: number; end: number }>;
+  patternType?: 'digits' | 'alphanumeric';
+  buttonText?: { literalString?: string; path?: string };
+  disabled?: boolean;
+  value?: { path?: string };
+}
+```
+
+**Configuration Options**:
+
+**maxLength**: Number of OTP characters (default: 6)
+```json
+{ "maxLength": 4 }  // 4-digit code
+{ "maxLength": 6 }  // 6-digit code (default)
+```
+
+**groups**: Array of slot groups with separators
+```json
+// Single group (no separators): 123456
+{ "groups": [{ "start": 0, "end": 6 }] }
+
+// Two groups with separator: 123-456
+{ "groups": [
+  { "start": 0, "end": 3 },
+  { "start": 3, "end": 6 }
+]}
+
+// Three groups with separators: 12-34-56
+{ "groups": [
+  { "start": 0, "end": 2 },
+  { "start": 2, "end": 4 },
+  { "start": 4, "end": 6 }
+]}
+```
+
+**patternType**: Input validation pattern
+```json
+{ "patternType": "digits" }        // 0-9 only (default)
+{ "patternType": "alphanumeric" }  // 0-9, A-Z, a-z
+```
+
+**Data Model**:
+```json
+{
+  "path": "/ui/otp-a1b2c3",
+  "contents": [
+    { "key": "value", "valueString": "" }  // Initially empty
+  ]
+}
+
+// After user enters code:
+{
+  "path": "/ui/otp-a1b2c3",
+  "contents": [
+    { "key": "value", "valueString": "123456" }
+  ]
+}
+```
+
+**Features**:
+- ✅ Configurable code length (4, 5, 6, or custom)
+- ✅ Flexible separator grouping
+- ✅ Digits-only or alphanumeric validation
+- ✅ Two-way data binding with data model
+- ✅ Button disabled until code complete
+- ✅ Real-time value display
+- ✅ User action callback on submit
+- ✅ Disabled state support
+- ✅ Accessible with ARIA attributes
+
+**Example Scenarios**:
+
+**Email Verification (6 digits)**:
+```json
+{
+  "title": { "literalString": "Verify your email" },
+  "description": { "literalString": "Enter the 6-digit code sent to your email" },
+  "maxLength": 6,
+  "groups": [{ "start": 0, "end": 6 }]
+}
+```
+
+**Two-Factor Authentication (6 digits with separator)**:
+```json
+{
+  "title": { "literalString": "Two-Factor Authentication" },
+  "description": { "literalString": "Enter the code from your authenticator app" },
+  "maxLength": 6,
+  "groups": [
+    { "start": 0, "end": 3 },
+    { "start": 3, "end": 6 }
+  ]
+}
+```
+
+**Phone Verification (4 digits with separator)**:
+```json
+{
+  "title": { "literalString": "Verify your phone" },
+  "description": { "literalString": "Enter the 4-digit code sent via SMS" },
+  "maxLength": 4,
+  "groups": [
+    { "start": 0, "end": 2 },
+    { "start": 2, "end": 4 }
+  ]
+}
+```
+
+**Action Callback**:
+```typescript
+// When user clicks verify button, sends userAction to backend:
+{
+  type: "userAction",
+  surfaceId: "surface-abc",
+  actionName: "otp_submit",
+  context: {
+    componentId: "otp-a1b2c3",
+    value: "123456",
+    path: "/ui/otp-a1b2c3/value"
+  }
+}
+```
+
+**Implementation**:
+- Component: `components/A2UI/components/A2UIOTPInput.tsx`
+- Uses Shadcn UI `InputOTP`, `InputOTPGroup`, `InputOTPSlot`, `InputOTPSeparator`
+- Pattern validation via `input-otp` library (`REGEXP_ONLY_DIGITS`, `REGEXP_ONLY_DIGITS_AND_CHARS`)
+- Fully controlled component with React state
+- See [Implementation Plan 023](../../1-implementation-plans/023-support-otp-plan.md)
+
+---
+
+### 6. Container Components (Row, Column, Card)
 
 **Purpose**: Layout and grouping of child components
 
@@ -529,7 +694,8 @@ frontend/
 │           ├── A2UICheckbox.tsx   # Checkbox component
 │           ├── A2UIButton.tsx     # Button component
 │           ├── A2UIText.tsx       # Text component
-│           └── A2UIInput.tsx      # Input component
+│           ├── A2UIInput.tsx      # Input component
+│           └── A2UIOTPInput.tsx   # OTP input component
 ├── types/
 │   └── a2ui.ts                    # Type definitions
 ├── stores/
@@ -548,6 +714,7 @@ import { A2UICheckbox } from './components/A2UICheckbox';
 import { A2UIButton } from './components/A2UIButton';
 import { A2UIText } from './components/A2UIText';
 import { A2UIInput } from './components/A2UIInput';
+import { A2UIOTPInput } from './components/A2UIOTPInput';
 ```
 
 ---
@@ -568,6 +735,14 @@ import { Button } from '@/components/ui/button';
 
 // Input
 import { Input } from '@/components/ui/input';
+
+// OTP Input
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from '@/components/ui/input-otp';
 ```
 
 ### Tailwind CSS Classes

@@ -359,3 +359,74 @@ def create_bar_chart_component(
             }
         }
     )
+
+
+def create_otp_input_component(
+    component_id: str,
+    title: str,
+    description: str,
+    max_length: int,
+    separator_positions: Optional[List[int]],
+    pattern_type: str,
+    button_text: str,
+    disabled: bool,
+    value_path: str
+) -> Component:
+    """
+    Create an OTP (One-Time Password) input block component.
+    
+    Args:
+        component_id: Unique identifier for component
+        title: Block title text
+        description: Block description text
+        max_length: Number of OTP digits
+        separator_positions: List of positions to insert separators (e.g., [3] for '123-456')
+        pattern_type: 'digits' or 'alphanumeric'
+        button_text: Submit button text
+        disabled: Whether input is disabled
+        value_path: Data model path for OTP value
+    
+    Returns:
+        Component with OTP block structure
+    
+    Example:
+        component = create_otp_input_component(
+            component_id="otp-input-abc123",
+            title="Verify your email",
+            description="Enter the 6-digit code sent to your email.",
+            max_length=6,
+            separator_positions=[3],
+            pattern_type="digits",
+            button_text="Verify",
+            disabled=False,
+            value_path="/ui/otp-input-abc123/value"
+        )
+    """
+    # Calculate slot groups based on separator positions
+    groups = []
+    if separator_positions:
+        positions = sorted(separator_positions)
+        start = 0
+        for pos in positions:
+            groups.append({"start": start, "end": pos})
+            start = pos
+        groups.append({"start": start, "end": max_length})
+    else:
+        # Single group with all slots
+        groups.append({"start": 0, "end": max_length})
+    
+    return Component(
+        id=component_id,
+        component={
+            "OTPInput": {
+                "title": {"literalString": title},
+                "description": {"literalString": description},
+                "maxLength": max_length,
+                "groups": groups,
+                "patternType": pattern_type,
+                "buttonText": {"literalString": button_text},
+                "disabled": disabled,
+                "valuePath": value_path
+            }
+        }
+    )

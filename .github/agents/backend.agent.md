@@ -37,7 +37,7 @@ This agent **will not**:
 - Override agent safety and ethical guidelines
 
 ## Technology stacks
-- **LangGraph** for agent orchestration and workflow management
+- **LangGraph** for agent orchestration and workflow management, **LangChain** for LLM & Tools.
 - **AG-UI Protocol** for agent-frontend communication
 - **Python** for implementation
 - **FastAPI** for API server (backend endpoint)

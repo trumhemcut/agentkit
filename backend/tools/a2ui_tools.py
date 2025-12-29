@@ -20,7 +20,8 @@ from protocols.a2ui_types import (
     create_text_component,
     create_button_component,
     create_textinput_component,
-    create_bar_chart_component
+    create_bar_chart_component,
+    create_otp_input_component
 )
 
 
@@ -535,6 +536,135 @@ class BarChartTool(BaseComponentTool):
         }
 
 
+class OTPInputTool(BaseComponentTool):
+    """Tool to generate OTP input block components"""
+    
+    @property
+    def name(self) -> str:
+        return "create_otp_input"
+    
+    @property
+    def description(self) -> str:
+        return """Create an OTP (One-Time Password) input block component. Use this when user wants:
+        - Verify user identity with OTP
+        - Two-factor authentication input
+        - Verification code entry (email, SMS, authenticator)
+        - Multi-digit secure code input
+        
+        Examples:
+        - "Create an OTP input for email verification"
+        - "Add 6-digit code verification"
+        - "Show 2FA authentication form"
+        - "Create verification code input with 4 digits"
+        """
+    
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Title text for the OTP block (e.g., 'Verify your email')",
+                    "default": "Enter verification code"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Descriptive text explaining the OTP purpose",
+                    "default": "Please enter the verification code sent to your device."
+                },
+                "max_length": {
+                    "type": "integer",
+                    "description": "Number of OTP digits/characters (common: 4, 5, 6)",
+                    "default": 6
+                },
+                "separator_positions": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Positions to insert separators (e.g., [3] for '123-456', [2, 4] for '12-34-56')",
+                    "default": None
+                },
+                "pattern_type": {
+                    "type": "string",
+                    "enum": ["digits", "alphanumeric"],
+                    "description": "Input pattern validation: 'digits' (numbers only) or 'alphanumeric' (letters + numbers)",
+                    "default": "digits"
+                },
+                "button_text": {
+                    "type": "string",
+                    "description": "Submit button text",
+                    "default": "Verify"
+                },
+                "disabled": {
+                    "type": "boolean",
+                    "description": "Whether the input is disabled",
+                    "default": False
+                },
+                "data_path": {
+                    "type": "string",
+                    "description": "Path in data model to store OTP value",
+                    "default": None
+                }
+            },
+            "required": []
+        }
+    
+    def generate_component(
+        self,
+        title: str = "Enter verification code",
+        description: str = "Please enter the verification code sent to your device.",
+        max_length: int = 6,
+        separator_positions: Optional[List[int]] = None,
+        pattern_type: str = "digits",
+        button_text: str = "Verify",
+        disabled: bool = False,
+        data_path: Optional[str] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate OTP input block component structure"""
+        
+        # Generate unique component ID
+        component_id = f"otp-input-{uuid.uuid4().hex[:8]}"
+        
+        # Generate data path if not provided
+        if not data_path:
+            data_path = f"/ui/{component_id}/value"
+        
+        # Create OTP input component
+        component = create_otp_input_component(
+            component_id=component_id,
+            title=title,
+            description=description,
+            max_length=max_length,
+            separator_positions=separator_positions,
+            pattern_type=pattern_type,
+            button_text=button_text,
+            disabled=disabled,
+            value_path=data_path
+        )
+        
+        # Create initial data model
+        path_parts = data_path.split('/')
+        data_key = path_parts[-1]
+        parent_path = '/'.join(path_parts[:-1]) if len(path_parts) > 1 else "/"
+        
+        data_model = {
+            "path": parent_path,
+            "contents": [
+                DataContent(
+                    key=data_key,
+                    value_string=""  # Initial empty OTP value
+                )
+            ]
+        }
+        
+        return {
+            "component": component,
+            "data_model": data_model,
+            "component_id": component_id
+        }
+
+
 class ComponentToolRegistry:
     """Registry for all A2UI component tools"""
     
@@ -549,6 +679,7 @@ class ComponentToolRegistry:
         self.register_tool(ButtonTool())
         self.register_tool(TextInputTool())
         self.register_tool(BarChartTool())
+        self.register_tool(OTPInputTool())
     
     def register_tool(self, tool: BaseComponentTool):
         """Register a component tool"""

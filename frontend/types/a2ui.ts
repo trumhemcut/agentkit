@@ -44,6 +44,17 @@ export interface BarChartProps {
   data: { path: string };
 }
 
+export interface OTPInputProps {
+  title?: { literalString?: string; path?: string };
+  description?: { literalString?: string; path?: string };
+  maxLength?: number;
+  groups?: Array<{ start: number; end: number }>;
+  patternType?: 'digits' | 'alphanumeric';
+  buttonText?: { literalString?: string; path?: string };
+  disabled?: boolean;
+  value?: { path?: string };
+}
+
 export interface ContainerProps {
   children?: string[];
 }
@@ -56,6 +67,7 @@ export type ComponentType =
   | { Input: InputProps }
   | { TextInput: TextInputProps }
   | { BarChart: BarChartProps }
+  | { OTPInput: OTPInputProps }
   | { Row: ContainerProps }
   | { Column: ContainerProps }
   | { Card: ContainerProps };

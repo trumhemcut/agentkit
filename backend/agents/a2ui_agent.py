@@ -228,6 +228,11 @@ Guidelines:
 - For TEXT INPUT: use create_textinput tool
   Examples: "text input for name", "textbox for email", "input field for phone"
   Set multiline=true for "text area" or "comments" requests
+
+- For OTP INPUT: use create_otp_input tool
+  Examples: "create OTP verification", "6-digit code input", "2FA authentication", "email verification code"
+  Common lengths: 4, 5, or 6 digits
+  Use separators for better UX (e.g., separator_positions=[3] for 6-digit code)
   
 - Extract specific labels/placeholders from user's request when possible
   Example: "checkboxes for flight HN→SG, SG→DN, DN→HN" 

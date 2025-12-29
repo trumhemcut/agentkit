@@ -259,6 +259,7 @@ Available tools:
 - create_button: Button component
 - create_textinput: Text input field
 - create_bar_chart: Bar chart visualization
+- create_otp_input: OTP/verification code input (for 2FA, email verification, phone verification)
 
 Guidelines:
 1. Analyze user's request carefully
@@ -272,6 +273,7 @@ Examples:
 - "Create email and password inputs" → Call create_textinput twice
 - "Signup form with submit button" → Call create_textinput (email), create_textinput (password), create_button (submit)
 - "3 checkboxes for options" → Call create_checkboxes once with count=3
+- "6-digit verification code" → Call create_otp_input with max_length=6
 
 Always verify tool results before proceeding."""
         

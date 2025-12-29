@@ -26,6 +26,7 @@ Pydantic models for A2UI protocol messages:
 - `create_text_component()`: Create text components
 - `create_button_component()`: Create button components
 - `create_bar_chart_component()`: Create bar chart components
+- `create_otp_input_component()`: Create OTP input components
 
 **Test Coverage**: 22/22 tests passing ✅
 
@@ -57,6 +58,7 @@ LLM-driven tools for generating A2UI components dynamically:
 - `ButtonTool`: Generate button components
 - `TextInputTool`: Generate text input fields
 - `BarChartTool`: Generate bar chart visualizations
+- `OTPInputTool`: Generate OTP/verification code input components
 
 **Bar Chart Tool**:
 The `BarChartTool` enables LLM agents to create data visualizations from natural language:
@@ -90,6 +92,45 @@ result = tool.generate_component(
 ```
 
 **Test Coverage**: See `tests/test_bar_chart_tool.py` ✅
+
+**OTP Input Tool**:
+The `OTPInputTool` enables LLM agents to create OTP (One-Time Password) input components for verification scenarios:
+
+```python
+class OTPInputTool(BaseComponentTool):
+    name = "create_otp_input"
+    
+    # Generates components with:
+    # - title, description
+    # - max_length (4, 5, 6, or custom)
+    # - separator_positions for visual grouping
+    # - pattern_type ('digits' or 'alphanumeric')
+    # - button_text for submission
+    # - disabled state support
+    # - automatic groups calculation for rendering
+```
+
+**Example Usage**:
+```python
+tool = OTPInputTool()
+result = tool.generate_component(
+    title="Verify your email",
+    description="Enter the 6-digit code sent to your email.",
+    max_length=6,
+    separator_positions=[3],  # Creates 123-456 format
+    pattern_type="digits",
+    button_text="Verify"
+)
+# Returns: component, data_model, component_id
+```
+
+**Common Use Cases**:
+- Email verification (6-digit code)
+- Two-factor authentication (6-digit code with separator)
+- Phone verification (4-digit code)
+- Recovery codes (alphanumeric)
+
+**Test Coverage**: See `tests/test_otp_input_tool.py` (15 tests passing ✅)
 
 ### 3. A2UI Agent (`backend/agents/a2ui_agent.py`)
 
