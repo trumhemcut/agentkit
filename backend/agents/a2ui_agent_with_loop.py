@@ -130,10 +130,10 @@ class A2UIAgentWithLoop(BaseAgent):
                 yield event
             return
         
-        # Extract all components
+        # Extract all components and their data models
         all_components = []
         all_component_ids = []
-        all_data_contents = []
+        all_data_models = []  # Store separate data models instead of flattening
         
         for comp_data in components_data:
             if isinstance(comp_data.get("components"), list):
@@ -145,9 +145,9 @@ class A2UIAgentWithLoop(BaseAgent):
                 all_components.append(comp_data["component"])
                 all_component_ids.append(comp_data["component_id"])
             
-            # Collect data model contents
+            # Store data model with its path (don't flatten)
             data_model = comp_data["data_model"]
-            all_data_contents.extend(data_model["contents"])
+            all_data_models.append(data_model)
         
         # Determine root component ID
         if len(all_component_ids) == 1:
@@ -179,15 +179,17 @@ class A2UIAgentWithLoop(BaseAgent):
         logger.info(f"Created surface with {len(all_components)} component(s)")
         yield self.a2ui_encoder.encode(surface_update)
         
-        # ===== Step 3: Initialize Data Model =====
-        data_update = DataModelUpdate(
-            surface_id=surface_id,
-            path="/ui",  # Combined data model
-            contents=all_data_contents
-        )
-        
-        logger.debug("Initialized combined data model")
-        yield self.a2ui_encoder.encode(data_update)
+        # ===== Step 3: Initialize Data Models =====
+        # Send separate DataModelUpdate for each component's data model
+        # This preserves the path hierarchy (e.g., /ui/bar-chart-abc/chartData)
+        for data_model in all_data_models:
+            data_update = DataModelUpdate(
+                surface_id=surface_id,
+                path=data_model["path"],
+                contents=data_model["contents"]
+            )
+            logger.debug(f"Initialized data model at path: {data_model['path']}")
+            yield self.a2ui_encoder.encode(data_update)
         
         # ===== Step 4: Begin Rendering =====
         begin_render = BeginRendering(
