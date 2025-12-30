@@ -411,3 +411,113 @@ export async function fetchAvailableModels(): Promise<ModelsResponse> {
     };
   }
 }
+
+/**
+ * Send a message to the salary viewer agent with A2UI support
+ * 
+ * This function sends a POST request to the salary-viewer agent endpoint
+ * and processes the Server-Sent Events (SSE) stream with A2UI events.
+ * 
+ * @param messages - Array of messages in the conversation
+ * @param threadId - Unique identifier for the conversation thread
+ * @param runId - Unique identifier for this agent run
+ * @param userInput - Optional user input from A2UI components (e.g., OTP code)
+ * @param model - Optional LLM model ID to use
+ * @param provider - Optional LLM provider
+ * @param onEvent - Callback function to handle each event
+ */
+export async function sendSalaryViewerMessage(
+  messages: Message[],
+  threadId: string,
+  runId: string,
+  userInput: string | undefined,
+  model: string | undefined,
+  provider: string | undefined,
+  onEvent: (event: any) => void
+): Promise<void> {
+  try {
+    const agentId = 'salary-viewer';
+    
+    const request = {
+      thread_id: threadId,
+      run_id: runId,
+      messages: messages,
+      user_input: userInput,
+      model: model,
+      provider: provider,
+      agent: agentId,
+    };
+
+    console.log('[API] Sending salary viewer request:', { 
+      threadId, 
+      runId, 
+      messageCount: messages.length,
+      hasUserInput: !!userInput,
+      model,
+      provider
+    });
+
+    const response = await fetch(`${API_BASE_URL}/api/chat/${agentId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+      },
+      body: JSON.stringify(request),
+    });
+
+    console.log('[API] Salary viewer response status:', response.status);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    // Process SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    console.log('[API] Starting to read salary viewer event stream...');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        console.log('[API] Stream complete');
+        break;
+      }
+
+      // Decode chunk and add to buffer
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Process complete events (delimited by double newline)
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || ''; // Keep incomplete event in buffer
+
+      for (const eventText of events) {
+        if (!eventText.trim()) continue;
+
+        try {
+          // Parse SSE format: "data: {...}"
+          const lines = eventText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonData = line.substring(6);
+              const event = JSON.parse(jsonData);
+              onEvent(event);
+            }
+          }
+        } catch (error) {
+          console.error('[API] Error parsing event:', error, eventText);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[API] Error in salary viewer chat:', error);
+    throw error;
+  }
+}

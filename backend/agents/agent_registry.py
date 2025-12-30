@@ -84,6 +84,17 @@ class AgentRegistry:
             sub_agents=["policy_agent", "claims_agent", "quoting_agent", "support_agent"],
             features=["insurance", "supervisor-pattern", "multi-agent", "vietnamese", "quoting"]
         ))
+        
+        # Register Salary Viewer Agent
+        self.register_agent(AgentMetadata(
+            id="salary-viewer",
+            name="Salary Viewer",
+            description="Playful agent that requires OTP verification before revealing confidential salary information",
+            icon="dollar-sign",
+            available=True,
+            sub_agents=[],
+            features=["otp-verification", "a2ui-protocol", "tool-loop", "confidential-data"]
+        ))
     
     def register_agent(self, metadata: AgentMetadata):
         """Register a new agent"""

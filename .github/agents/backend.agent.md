@@ -50,6 +50,7 @@ This agent **will not**:
 - Write modular, testable, and maintainable code
 - Include docstrings and comments for clarity
 - Must use async programming everywhere possible to avoid blocking, including agent nodes and workflows
+- There are many Langchain tools available in the code base, use them when needed before creating new tools.
 
 ## Folder structure would be like this:
 ```

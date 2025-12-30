@@ -79,6 +79,7 @@ When creating plans, organize by layer:
 - Routing logic and conditional edges
 - Multi-LLM provider support (Ollama with qwen:7b by default)
 - FastAPI endpoints and AG-UI integration
+- Agentic AI architecture patterns: such as supervisor, swarm, tool-calling, ...
 
 ### 2. Protocol (AG-UI)
 **Define communication contract between layers:**
