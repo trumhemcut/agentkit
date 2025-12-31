@@ -146,7 +146,8 @@ class TestA2UIHelpers:
         assert button.id == "btn-1"
         assert "Button" in button.component
         assert button.component["Button"]["label"]["literalString"] == "Submit"
-        assert button.component["Button"]["onPress"]["action"] == "form_submit"
+        assert button.component["Button"]["action"]["name"] == "form_submit"
+        assert button.component["Button"]["action"]["context"] == {}
 
 
 class TestA2UIEncoder:

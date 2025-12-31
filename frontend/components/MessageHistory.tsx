@@ -12,6 +12,7 @@ interface MessageHistoryProps {
   onScroll?: () => void;
   canvasModeActive?: boolean;
   threadId?: string | null;
+  onActionEvent?: (event: any) => void;
 }
 
 /**
@@ -19,7 +20,7 @@ interface MessageHistoryProps {
  * 
  * Displays list of messages with auto-scroll and A2UI surfaces
  */
-export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive, threadId }: MessageHistoryProps) {
+export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive, threadId, onActionEvent }: MessageHistoryProps) {
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
@@ -39,7 +40,14 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, 
       onScroll={onScroll}
     >
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} onEnableCanvas={onEnableCanvas} canvasModeActive={canvasModeActive} threadId={threadId} />
+        <MessageBubble 
+          key={message.id} 
+          message={message} 
+          onEnableCanvas={onEnableCanvas} 
+          canvasModeActive={canvasModeActive} 
+          threadId={threadId}
+          onActionEvent={onActionEvent}
+        />
       ))}
     </div>
   );

@@ -71,7 +71,7 @@ class AgentRegistry:
             icon="layout-grid",
             available=True,
             sub_agents=[],
-            features=["ui-components", "multi-component", "tool-loop", "react-pattern", "complex-ui"]
+            features=["ui-components", "multi-component", "tool-loop", "react-pattern", "complex-ui", "a2ui", "a2ui-protocol"]
         ))
         
         # Register Insurance Supervisor Agent

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { MessageHistory } from './MessageHistory';
 import { ChatInput, ChatInputRef } from './ChatInput';
 import { useMessages } from '@/hooks/useMessages';
@@ -306,6 +306,16 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       unsubscribeCustom();
     };
   }, [on, addMessage, updateMessage, removeMessage, setConnectionState, onRefreshThreads, canvasContext, processA2UIMessage]);
+  
+  /**
+   * Handle events from A2UI user actions
+   * Process them through the same AGUI client as chat messages
+   */
+  const handleA2UIActionEvent = useCallback((event: any) => {
+    console.log('[ChatContainer] Processing A2UI action event:', event.type);
+    const client = getClient();
+    client.processEvent(event);
+  }, [getClient]);
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || isSending) {
@@ -478,6 +488,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           onScroll={handleScroll}
           canvasModeActive={canvasModeActive}
           threadId={threadId}
+          onActionEvent={handleA2UIActionEvent}
         />
       </div>
       <ChatInput 

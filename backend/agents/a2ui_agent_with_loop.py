@@ -40,6 +40,220 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, Tool
 logger = logging.getLogger(__name__)
 
 
+async def process_user_action(state: AgentState) -> AsyncGenerator[str, None]:
+    """
+    Process user action from A2UI components.
+    
+    This function handles userAction messages sent from the frontend when users
+    interact with buttons, forms, or other actionable components.
+    
+    Args:
+        state: Current agent state with user_action field
+        
+    Yields:
+        SSE-formatted AG-UI events and A2UI messages
+    """
+    user_action = state.get("user_action")
+    
+    if not user_action:
+        logger.warning("No user_action in state")
+        return
+    
+    action_name = user_action.get("name")
+    context = user_action.get("context", {})
+    surface_id = user_action.get("surfaceId")
+    
+    logger.info(f"Processing action: {action_name} on surface {surface_id}")
+    
+    # Create encoders
+    agui_encoder = EventEncoder(accept="text/event-stream")
+    a2ui_encoder = A2UIEncoder()
+    
+    # Handle specific actions
+    if action_name == "submit_form":
+        # Extract form data from context
+        email = context.get("email", "")
+        name = context.get("name", "")
+        
+        # Generate funny response using LLM if we have the data
+        if email or name:
+            llm_response = await call_llm_for_funny_response(email, name, state)
+            response_text = llm_response.get("text", "Hello, world!")
+        else:
+            response_text = "Form submitted successfully!"
+        
+        # Send AG-UI text message events
+        message_id = f"msg-{uuid.uuid4().hex[:8]}"
+        
+        text_start = TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={"message_type": "text"}
+        )
+        yield agui_encoder.encode(text_start)
+        
+        text_content = TextMessageContentEvent(
+            type=EventType.TEXT_MESSAGE_CONTENT,
+            message_id=message_id,
+            delta=response_text
+        )
+        yield agui_encoder.encode(text_content)
+        
+        text_end = TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        yield agui_encoder.encode(text_end)
+
+
+async def call_llm_for_funny_response(
+    email: str,
+    name: str,
+    state: AgentState
+) -> Dict[str, Any]:
+    """
+    Call LLM to generate a funny response based on form data.
+    
+    Args:
+        email: Email from form
+        name: Name from form
+        state: Current agent state
+        
+    Returns:
+        Dictionary with text response
+    """
+    prompt = f"""Generate a short, witty, and funny response (1-2 sentences) for a form submission.
+
+Form data:
+- Name: {name}
+- Email: {email}
+
+Make a clever observation or joke about the name or email address. Keep it lighthearted and friendly.
+Examples:
+- If email is "john@example.com": "Welcome John! Example.com, huh? That's... very example-ish!"
+- If name is "Bob": "Bob! Short, sweet, and palindrome-adjacent. We love it!"
+
+Return ONLY the funny message, nothing else."""
+    
+    try:
+        provider = LLMProviderFactory.get_provider("ollama", "qwen:7b")
+        llm = provider.get_model()
+        
+        response = await llm.ainvoke([HumanMessage(content=prompt)])
+        response_text = response.content if hasattr(response, "content") else str(response)
+        
+        return {"text": response_text.strip()}
+        
+    except Exception as e:
+        logger.error(f"Error generating funny response: {e}", exc_info=True)
+        return {"text": f"Thanks {name}! Your form has been submitted successfully!"}
+
+
+async def call_llm_with_action_context(
+    action_name: str,
+    context: Dict[str, Any],
+    state: AgentState
+) -> AsyncGenerator[str, None]:
+    """
+    Call LLM to process user action with context.
+    
+    This allows the agent to use the LLM to decide how to respond to user actions,
+    potentially generating new UI components or updating data models.
+    
+    Args:
+        action_name: Name of the action triggered
+        context: Context data from the action
+        state: Current agent state
+        
+    Yields:
+        SSE-formatted AG-UI events and A2UI messages
+    """
+    prompt = f"""
+User performed action: {action_name}
+Context data: {json.dumps(context, indent=2)}
+
+Generate a response that includes:
+1. Text feedback to the user
+2. Any UI updates needed (describe what to update)
+
+Return your response in this format:
+TEXT: <your text response>
+UI_UPDATES: <description of what to update in the UI, or "none" if no updates needed>
+"""
+    
+    agui_encoder = EventEncoder(accept="text/event-stream")
+    message_id = f"msg-{uuid.uuid4().hex[:8]}"
+    
+    try:
+        # Get LLM provider
+        provider = LLMProviderFactory.get_provider("ollama", "qwen:7b")
+        llm = provider.get_model()
+        
+        # Call LLM
+        response = await llm.ainvoke([HumanMessage(content=prompt)])
+        response_text = response.content if hasattr(response, "content") else str(response)
+        
+        # Parse response
+        lines = response_text.strip().split("\n")
+        text_response = ""
+        
+        for line in lines:
+            if line.startswith("TEXT:"):
+                text_response = line.replace("TEXT:", "").strip()
+                break
+        
+        if not text_response:
+            text_response = f"Received action '{action_name}' with data: {context}"
+        
+        # Send AG-UI text message events
+        text_start = TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={"message_type": "text"}
+        )
+        yield agui_encoder.encode(text_start)
+        
+        text_content = TextMessageContentEvent(
+            type=EventType.TEXT_MESSAGE_CONTENT,
+            message_id=message_id,
+            delta=text_response
+        )
+        yield agui_encoder.encode(text_content)
+        
+        text_end = TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        yield agui_encoder.encode(text_end)
+        
+    except Exception as e:
+        logger.error(f"Error calling LLM for action processing: {e}", exc_info=True)
+        
+        # Send error message
+        text_start = TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={"message_type": "error"}
+        )
+        yield agui_encoder.encode(text_start)
+        
+        text_content = TextMessageContentEvent(
+            type=EventType.TEXT_MESSAGE_CONTENT,
+            message_id=message_id,
+            delta=f"Error processing action '{action_name}': {str(e)}"
+        )
+        yield agui_encoder.encode(text_content)
+        
+        text_end = TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        yield agui_encoder.encode(text_end)
+
+
 class A2UIAgentWithLoop(BaseAgent):
     """
     A2UI agent with tool-calling loop pattern.
@@ -256,8 +470,8 @@ Your job is to create UI components by calling the appropriate tools.
 Available tools:
 - create_checkbox: Single checkbox
 - create_checkboxes: Multiple checkboxes
-- create_button: Button component
-- create_textinput: Text input field
+- create_button: Button component (use context_paths to collect form data)
+- create_textinput: Text input field (stores value at data model path)
 - create_bar_chart: Bar chart visualization
 - create_otp_input: OTP/verification code input (for 2FA, email verification, phone verification)
 
@@ -269,9 +483,19 @@ Guidelines:
 5. Decide if more components are needed
 6. When all components are created, respond with text message
 
+**IMPORTANT - Form Data Collection:**
+When creating forms with inputs and a submit button:
+1. Create text inputs with value paths (e.g., value_path="/user/email")
+2. Create button with context_paths that reference those same paths
+   Example: context_paths={"email": "/user/email", "name": "/user/name"}
+3. This makes the button collect input values when clicked
+
 Examples:
 - "Create email and password inputs" → Call create_textinput twice
-- "Signup form with submit button" → Call create_textinput (email), create_textinput (password), create_button (submit)
+- "Signup form with submit button" → 
+  * create_textinput(label="Email", value_path="/user/email")
+  * create_textinput(label="Password", type="password", value_path="/user/password")
+  * create_button(label="Submit", action_name="submit_form", context_paths={"email": "/user/email", "password": "/user/password"})
 - "3 checkboxes for options" → Call create_checkboxes once with count=3
 - "6-digit verification code" → Call create_otp_input with max_length=6
 

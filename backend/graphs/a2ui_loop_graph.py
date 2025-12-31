@@ -13,13 +13,14 @@ Key difference from basic a2ui_graph:
 - Supports MULTIPLE tool calls in sequence
 - LLM sees tool results and makes decisions
 - Enables complex multi-component UIs
+- Handles user actions from A2UI components
 """
 
 import logging
 from typing import TypedDict, List, Dict, Literal, Annotated
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
-from agents.a2ui_agent_with_loop import A2UIAgentWithLoop
+from agents.a2ui_agent_with_loop import A2UIAgentWithLoop, process_user_action
 from agents.base_agent import AgentState
 
 logger = logging.getLogger(__name__)
@@ -30,14 +31,15 @@ def create_a2ui_loop_graph(model: str = None, provider: str = None, max_iteratio
     Create LangGraph workflow for A2UI agent with tool-calling loop.
     
     Graph structure:
-        START → a2ui_loop_agent → END
+        START → detect_input_type → [a2ui_loop_agent OR process_user_action] → END
+    
+    The graph routes based on whether the state contains a user_action:
+    - If user_action exists: route to process_user_action node
+    - Otherwise: route to a2ui_loop_agent node (normal text input)
     
     The agent internally manages the tool-calling loop using LangChain's
     ToolMessage pattern. This is simpler than using LangGraph's ToolNode
     for this use case.
-    
-    Alternative approach (using LangGraph ToolNode):
-        START → agent → [continue → tools → agent] → end → END
     
     Args:
         model: Model name (e.g., "qwen:7b", "gpt-4")
@@ -47,7 +49,7 @@ def create_a2ui_loop_graph(model: str = None, provider: str = None, max_iteratio
     Returns:
         Compiled LangGraph workflow
     """
-    logger.info("Creating A2UI loop agent graph")
+    logger.info("Creating A2UI loop agent graph with user action support")
     
     # Create state graph
     workflow = StateGraph(AgentState)
@@ -63,7 +65,13 @@ def create_a2ui_loop_graph(model: str = None, provider: str = None, max_iteratio
         max_iterations=max_iterations
     )
     
-    # Define agent node
+    # Define detect input type node
+    def detect_input_type(state: AgentState):
+        """Detect whether we have text input or user action"""
+        logger.debug(f"Detecting input type - has user_action: {bool(state.get('user_action'))}")
+        return state
+    
+    # Define agent node (for text input)
     async def a2ui_loop_node(state: AgentState, config=None):
         """Execute A2UI loop agent and stream events"""
         logger.debug(f"A2UI loop node processing - thread: {state['thread_id']}")
@@ -78,12 +86,54 @@ def create_a2ui_loop_graph(model: str = None, provider: str = None, max_iteratio
         
         return state
     
-    # Add node to graph
-    workflow.add_node("a2ui_loop_agent", a2ui_loop_node)
+    # Define user action node
+    async def user_action_node(state: AgentState, config=None):
+        """Process user action from A2UI components"""
+        logger.debug(f"User action node processing - thread: {state['thread_id']}")
+        
+        # Get event callback from config
+        event_callback = config.get("configurable", {}).get("event_callback") if config else None
+        
+        # Process user action - iterate over async generator
+        async for event in process_user_action(state):
+            # Stream each event as it's generated
+            if event_callback:
+                await event_callback(event)
+        
+        # Return state unchanged (events were already streamed)
+        return state
     
-    # Set entry and exit
-    workflow.set_entry_point("a2ui_loop_agent")
+    # Routing function
+    def route_input(state: AgentState) -> Literal["process_user_action", "a2ui_loop_agent"]:
+        """Route based on whether we have text input or user action"""
+        if state.get("user_action"):
+            logger.debug("Routing to process_user_action")
+            return "process_user_action"
+        else:
+            logger.debug("Routing to a2ui_loop_agent")
+            return "a2ui_loop_agent"
+    
+    # Add nodes to graph
+    workflow.add_node("detect_input_type", detect_input_type)
+    workflow.add_node("a2ui_loop_agent", a2ui_loop_node)
+    workflow.add_node("process_user_action", user_action_node)
+    
+    # Set entry point
+    workflow.set_entry_point("detect_input_type")
+    
+    # Add conditional routing
+    workflow.add_conditional_edges(
+        "detect_input_type",
+        route_input,
+        {
+            "a2ui_loop_agent": "a2ui_loop_agent",
+            "process_user_action": "process_user_action"
+        }
+    )
+    
+    # Both paths lead to END
     workflow.add_edge("a2ui_loop_agent", END)
+    workflow.add_edge("process_user_action", END)
     
     # Compile and return
     return workflow.compile()

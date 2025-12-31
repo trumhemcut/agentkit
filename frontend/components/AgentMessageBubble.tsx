@@ -11,14 +11,20 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { A2UIRenderer } from './A2UI/A2UIRenderer';
 import { useA2UIStore } from '@/stores/a2uiStore';
-import { a2uiActionService } from '@/services/a2uiActionService';
+import { useModelStore } from '@/stores/modelStore';
+import { a2uiManager } from '@/lib/a2ui/A2UIManager';
+import { A2UIUserActionService } from '@/services/a2uiActionService';
 import { InsuranceSupervisorIndicator } from './InsuranceSupervisorIndicator';
+import { useEffect, useMemo } from 'react';
+import type { UserAction } from '@/types/a2ui';
 
 interface AgentMessageBubbleProps {
   message: Message;
   onEnableCanvas?: (message: Message) => void;
   canvasModeActive?: boolean;
   threadId?: string | null;
+  agentId?: string;
+  onActionEvent?: (event: any) => void;
 }
 
 /**
@@ -26,12 +32,93 @@ interface AgentMessageBubbleProps {
  * 
  * Displays an agent chat message with avatar and markdown-rendered content
  */
-export function AgentMessageBubble({ message, onEnableCanvas, canvasModeActive, threadId }: AgentMessageBubbleProps) {
+export function AgentMessageBubble({ 
+  message, 
+  onEnableCanvas, 
+  canvasModeActive, 
+  threadId,
+  agentId = 'a2ui-loop', // Default to a2ui-loop agent for A2UI actions
+  onActionEvent
+}: AgentMessageBubbleProps) {
+  // Subscribe to surfaces map to trigger re-renders when surfaces change
+  const surfaces = useA2UIStore((state) => state.surfaces);
   const getSurfacesByMessageId = useA2UIStore((state) => state.getSurfacesByMessageId);
+  
+  // Get current model and provider from model store
+  const selectedModel = useModelStore((state) => state.selectedModel);
+  const selectedProvider = useModelStore((state) => state.selectedProvider);
+  
+  // Get surfaces for this message (for rendering)
   const messageSurfaces = getSurfacesByMessageId(message.id);
   
-  // Create action callback for A2UI interactions
-  const handleA2UIAction = a2uiActionService.createActionCallback(threadId || undefined);
+  // Setup action handler for this message's surfaces using a2uiManager
+  useEffect(() => {
+    // Get surfaces inside effect to ensure we have latest state
+    const currentSurfaces = getSurfacesByMessageId(message.id);
+    
+    console.log('[AgentMessageBubble] Setting up action handlers', {
+      messageId: message.id,
+      threadId,
+      surfaceCount: currentSurfaces.length,
+      surfaces: currentSurfaces.map(s => ({ id: s.id, hasRoot: !!s.rootComponentId }))
+    });
+    
+    if (!threadId || currentSurfaces.length === 0) {
+      console.log('[AgentMessageBubble] Skipping action handler setup - missing threadId or no surfaces');
+      return;
+    }
+    
+    const handleUserAction = async (action: UserAction) => {
+      console.log('[AgentMessageBubble] User action triggered:', action);
+      
+      // Generate new run ID for this action
+      const runId = `run-${Date.now()}`;
+      
+      try {
+        // Send action to backend and process SSE stream
+        await A2UIUserActionService.sendAction(
+          agentId,
+          action,
+          threadId,
+          runId,
+          (event) => {
+            console.log('[AgentMessageBubble] Received event from action:', event.type);
+            // Forward event to parent handler if provided
+            if (onActionEvent) {
+              onActionEvent(event);
+            }
+          },
+          selectedModel || undefined,
+          selectedProvider || undefined
+        );
+      } catch (error) {
+        console.error('[AgentMessageBubble] Error processing user action:', error);
+      }
+    };
+    
+    // Register action handler for all surfaces in this message
+    currentSurfaces.forEach(surface => {
+      console.log('[AgentMessageBubble] Registering action handler for surface:', surface.id);
+      a2uiManager.onAction(surface.id, handleUserAction);
+    });
+    
+    // Cleanup on unmount
+    return () => {
+      // Note: Currently no cleanup method in a2uiManager
+      // Could add one if needed for memory management
+    };
+  }, [threadId, surfaces, agentId, onActionEvent, message.id, getSurfacesByMessageId, selectedModel, selectedProvider]);
+  
+  // Legacy callback support (for backward compatibility)
+  const handleA2UIAction = useMemo(() => {
+    if (!threadId) return undefined;
+    
+    return (actionName: string, context: Record<string, any>) => {
+      console.log('[AgentMessageBubble] Legacy A2UI action:', actionName, context);
+      // This is the old pattern - can be kept for backward compatibility
+      // or migrated to use a2uiManager as well
+    };
+  }, [threadId]);
   
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);

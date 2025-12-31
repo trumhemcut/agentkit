@@ -3,12 +3,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useA2UIStore } from '@/stores/a2uiStore';
 import { resolvePath } from '@/types/a2ui';
+import { a2uiManager } from '@/lib/a2ui/A2UIManager';
 
 interface A2UICheckboxProps {
   id: string;
   props: {
     label?: { literalString?: string; path?: string };
     value?: { path?: string };
+    onChange?: {
+      name: string;
+      context?: Record<string, any>;
+    };
   };
   dataModel: Record<string, any>;
   surfaceId: string;
@@ -20,7 +25,7 @@ export const A2UICheckbox: React.FC<A2UICheckboxProps> = ({
   dataModel,
   surfaceId
 }) => {
-  const updateDataModel = useA2UIStore((state) => state.updateDataModel);
+  const setValueAtPath = useA2UIStore((state) => state.setValueAtPath);
   
   // Resolve label (literal or from data model)
   const labelText = props.label?.literalString || 
@@ -35,18 +40,18 @@ export const A2UICheckbox: React.FC<A2UICheckboxProps> = ({
     const boolValue = typeof newValue === 'boolean' ? newValue : newValue === 'on';
     
     if (props.value?.path) {
-      // Extract key from path (e.g., "/form/agreedToTerms" → "agreedToTerms")
-      const pathParts = props.value.path.split('/').filter(p => p);
-      const key = pathParts[pathParts.length - 1];
-      const parentPath = '/' + pathParts.slice(0, -1).join('/');
+      // Two-way binding: update data model immediately
+      setValueAtPath(surfaceId, props.value.path, boolValue);
       
-      // Update data model
-      updateDataModel(surfaceId, parentPath, [
-        { key, valueBoolean: boolValue }
-      ]);
-      
-      // TODO: Send userAction to backend
-      // sendUserAction({ name: "checkbox_changed", context: { [key]: newValue } })
+      // If onChange action is defined, trigger it
+      if (props.onChange) {
+        a2uiManager.handleComponentAction(
+          surfaceId,
+          id,
+          props.onChange.name,
+          props.onChange.context || {}
+        );
+      }
     }
   };
   

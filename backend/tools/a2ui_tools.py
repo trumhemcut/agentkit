@@ -270,10 +270,12 @@ class ButtonTool(BaseComponentTool):
         - An action button (submit, cancel, confirm, etc.)
         - A button to trigger an action
         
+        To collect form data when button is clicked, specify context_paths with data model paths.
+        
         Examples:
-        - "Create a submit button"
-        - "Add a button to confirm"
-        - "Make a cancel button"
+        - "Create a submit button" → Just label and action
+        - "Submit button that sends email and name" → Add context_paths: {"email": "/user/email", "name": "/user/name"}
+        - "Button to process form data" → Include paths to all form fields in context_paths
         """
     
     @property
@@ -289,6 +291,11 @@ class ButtonTool(BaseComponentTool):
                     "type": "string",
                     "description": "Name of action to trigger (e.g., 'submit', 'cancel', 'confirm')",
                     "default": "button_click"
+                },
+                "context_paths": {
+                    "type": "object",
+                    "description": "Data to collect when button is clicked. Keys are parameter names, values are JSON Pointer paths to data model values (e.g., '/user/email')",
+                    "default": {}
                 }
             },
             "required": ["label"]
@@ -298,18 +305,34 @@ class ButtonTool(BaseComponentTool):
         self,
         label: str,
         action_name: str = "button_click",
+        context_paths: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        """Generate button component"""
+        """
+        Generate button component.
+        
+        Args:
+            label: Text to display on button
+            action_name: Name of action to trigger when clicked
+            context_paths: Optional dict mapping parameter names to data model paths
+                          e.g., {"email": "/user/email", "name": "/user/name"}
+        """
         
         # Generate unique component ID
         component_id = f"button-{uuid.uuid4().hex[:8]}"
+        
+        # Build action context from paths
+        action_context = {}
+        if context_paths:
+            for key, path in context_paths.items():
+                action_context[key] = {"path": path}
         
         # Create button component
         component = create_button_component(
             component_id=component_id,
             label_text=label,
-            action_name=action_name
+            action_name=action_name,
+            action_context=action_context
         )
         
         # Buttons don't need data model (they trigger actions, not store state)

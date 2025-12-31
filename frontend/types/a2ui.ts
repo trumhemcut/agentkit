@@ -106,19 +106,29 @@ export interface DeleteSurface {
   surfaceId: string;
 }
 
+// Client-to-server messages (separate from A2UIMessage)
 export interface UserAction {
-  type: "userAction";
+  name: string;
   surfaceId: string;
-  actionName: string;
+  sourceComponentId: string;
+  timestamp: string;
   context: Record<string, any>;
 }
 
+export interface UserActionRequest {
+  userAction: UserAction;
+  threadId: string;
+  runId: string;
+  model?: string;
+  provider?: string;
+}
+
+// Server-to-client A2UI messages only
 export type A2UIMessage = 
   | SurfaceUpdate 
   | DataModelUpdate 
   | BeginRendering 
-  | DeleteSurface
-  | UserAction;
+  | DeleteSurface;
 
 // Helper to check if a message is A2UI
 export function isA2UIMessage(data: any): data is A2UIMessage {

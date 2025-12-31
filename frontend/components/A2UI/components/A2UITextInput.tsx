@@ -23,7 +23,7 @@ export const A2UITextInput: React.FC<A2UITextInputProps> = ({
   dataModel,
   surfaceId
 }) => {
-  const updateDataModel = useA2UIStore((state) => state.updateDataModel);
+  const setValueAtPath = useA2UIStore((state) => state.setValueAtPath);
   
   // Resolve label (literal or from data model)
   const labelText = props.label?.literalString || 
@@ -39,23 +39,13 @@ export const A2UITextInput: React.FC<A2UITextInputProps> = ({
   
   const isMultiline = props.multiline || false;
   
-  // Handle input/textarea change
+  // Handle input/textarea change - two-way binding updates data model immediately
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     
     if (props.value?.path) {
-      // Extract key from path (e.g., "/form/comments" → "comments")
-      const pathParts = props.value.path.split('/').filter(p => p);
-      const key = pathParts[pathParts.length - 1];
-      const parentPath = '/' + pathParts.slice(0, -1).join('/');
-      
-      // Update data model
-      updateDataModel(surfaceId, parentPath, [
-        { key, valueString: newValue }
-      ]);
-      
-      // TODO: Send userAction to backend
-      // sendUserAction({ name: "textinput_changed", context: { [key]: newValue } })
+      // Update data model using setValueAtPath
+      setValueAtPath(surfaceId, props.value.path, newValue);
     }
   };
   

@@ -22,7 +22,7 @@ export const A2UIInput: React.FC<A2UIInputProps> = ({
   dataModel,
   surfaceId
 }) => {
-  const updateDataModel = useA2UIStore((state) => state.updateDataModel);
+  const setValueAtPath = useA2UIStore((state) => state.setValueAtPath);
   
   // Resolve label (literal or from data model)
   const labelText = props.label?.literalString || 
@@ -38,25 +38,18 @@ export const A2UIInput: React.FC<A2UIInputProps> = ({
   
   const inputType = props.type || 'text';
   
-  // Handle input change
+  // Handle input change - two-way binding updates data model immediately
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     
     if (props.value?.path) {
-      // Extract key from path (e.g., "/form/email" → "email")
-      const pathParts = props.value.path.split('/').filter(p => p);
-      const key = pathParts[pathParts.length - 1];
-      const parentPath = '/' + pathParts.slice(0, -1).join('/');
+      // Convert to appropriate type
+      const convertedValue = inputType === 'number' 
+        ? parseFloat(newValue) || 0 
+        : newValue;
       
-      // Update data model
-      const updateContent = inputType === 'number'
-        ? { key, valueNumber: parseFloat(newValue) || 0 }
-        : { key, valueString: newValue };
-      
-      updateDataModel(surfaceId, parentPath, [updateContent]);
-      
-      // TODO: Send userAction to backend
-      // sendUserAction({ name: "input_changed", context: { [key]: newValue } })
+      // Update data model using setValueAtPath
+      setValueAtPath(surfaceId, props.value.path, convertedValue);
     }
   };
   

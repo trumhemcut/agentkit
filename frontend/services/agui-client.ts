@@ -97,9 +97,7 @@ export class AGUIClient {
       this.listeners.set(eventType, []);
     }
     this.listeners.get(eventType)!.push(callback);
-    
-    console.log(`[AGUI] Registered listener for: ${eventType}`);
-    
+       
     // Return unsubscribe function
     return () => this.off(eventType, callback);
   }
@@ -116,7 +114,6 @@ export class AGUIClient {
       const index = listeners.indexOf(callback);
       if (index >= 0) {
         listeners.splice(index, 1);
-        console.log(`[AGUI] Removed listener for: ${eventType}`);
       }
     }
   }

@@ -26,7 +26,7 @@ export default function SalaryViewerPage() {
   const [threadId] = useState(() => uuidv4());
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  const { getSurface, startRender, updateSurface, finishRender } = useA2UIStore();
+  const { getSurface, createOrUpdateSurface, updateDataModel, beginRendering } = useA2UIStore();
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -96,7 +96,7 @@ export default function SalaryViewerPage() {
             case 'A2UI_BEGIN_RENDER':
               console.log('[SalaryViewer] A2UI render begin:', event);
               const surfaceId = event.surfaceId || `surface-${runId}`;
-              startRender(surfaceId);
+              createOrUpdateSurface(surfaceId, [], assistantMessage.id);
               
               // Associate surface with message
               assistantMessage = {
@@ -111,33 +111,28 @@ export default function SalaryViewerPage() {
             case 'A2UI_UPDATE_DATA_MODEL':
               console.log('[SalaryViewer] A2UI data model update:', event);
               if (event.surfaceId && event.updates) {
-                updateSurface(event.surfaceId, {
-                  dataModel: event.updates,
+                // Convert updates to contents array format
+                const contents = Object.entries(event.updates).map(([key, value]) => {
+                  if (typeof value === 'string') return { key, valueString: value };
+                  if (typeof value === 'number') return { key, valueNumber: value };
+                  if (typeof value === 'boolean') return { key, valueBoolean: value };
+                  return { key, valueMap: value };
                 });
+                updateDataModel(event.surfaceId, '/', contents);
               }
               break;
 
             case 'A2UI_RENDER_COMPONENT':
               console.log('[SalaryViewer] A2UI render component:', event);
               if (event.surfaceId && event.component) {
-                const surface = getSurface(event.surfaceId);
-                if (surface) {
-                  const updatedComponents = new Map(surface.components);
-                  updatedComponents.set(event.component.id, event.component);
-                  
-                  updateSurface(event.surfaceId, {
-                    components: updatedComponents,
-                    rootComponentId: event.component.id,
-                  });
-                }
+                createOrUpdateSurface(event.surfaceId, [event.component], assistantMessage.id);
+                beginRendering(event.surfaceId, event.component.id);
               }
               break;
 
             case 'A2UI_FINISH_RENDER':
               console.log('[SalaryViewer] A2UI render finish:', event);
-              if (event.surfaceId) {
-                finishRender(event.surfaceId);
-              }
+              // Rendering state is already set by beginRendering
               break;
 
             case 'RUN_FINISHED':

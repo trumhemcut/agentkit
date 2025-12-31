@@ -1,6 +1,7 @@
 import uuid
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Dict
+from typing import List, Optional, Literal, Dict, Any
+from protocols.a2ui_types import UserAction
 
 
 class Message(BaseModel):
@@ -64,4 +65,21 @@ class ArtifactUpdate(BaseModel):
     """Manual artifact update request"""
     content: str
     artifact_id: str
+
+
+class UserActionRequest(BaseModel):
+    """
+    Request model for user action endpoint.
+    
+    Sent from frontend when user interacts with A2UI components
+    (e.g., clicks a button, submits a form).
+    """
+    user_action: UserAction = Field(..., alias="userAction")
+    thread_id: str = Field(..., alias="threadId")
+    run_id: str = Field(..., alias="runId")
+    model: Optional[str] = None  # Optional model selection
+    provider: Optional[str] = None  # Optional provider selection
+
+    class Config:
+        populate_by_name = True
 

@@ -3,7 +3,10 @@ Support A2UI Protocol
 ## Information
 
 - Home website: https://a2ui.org/
-- Spec: https://a2ui.org/specification/v0.8-a2ui/#section-2-the-component-model
+- Spec: 
+    - https://a2ui.org/specification/v0.8-a2ui/#section-2-the-component-model
+    - https://a2ui.org/specification/v0.9-a2ui
+
 - Agents: https://a2ui.org/agents/
 - Code base example: https://github.com/copilotkit/with-a2a-a2ui
 

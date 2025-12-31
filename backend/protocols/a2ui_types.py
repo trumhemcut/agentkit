@@ -170,8 +170,61 @@ class DeleteSurface(BaseModel):
         populate_by_name = True
 
 
-# Union type for all A2UI messages
+# Union type for all A2UI messages (server-to-client)
 A2UIMessage = Union[SurfaceUpdate, DataModelUpdate, BeginRendering, DeleteSurface]
+
+
+# Client-to-Server Messages (A2UI v0.9)
+
+class UserAction(BaseModel):
+    """
+    Client-to-server message when user interacts with actionable components.
+    
+    Sent when user clicks a Button, submits a form, or triggers any component
+    with an action defined.
+    
+    Example:
+        {
+            "userAction": {
+                "name": "submit_booking",
+                "surfaceId": "booking_form",
+                "sourceComponentId": "submit_button",
+                "timestamp": "2025-12-30T10:30:00Z",
+                "context": {
+                    "restaurantName": "The Gourmet",
+                    "partySize": "4",
+                    "reservationTime": "2025-12-30T19:00:00Z"
+                }
+            }
+        }
+    """
+    name: str = Field(..., description="Action name from component definition")
+    surface_id: str = Field(..., alias="surfaceId")
+    source_component_id: str = Field(..., alias="sourceComponentId")
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Resolved action context data")
+
+    class Config:
+        populate_by_name = True
+
+
+class ErrorMessage(BaseModel):
+    """
+    Client-to-server message for reporting errors.
+    
+    Used to report validation failures, rendering errors, or other client-side issues.
+    """
+    code: str = Field(..., description="Error code (e.g., VALIDATION_FAILED)")
+    surface_id: str = Field(..., alias="surfaceId")
+    path: str = Field(..., description="JSON Pointer to field that failed")
+    message: str = Field(..., description="Human-readable error description")
+
+    class Config:
+        populate_by_name = True
+
+
+# Union type for all client-to-server messages
+ClientToServerMessage = Union[UserAction, ErrorMessage]
 
 
 # Helper functions for creating common A2UI messages
@@ -230,26 +283,49 @@ def create_text_component(
 def create_button_component(
     component_id: str,
     label_text: str,
-    action_name: str
+    action_name: str,
+    action_context: Optional[Dict[str, Any]] = None,
+    style: Optional[Dict[str, Any]] = None
 ) -> Component:
     """
-    Create a button component.
+    Create a button component with action.
     
     Args:
         component_id: Unique ID for the button
         label_text: Text to display on button
         action_name: Name of action to trigger on click
+        action_context: Data to send with action (paths or literal values)
+        style: Optional style properties
     
     Returns:
         Component with button configuration
+        
+    Example:
+        create_button_component(
+            component_id="submit_btn",
+            label_text="Submit Form",
+            action_name="submit_form",
+            action_context={
+                "email": {"path": "/user/email"},
+                "name": {"path": "/user/name"}
+            }
+        )
     """
+    button_config = {
+        "label": {"literalString": label_text},
+        "action": {
+            "name": action_name,
+            "context": action_context or {}
+        }
+    }
+    
+    if style:
+        button_config["style"] = style
+    
     return Component(
         id=component_id,
         component={
-            "Button": {
-                "label": {"literalString": label_text},
-                "onPress": {"action": action_name}
-            }
+            "Button": button_config
         }
     )
 
@@ -286,7 +362,10 @@ def create_textinput_component(
     multiline: bool = False
 ) -> Component:
     """
-    Create a text input component.
+    Create a text input component with two-way binding.
+    
+    TextField automatically updates the data model at value_path as user types.
+    No action needed for typing - actions are for form submission.
     
     Args:
         component_id: Unique ID for the text input
@@ -311,6 +390,54 @@ def create_textinput_component(
         id=component_id,
         component={
             "TextInput": input_config
+        }
+    )
+
+
+def create_checkbox_with_action(
+    component_id: str,
+    label_text: str,
+    value_path: str,
+    on_change_action: Optional[str] = None,
+    on_change_context: Optional[Dict[str, Any]] = None
+) -> Component:
+    """
+    Create a CheckBox component with optional onChange action.
+    
+    Args:
+        component_id: Unique component ID
+        label_text: Checkbox label
+        value_path: JSON Pointer to boolean value in data model
+        on_change_action: Optional action name to trigger on value change
+        on_change_context: Optional context to send with onChange
+    
+    Returns:
+        Component with checkbox configuration
+        
+    Example:
+        create_checkbox_with_action(
+            component_id="agree_terms",
+            label_text="I agree to terms",
+            value_path="/form/agreed",
+            on_change_action="validate_form",
+            on_change_context={"field": "terms"}
+        )
+    """
+    checkbox_config = {
+        "label": {"literalString": label_text},
+        "value": {"path": value_path}
+    }
+    
+    if on_change_action:
+        checkbox_config["onChange"] = {
+            "action": on_change_action,
+            "context": on_change_context or {}
+        }
+    
+    return Component(
+        id=component_id,
+        component={
+            "Checkbox": checkbox_config
         }
     )
 

@@ -20,6 +20,10 @@ interface A2UIStore {
   deleteSurface: (surfaceId: string) => void;
   getSurface: (surfaceId: string) => Surface | undefined;
   getSurfacesByMessageId: (messageId: string) => Surface[];
+  
+  // Path-based value operations for two-way binding
+  getValueAtPath: (surfaceId: string, path: string) => any;
+  setValueAtPath: (surfaceId: string, path: string, value: any) => void;
 }
 
 export const useA2UIStore = create<A2UIStore>((set, get) => ({
@@ -121,5 +125,60 @@ export const useA2UIStore = create<A2UIStore>((set, get) => ({
   getSurfacesByMessageId: (messageId) => {
     const surfaces = Array.from(get().surfaces.values());
     return surfaces.filter(surface => surface.messageId === messageId);
+  },
+  
+  /**
+   * Get value from data model using JSON Pointer path
+   */
+  getValueAtPath: (surfaceId, path) => {
+    const surface = get().surfaces.get(surfaceId);
+    if (!surface) return undefined;
+    
+    if (!path || path === '/') return surface.dataModel;
+    
+    const parts = path.split('/').filter(p => p.length > 0);
+    let current = surface.dataModel;
+    
+    for (const part of parts) {
+      if (current === undefined || current === null) return undefined;
+      current = current[part];
+    }
+    
+    return current;
+  },
+  
+  /**
+   * Set value in data model using JSON Pointer path
+   * Used for two-way binding in input components
+   */
+  setValueAtPath: (surfaceId, path, value) => {
+    set((state) => {
+      const surfaces = new Map(state.surfaces);
+      const surface = surfaces.get(surfaceId);
+      
+      if (!surface) return state;
+      
+      if (!path || path === '/') {
+        throw new Error('Cannot set root path');
+      }
+      
+      const parts = path.split('/').filter(p => p.length > 0);
+      let current = surface.dataModel;
+      
+      // Navigate to parent
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!(part in current)) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+      
+      // Set value
+      current[parts[parts.length - 1]] = value;
+      
+      surfaces.set(surfaceId, surface);
+      return { surfaces };
+    });
   }
 }));
