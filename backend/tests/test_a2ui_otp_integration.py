@@ -12,7 +12,7 @@ from agents.a2ui_agent_with_loop import A2UIAgentWithLoop
 @pytest.mark.asyncio
 async def test_a2ui_agent_generates_otp_basic():
     """Test A2UIAgent generates OTP component from natural language"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Create a 6-digit verification code input"}],
@@ -44,7 +44,7 @@ async def test_a2ui_agent_generates_otp_basic():
 @pytest.mark.asyncio
 async def test_a2ui_agent_generates_otp_with_separator():
     """Test agent generates OTP with separator from prompt"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Create 6-digit OTP input split into two groups"}],
@@ -71,7 +71,7 @@ async def test_a2ui_agent_generates_otp_with_separator():
 @pytest.mark.asyncio
 async def test_a2ui_agent_generates_otp_email_verification():
     """Test agent generates OTP for email verification scenario"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Add email verification with 6-digit code"}],
@@ -96,7 +96,7 @@ async def test_a2ui_agent_generates_otp_email_verification():
 @pytest.mark.asyncio
 async def test_a2ui_agent_generates_otp_2fa():
     """Test agent generates OTP for 2FA scenario"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Create 2FA authentication input"}],
@@ -120,7 +120,7 @@ async def test_a2ui_agent_generates_otp_2fa():
 @pytest.mark.asyncio
 async def test_a2ui_agent_generates_4digit_otp():
     """Test agent generates 4-digit OTP"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Create 4-digit verification code for phone"}],
@@ -147,7 +147,7 @@ async def test_a2ui_agent_generates_4digit_otp():
 @pytest.mark.asyncio
 async def test_a2ui_loop_agent_generates_otp():
     """Test A2UIAgentWithLoop generates OTP component"""
-    agent = A2UIAgentWithLoop(provider="ollama", model="qwen:7b")
+    agent = A2UIAgentWithLoop(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Show verification code input"}],
@@ -171,7 +171,7 @@ async def test_a2ui_loop_agent_generates_otp():
 @pytest.mark.asyncio
 async def test_otp_component_structure():
     """Test OTP component has correct structure"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state = {
         "messages": [{"role": "user", "content": "Create OTP input"}],
@@ -206,7 +206,7 @@ async def test_otp_component_structure():
 @pytest.mark.asyncio  
 async def test_multiple_otp_prompts():
     """Test agent handles various OTP-related prompts"""
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     prompts = [
         "Create verification code input",

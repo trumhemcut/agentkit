@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     AZURE_OPENAI_ENDPOINT: str = ""
     AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
     AZURE_OPENAI_DEPLOYMENT: str = ""
-    AZURE_OPENAI_MODEL: str = "gpt-4"
+    AZURE_OPENAI_MODEL: str = "gpt-5-mini"
     
     # Default provider
-    DEFAULT_PROVIDER: str = "ollama"
-    DEFAULT_MODEL: str = "qwen:7b"
+    DEFAULT_PROVIDER: str = "azure-openai"
+    DEFAULT_MODEL: str = "gpt-5-mini"
     
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

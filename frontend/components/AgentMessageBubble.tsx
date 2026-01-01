@@ -37,7 +37,7 @@ export function AgentMessageBubble({
   onEnableCanvas, 
   canvasModeActive, 
   threadId,
-  agentId = 'a2ui-loop', // Default to a2ui-loop agent for A2UI actions
+  agentId, // Can be passed explicitly, but will use message.agentId if available
   onActionEvent
 }: AgentMessageBubbleProps) {
   // Subscribe to surfaces map to trigger re-renders when surfaces change
@@ -51,6 +51,9 @@ export function AgentMessageBubble({
   // Get surfaces for this message (for rendering)
   const messageSurfaces = getSurfacesByMessageId(message.id);
   
+  // Determine which agent ID to use: message.agentId > agentId prop > default
+  const effectiveAgentId = message.agentId || agentId || 'a2ui-loop';
+  
   // Setup action handler for this message's surfaces using a2uiManager
   useEffect(() => {
     // Get surfaces inside effect to ensure we have latest state
@@ -59,6 +62,7 @@ export function AgentMessageBubble({
     console.log('[AgentMessageBubble] Setting up action handlers', {
       messageId: message.id,
       threadId,
+      effectiveAgentId,
       surfaceCount: currentSurfaces.length,
       surfaces: currentSurfaces.map(s => ({ id: s.id, hasRoot: !!s.rootComponentId }))
     });
@@ -77,7 +81,7 @@ export function AgentMessageBubble({
       try {
         // Send action to backend and process SSE stream
         await A2UIUserActionService.sendAction(
-          agentId,
+          effectiveAgentId,
           action,
           threadId,
           runId,
@@ -107,7 +111,7 @@ export function AgentMessageBubble({
       // Note: Currently no cleanup method in a2uiManager
       // Could add one if needed for memory management
     };
-  }, [threadId, surfaces, agentId, onActionEvent, message.id, getSurfacesByMessageId, selectedModel, selectedProvider]);
+  }, [threadId, surfaces, effectiveAgentId, onActionEvent, message.id, getSurfacesByMessageId, selectedModel, selectedProvider]);
   
   // Legacy callback support (for backward compatibility)
   const handleA2UIAction = useMemo(() => {

@@ -1,11 +1,53 @@
 # LLM Model Selection Feature
 
-**Last Updated**: December 23, 2025  
+**Last Updated**: January 1, 2026  
 **Status**: ✅ Backend Implemented | ⏳ Frontend Pending
 
 ## Overview
 
 This feature allows users to select different LLM models during chat and canvas interactions, similar to ChatGPT's model selector UI.
+
+## Default Model Configuration
+
+**Current Default**: Azure OpenAI `gpt-5-mini`
+
+### Why gpt-5-mini?
+- ✅ **Full Tool Calling Support**: Required for A2UI components and agent workflows
+- ✅ **Fast & Efficient**: Optimized for quick responses
+- ✅ **Cost Effective**: Lower cost per token compared to larger models
+- ✅ **Production Ready**: Reliable for all agent features including OTP verification, multi-step workflows
+
+### Configuration
+
+Set in `backend/config.py`:
+```python
+DEFAULT_PROVIDER: str = "azure-openai"
+DEFAULT_MODEL: str = "gpt-5-mini"
+AZURE_OPENAI_MODEL: str = "gpt-5-mini"
+```
+
+Environment variables (`.env`):
+```bash
+DEFAULT_PROVIDER=azure-openai
+DEFAULT_MODEL=gpt-5-mini
+AZURE_OPENAI_API_KEY=your_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+```
+
+### Alternative Models
+
+**Ollama** (local, no tool support for qwen:7b):
+```python
+DEFAULT_PROVIDER: str = "ollama"
+DEFAULT_MODEL: str = "qwen:7b"  # Note: Limited tool calling support
+```
+
+**Gemini**:
+```python
+DEFAULT_PROVIDER: str = "gemini"
+DEFAULT_MODEL: str = "gemini-2.5-flash"
+```
 
 ## Backend Implementation
 

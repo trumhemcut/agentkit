@@ -124,6 +124,14 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           isStreaming: true 
         };
         
+        // Extract agentId from metadata if available
+        if (typedEvent.metadata?.agentId) {
+          updates.agentId = typedEvent.metadata.agentId;
+        }
+        if (typedEvent.metadata?.agentName) {
+          updates.agentName = typedEvent.metadata.agentName;
+        }
+        
         // If it's an artifact, add artifact metadata
         if (isArtifact) {
           updates.messageType = 'artifact';
@@ -145,7 +153,8 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         role: 'agent',
         content: '',
         timestamp: Date.now(),
-        agentName: typedEvent.agentName || 'Agent',
+        agentName: typedEvent.metadata?.agentName || typedEvent.agentName || 'Agent',
+        agentId: typedEvent.metadata?.agentId,  // Extract agentId from metadata
         isStreaming: true,
         isPending: false,
         messageType: isArtifact ? 'artifact' : 'text',

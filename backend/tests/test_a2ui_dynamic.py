@@ -337,7 +337,7 @@ class TestLLMToolCalling:
         """Test that providers support tool calling"""
         from llm.provider_factory import LLMProviderFactory
         
-        provider = LLMProviderFactory.get_provider("ollama", "qwen:7b")
+        provider = LLMProviderFactory.get_provider("azure-openai", "gpt-5-mini")
         assert hasattr(provider, "get_model_with_tools")
         
         # Test binding tools

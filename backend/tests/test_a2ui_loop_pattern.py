@@ -65,7 +65,7 @@ async def test_basic_a2ui_agent():
     print("="*70)
     
     # Note: Change to qwen2.5:7b, mistral, or another model that supports tools
-    agent = A2UIAgent(provider="ollama", model="qwen:7b")
+    agent = A2UIAgent(provider="azure-openai", model="gpt-5-mini")
     
     state: AgentState = {
         "messages": [
@@ -122,7 +122,7 @@ async def test_loop_a2ui_agent_simple():
     print("TEST 2: Loop A2UI Agent - Simple Request")
     print("="*70)
     
-    agent = A2UIAgentWithLoop(provider="ollama", model="qwen:7b", max_iterations=5)
+    agent = A2UIAgentWithLoop(provider="azure-openai", model="gpt-5-mini", max_iterations=5)
     
     state: AgentState = {
         "messages": [
@@ -177,7 +177,7 @@ async def test_loop_a2ui_agent_complex():
     print("TEST 3: Loop A2UI Agent - Complex Request (Multiple Components)")
     print("="*70)
     
-    agent = A2UIAgentWithLoop(provider="ollama", model="qwen:7b", max_iterations=5)
+    agent = A2UIAgentWithLoop(provider="azure-openai", model="gpt-5-mini", max_iterations=5)
     
     state: AgentState = {
         "messages": [

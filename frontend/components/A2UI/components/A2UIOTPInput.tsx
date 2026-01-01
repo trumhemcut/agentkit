@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { REGEXP_ONLY_DIGITS_AND_CHARS, REGEXP_ONLY_DIGITS } from "input-otp"
 import { useA2UIStore } from "@/stores/a2uiStore"
 import { resolvePath } from "@/types/a2ui"
+import { a2uiManager } from "@/lib/a2ui/A2UIManager"
 
 interface A2UIOTPInputProps {
   id: string
@@ -21,6 +22,10 @@ interface A2UIOTPInputProps {
     groups?: Array<{ start: number; end: number }>
     patternType?: "digits" | "alphanumeric"
     buttonText?: { literalString?: string; path?: string }
+    action?: {
+      name: string
+      context?: Record<string, any>
+    }
     disabled?: boolean
     value?: { path?: string }
   }
@@ -77,13 +82,34 @@ export const A2UIOTPInput: React.FC<A2UIOTPInputProps> = ({
   }
   
   const handleSubmit = () => {
-    // Emit user action event
-    if (onAction) {
+    console.log('[A2UIOTPInput] Submit button clicked', {
+      id,
+      surfaceId,
+      otpValue,
+      action: props.action
+    })
+    
+    // New A2UI v0.9 pattern: use action from props
+    if (props.action) {
+      console.log('[A2UIOTPInput] Using a2uiManager with action:', props.action.name)
+      a2uiManager.handleComponentAction(
+        surfaceId,
+        id,
+        props.action.name,
+        props.action.context || {}
+      )
+    } 
+    // Legacy support: fallback to onAction callback
+    else if (onAction) {
+      console.log('[A2UIOTPInput] Using legacy onAction callback')
       onAction("otp_submit", {
         componentId: id,
         value: otpValue,
         path: props.value?.path,
       })
+    }
+    else {
+      console.warn('[A2UIOTPInput] No action defined for OTP submit button')
     }
   }
   

@@ -187,7 +187,7 @@ UI_UPDATES: <description of what to update in the UI, or "none" if no updates ne
     
     try:
         # Get LLM provider
-        provider = LLMProviderFactory.get_provider("ollama", "qwen:7b")
+        provider = LLMProviderFactory.get_provider("azure-openai", "gpt-5-mini")
         llm = provider.get_model()
         
         # Call LLM
@@ -283,7 +283,7 @@ class A2UIAgentWithLoop(BaseAgent):
         - LLM: "All components created, I'm done" → returns final message
     """
     
-    def __init__(self, provider: str = "ollama", model: str = "qwen:7b", max_iterations: int = 5):
+    def __init__(self, provider: str = "azure-openai", model: str = "gpt-5-mini", max_iterations: int = 5):
         """
         Initialize A2UI agent with tool-calling loop.
         

@@ -93,7 +93,7 @@ class AgentRegistry:
             icon="dollar-sign",
             available=True,
             sub_agents=[],
-            features=["otp-verification", "a2ui-protocol", "tool-loop", "confidential-data"]
+            features=["otp-verification", "a2ui", "a2ui-protocol", "tool-loop", "confidential-data", "user-actions"]
         ))
     
     def register_agent(self, metadata: AgentMetadata):

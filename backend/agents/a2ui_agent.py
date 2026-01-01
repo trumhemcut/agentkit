@@ -67,7 +67,7 @@ class A2UIAgent(BaseAgent):
     5. Frontend renders native UI component
     """
     
-    def __init__(self, provider: str = "ollama", model: str = "qwen:7b"):
+    def __init__(self, provider: str = "azure-openai", model: str = "gpt-5-mini"):
         """
         Initialize A2UI agent with LLM provider.
         

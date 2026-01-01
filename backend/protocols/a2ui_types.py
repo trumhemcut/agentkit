@@ -497,7 +497,8 @@ def create_otp_input_component(
     pattern_type: str,
     button_text: str,
     disabled: bool,
-    value_path: str
+    value_path: str,
+    action_name: str = "verify_otp"
 ) -> Component:
     """
     Create an OTP (One-Time Password) input block component.
@@ -512,6 +513,7 @@ def create_otp_input_component(
         button_text: Submit button text
         disabled: Whether input is disabled
         value_path: Data model path for OTP value
+        action_name: Name of action to trigger when button is clicked
     
     Returns:
         Component with OTP block structure
@@ -526,7 +528,8 @@ def create_otp_input_component(
             pattern_type="digits",
             button_text="Verify",
             disabled=False,
-            value_path="/ui/otp-input-abc123/value"
+            value_path="/ui/otp-input-abc123/value",
+            action_name="verify_otp"
         )
     """
     # Calculate slot groups based on separator positions
@@ -553,7 +556,13 @@ def create_otp_input_component(
                 "patternType": pattern_type,
                 "buttonText": {"literalString": button_text},
                 "disabled": disabled,
-                "valuePath": value_path
+                "value": {"path": value_path},
+                "action": {
+                    "name": action_name,
+                    "context": {
+                        "code": {"path": value_path}
+                    }
+                }
             }
         }
     )

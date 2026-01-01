@@ -11,6 +11,7 @@ User Flow:
 4. Agent verifies and reveals salary details
 """
 
+import asyncio
 import uuid
 import logging
 import json
@@ -70,7 +71,7 @@ class SalaryViewerAgent(BaseAgent):
     4. Agent reveals information
     """
     
-    def __init__(self, provider: str = "ollama", model: str = "qwen:7b", max_iterations: int = 5):
+    def __init__(self, provider: str = "azure-openai", model: str = "gpt-5-mini", max_iterations: int = 5):
         """
         Initialize Salary Viewer agent with OTP verification capability.
         
@@ -102,7 +103,7 @@ class SalaryViewerAgent(BaseAgent):
         Flow:
         1. Check if this is first message → request OTP
         2. If OTP tool called → wait for user input
-        3. If user input received → verify and reveal salary
+        3. If user action received → echo OTP and reveal salary
         
         Args:
             state: Agent state
@@ -113,23 +114,42 @@ class SalaryViewerAgent(BaseAgent):
         messages = state.get("messages", [])
         thread_id = state["thread_id"]
         run_id = state["run_id"]
-        user_input = state.get("user_input")
+        user_action = state.get("user_action")  # A2UI protocol user action
         
         user_message = messages[-1].get("content", "") if messages else ""
-        logger.info(f"Salary Viewer Agent - thread: {thread_id}, user: '{user_message}', user_input: {user_input}")
+        logger.info(f"Salary Viewer Agent - thread: {thread_id}, user: '{user_message}', user_action: {user_action}")
         
         # Create unique surface ID
         surface_id = f"surface-{uuid.uuid4().hex[:8]}"
         
-        # Check if user provided input from OTP component
-        if user_input:
-            logger.info(f"User provided OTP input: {user_input}")
-            self.verification_status = "verified"
+        # Check if user action received (Verify button clicked)
+        if user_action:
+            action_name = user_action.get("name")
+            action_context = user_action.get("context", {})
             
-            # Send confirmation and reveal salary
-            async for event in self._reveal_salary_info():
-                yield event
-            return
+            logger.info(f"User action received: {action_name}, context: {action_context}")
+            
+            # Extract OTP from action context
+            otp_code = action_context.get("code", "")
+            
+            if action_name == "verify_otp" and otp_code:
+                self.verification_status = "verified"
+                
+                # Echo OTP back to user
+                async for event in self._echo_otp_message(otp_code):
+                    yield event
+                
+                # Reveal salary information
+                async for event in self._reveal_salary_info():
+                    yield event
+                return
+            else:
+                # Unknown action or missing OTP
+                async for event in self._send_error_message(
+                    "Invalid verification attempt. Please try again."
+                ):
+                    yield event
+                return
         
         # Check verification status in message history
         has_otp_request = any(
@@ -319,7 +339,44 @@ class SalaryViewerAgent(BaseAgent):
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
             role="assistant",
-            metadata={"message_type": "text"}
+            metadata={"message_type": "text", "agentId": "salary-viewer", "agentName": "Salary Viewer"}
+        )
+        yield self.agui_encoder.encode(start_event)
+        
+        # Content
+        content_event = TextMessageContentEvent(
+            type=EventType.TEXT_MESSAGE_CONTENT,
+            message_id=message_id,
+            delta=message_text
+        )
+        yield self.agui_encoder.encode(content_event)
+        
+        # End message
+        end_event = TextMessageEndEvent(
+            type=EventType.TEXT_MESSAGE_END,
+            message_id=message_id
+        )
+        yield self.agui_encoder.encode(end_event)
+    
+    async def _echo_otp_message(self, otp_code: str) -> AsyncGenerator[str, None]:
+        """
+        Send message echoing the OTP code entered by user.
+        
+        Args:
+            otp_code: The OTP code entered by user
+            
+        Yields:
+            SSE-formatted AG-UI text message events
+        """
+        message_text = f"📩 Đã nhận mã OTP\n\nĐang xác thực..."
+        message_id = f"msg-{uuid.uuid4().hex[:8]}"
+        
+        # Start message
+        start_event = TextMessageStartEvent(
+            type=EventType.TEXT_MESSAGE_START,
+            message_id=message_id,
+            role="assistant",
+            metadata={"message_type": "text", "agentId": "salary-viewer", "agentName": "Salary Viewer"}
         )
         yield self.agui_encoder.encode(start_event)
         
@@ -357,7 +414,7 @@ Congratulations on your raise! 🎉😄"""
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
             role="assistant",
-            metadata={"message_type": "text"}
+            metadata={"message_type": "text", "agentId": "salary-viewer", "agentName": "Salary Viewer"}
         )
         yield self.agui_encoder.encode(start_event)
         
@@ -386,7 +443,7 @@ Congratulations on your raise! 🎉😄"""
             type=EventType.TEXT_MESSAGE_START,
             message_id=message_id,
             role="assistant",
-            metadata={"message_type": "text"}
+            metadata={"message_type": "text", "agentId": "salary-viewer", "agentName": "Salary Viewer"}
         )
         yield self.agui_encoder.encode(start_event)
         
