@@ -8,6 +8,7 @@ import {
 import { useAgentStore, initializeAgentStore } from '@/stores/agentStore';
 import { MessageCircle, Layout, Shield, LayoutGrid, ChevronDown } from 'lucide-react';
 import { useEffect } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 /**
  * Agent selector component
@@ -26,6 +27,7 @@ export function AgentSelector() {
   const availableAgents = useAgentStore((state) => state.availableAgents);
   const setSelectedAgent = useAgentStore((state) => state.setSelectedAgent);
   const loading = useAgentStore((state) => state.loading);
+  const isMobile = useIsMobile();
   
   // Map icon names to lucide icons
   const getIcon = (iconName: string) => {
@@ -49,7 +51,7 @@ export function AgentSelector() {
     return (
       <Button variant="ghost" size="sm" disabled className="gap-2">
         <MessageCircle className="h-4 w-4" />
-        <span className="hidden sm:inline">Loading agents...</span>
+        {!isMobile && <span>Loading agents...</span>}
       </Button>
     );
   }
@@ -57,12 +59,19 @@ export function AgentSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button 
+          variant="ghost" 
+          size={isMobile ? "icon" : "sm"} 
+          className={isMobile ? "h-10 w-10" : "gap-2"}
+          title={currentAgent?.name || 'Select Agent'}
+        >
           {currentAgent && getIcon(currentAgent.icon)}
-          <span className="hidden sm:inline">
-            {currentAgent?.name || 'Select Agent'}
-          </span>
-          <ChevronDown className="h-4 w-4" />
+          {!isMobile && (
+            <>
+              <span>{currentAgent?.name || 'Select Agent'}</span>
+              <ChevronDown className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[240px]">

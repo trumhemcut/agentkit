@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useModelStore, initializeModelStore } from '@/stores/modelStore';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 export function ModelSelector() {
   // Auto-initialize store on mount
@@ -35,6 +36,7 @@ export function ModelSelector() {
   const error = useModelStore((state) => state.error);
   const setSelectedModel = useModelStore((state) => state.setSelectedModel);
   const selectedModelInfo = useModelStore((state) => state.getSelectedModelInfo());
+  const isMobile = useIsMobile();
   
   // Filter models by selected provider
   const availableModels = selectedProvider 
@@ -44,9 +46,9 @@ export function ModelSelector() {
   // Show loading state
   if (loading) {
     return (
-      <Button variant="ghost" size="sm" disabled className="gap-2">
+      <Button variant="ghost" size={isMobile ? "icon" : "sm"} disabled className={isMobile ? "h-10 w-10" : "gap-2"}>
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="hidden sm:inline">Loading models...</span>
+        {!isMobile && <span>Loading models...</span>}
       </Button>
     );
   }
@@ -54,9 +56,9 @@ export function ModelSelector() {
   // Show error state
   if (error || availableModels.length === 0) {
     return (
-      <Button variant="ghost" size="sm" disabled className="gap-2">
+      <Button variant="ghost" size={isMobile ? "icon" : "sm"} disabled className={isMobile ? "h-10 w-10" : "gap-2"}>
         <Bot className="h-4 w-4" />
-        <span className="hidden sm:inline">No models available</span>
+        {!isMobile && <span>No models available</span>}
       </Button>
     );
   }
@@ -64,12 +66,19 @@ export function ModelSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button 
+          variant="ghost" 
+          size={isMobile ? "icon" : "sm"} 
+          className={isMobile ? "h-10 w-10" : "gap-2"}
+          title={selectedModelInfo?.name || 'Select Model'}
+        >
           <Bot className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {selectedModelInfo?.name || 'Select Model'}
-          </span>
-          <ChevronDown className="h-4 w-4" />
+          {!isMobile && (
+            <>
+              <span>{selectedModelInfo?.name || 'Select Model'}</span>
+              <ChevronDown className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[240px]">

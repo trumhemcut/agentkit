@@ -6,9 +6,11 @@ import dynamic from 'next/dynamic';
 import { Layout } from '@/components/Layout';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatContainer, ChatContainerRef } from '@/components/ChatContainer';
+import { MobileTabNavigation, MobileTab } from '@/components/MobileTabNavigation';
 import { useChatThreads } from '@/hooks/useChatThreads';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useCanvasMode } from '@/hooks/useCanvasMode';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Message } from '@/types/chat';
 import { useCanvas } from '@/contexts/CanvasContext';
 
@@ -50,7 +52,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     refreshThreads,
   } = useChatThreads(initialThreadId);
 
-  const { isCollapsed, toggleCollapse, setCollapsed } = useSidebar();
+  const { isCollapsed, toggleCollapse, setCollapsed, isMobileOpen, openMobileDrawer, closeMobileDrawer, toggleMobileDrawer } = useSidebar();
   const { 
     isActive: canvasModeActive, 
     currentArtifactMessage,
@@ -58,6 +60,9 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     deactivateCanvas,
     updateCurrentArtifact,
   } = useCanvasMode();
+  
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<MobileTab>('chat');
   
   const chatContainerRef = useRef<ChatContainerRef>(null);
   const isCreatingNewThreadRef = useRef(false);
@@ -98,8 +103,14 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
         setArtifactId(message.artifactId);
       }
     }
-    setCollapsed(true); // Auto-collapse sidebar when canvas mode activates
-  }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed]);
+    
+    // Auto-collapse sidebar on desktop, switch to canvas tab on mobile
+    if (isMobile) {
+      setMobileTab('canvas');
+    } else {
+      setCollapsed(true);
+    }
+  }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed, isMobile]);
   
   const handleNewChat = useCallback(() => {
     // Mark that we're creating a new thread
@@ -143,7 +154,12 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
   
   const handleCloseCanvas = () => {
     deactivateCanvas();
-    setCollapsed(false); // Restore sidebar when canvas closes
+    // Restore sidebar on desktop, switch to chat tab on mobile
+    if (isMobile) {
+      setMobileTab('chat');
+    } else {
+      setCollapsed(false);
+    }
   };
   
   const handleResize = useCallback((leftWidth: number) => {
@@ -161,41 +177,84 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
           onNewChat={handleNewChat}
           onSelectThread={handleSelectThread}
           onDeleteThread={deleteThread}
+          isMobileOpen={isMobileOpen}
+          onCloseMobile={closeMobileDrawer}
         />
       }
+      onMenuClick={toggleMobileDrawer}
     >
-      <div className={canvasModeActive ? "flex h-full canvas-grid-layout" : "flex h-full canvas-transition"}>
-        <div 
-          className={canvasModeActive ? "h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}
-          style={canvasModeActive ? { width: `${chatPanelWidth}%` } : undefined}
-        >
-          <ChatContainer 
-            ref={chatContainerRef}
-            threadId={currentThreadId}
-            onUpdateThreadTitle={updateThreadTitle}
-            onRefreshThreads={refreshThreads}
-            onArtifactDetected={handleArtifactDetected}
-            onEnableCanvas={activateCanvas}
-            canvasModeActive={canvasModeActive}
-          />
-        </div>
-        {canvasModeActive && currentArtifactMessage && (
+      {/* Mobile Tab Navigation - Only shown on mobile when canvas is active */}
+      {isMobile && canvasModeActive && (
+        <MobileTabNavigation
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          showCanvasBadge={canvasModeActive && mobileTab === 'chat'}
+        />
+      )}
+
+      {/* Content Area */}
+      <div className={isMobile ? "h-full" : (canvasModeActive ? "flex h-full canvas-grid-layout" : "flex h-full canvas-transition")}>
+        {/* Mobile: Show only active tab */}
+        {isMobile ? (
           <>
-            <ResizableDivider
-              onResize={handleResize}
-              minLeftWidth={20}
-              maxLeftWidth={70}
-              initialLeftWidth={chatPanelWidth}
-            />
-            <div 
-              className="h-full overflow-hidden"
-              style={{ width: `${100 - chatPanelWidth}%` }}
+            {mobileTab === 'chat' && (
+              <div className="h-full">
+                <ChatContainer
+                  ref={chatContainerRef}
+                  threadId={currentThreadId}
+                  onUpdateThreadTitle={updateThreadTitle}
+                  onRefreshThreads={refreshThreads}
+                  onArtifactDetected={handleArtifactDetected}
+                  onEnableCanvas={activateCanvas}
+                  canvasModeActive={canvasModeActive}
+                />
+              </div>
+            )}
+            {mobileTab === 'canvas' && canvasModeActive && currentArtifactMessage && (
+              <div className="h-full">
+                <ArtifactPanel
+                  message={currentArtifactMessage}
+                  onClose={handleCloseCanvas}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          /* Desktop: Side-by-side layout */
+          <>
+            <div
+              className={canvasModeActive ? "h-full overflow-hidden canvas-transition" : "flex-1 h-full canvas-transition"}
+              style={canvasModeActive ? { width: `${chatPanelWidth}%` } : undefined}
             >
-              <ArtifactPanel 
-                message={currentArtifactMessage} 
-                onClose={handleCloseCanvas}
+              <ChatContainer
+                ref={chatContainerRef}
+                threadId={currentThreadId}
+                onUpdateThreadTitle={updateThreadTitle}
+                onRefreshThreads={refreshThreads}
+                onArtifactDetected={handleArtifactDetected}
+                onEnableCanvas={activateCanvas}
+                canvasModeActive={canvasModeActive}
               />
             </div>
+            {canvasModeActive && currentArtifactMessage && (
+              <>
+                <ResizableDivider
+                  onResize={handleResize}
+                  minLeftWidth={20}
+                  maxLeftWidth={70}
+                  initialLeftWidth={chatPanelWidth}
+                />
+                <div
+                  className="h-full overflow-hidden"
+                  style={{ width: `${100 - chatPanelWidth}%` }}
+                >
+                  <ArtifactPanel
+                    message={currentArtifactMessage}
+                    onClose={handleCloseCanvas}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

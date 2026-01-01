@@ -4,6 +4,8 @@ import { MessageBubble } from './MessageBubble';
 import { Message } from '@/types/chat';
 import { MessageSquare } from 'lucide-react';
 import { RefObject } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 interface MessageHistoryProps {
   messages: Message[];
@@ -21,6 +23,8 @@ interface MessageHistoryProps {
  * Displays list of messages with auto-scroll and A2UI surfaces
  */
 export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive, threadId, onActionEvent }: MessageHistoryProps) {
+  const isMobile = useIsMobile();
+  
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
@@ -35,7 +39,11 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, 
 
   return (
     <div 
-      className="h-full overflow-y-auto p-4 space-y-4"
+      className={cn(
+        "h-full overflow-y-auto",
+        // Mobile: smaller padding and spacing
+        isMobile ? "p-2 space-y-1" : "p-4 space-y-4"
+      )}
       ref={scrollRef}
       onScroll={onScroll}
     >

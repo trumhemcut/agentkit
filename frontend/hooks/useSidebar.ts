@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 
 /**
  * Hook to manage sidebar collapse state with localStorage persistence
+ * Also manages mobile drawer open/close state
  */
 export function useSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -33,10 +35,20 @@ export function useSidebar() {
     localStorage.setItem('sidebar-collapsed', String(collapsed));
   };
 
+  // Mobile drawer controls
+  const openMobileDrawer = () => setIsMobileOpen(true);
+  const closeMobileDrawer = () => setIsMobileOpen(false);
+  const toggleMobileDrawer = () => setIsMobileOpen((prev) => !prev);
+
   return {
     isCollapsed,
     toggleCollapse,
     setCollapsed,
     isLoaded, // Use this to avoid flash of wrong state on load
+    // Mobile drawer state
+    isMobileOpen,
+    openMobileDrawer,
+    closeMobileDrawer,
+    toggleMobileDrawer,
   };
 }

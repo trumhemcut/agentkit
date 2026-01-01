@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useModelStore } from '@/stores/modelStore';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 const providerIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   ollama: Server,
@@ -24,23 +25,36 @@ export function ProviderSelector() {
   const availableProviders = useModelStore((state) => state.availableProviders);
   const setSelectedProvider = useModelStore((state) => state.setSelectedProvider);
   const loading = useModelStore((state) => state.loading);
+  const isMobile = useIsMobile();
   
   const currentProvider = availableProviders.find(p => p.id === selectedProvider);
   const Icon = currentProvider ? providerIcons[currentProvider.id] || Server : Server;
   
   if (loading) {
-    return <Button variant="ghost" size="sm" disabled>Loading...</Button>;
+    return (
+      <Button variant="ghost" size={isMobile ? "icon" : "sm"} disabled className={isMobile ? "h-10 w-10" : "gap-2"}>
+        <Server className="h-4 w-4" />
+        {!isMobile && <span>Loading...</span>}
+      </Button>
+    );
   }
   
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button 
+          variant="ghost" 
+          size={isMobile ? "icon" : "sm"} 
+          className={isMobile ? "h-10 w-10" : "gap-2"}
+          title={currentProvider?.name || 'Select Provider'}
+        >
           <Icon className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {currentProvider?.name || 'Select Provider'}
-          </span>
-          <ChevronDown className="h-4 w-4" />
+          {!isMobile && (
+            <>
+              <span>{currentProvider?.name || 'Select Provider'}</span>
+              <ChevronDown className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[200px]">

@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     DEFAULT_MODEL: str = "gpt-5-mini"
     
     # CORS settings
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "https://89f34862a589.ngrok-free.app"
+    ]
     
     # Agent settings
     DEFAULT_AGENT: str = "chat"

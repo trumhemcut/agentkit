@@ -16,6 +16,7 @@ import { a2uiManager } from '@/lib/a2ui/A2UIManager';
 import { A2UIUserActionService } from '@/services/a2uiActionService';
 import { InsuranceSupervisorIndicator } from './InsuranceSupervisorIndicator';
 import { useEffect, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { UserAction } from '@/types/a2ui';
 
 interface AgentMessageBubbleProps {
@@ -53,6 +54,9 @@ export function AgentMessageBubble({
   
   // Determine which agent ID to use: message.agentId > agentId prop > default
   const effectiveAgentId = message.agentId || agentId || 'a2ui-loop';
+  
+  // Mobile detection
+  const isMobile = useIsMobile();
   
   // Setup action handler for this message's surfaces using a2uiManager
   useEffect(() => {
@@ -143,10 +147,26 @@ export function AgentMessageBubble({
   const selectedSpecialist = message.metadata?.selected_specialist as string | undefined;
 
   return (
-    <div className={cn("flex p-4 justify-start", canvasModeActive ? "gap-0" : "gap-3")}>
-      {!canvasModeActive && <AvatarIcon role="agent" />}
+    <div className={cn(
+      "flex justify-start",
+      // Mobile: smaller padding (py-2 px-3)
+      // Desktop: normal padding (p-4)
+      isMobile ? "py-2 px-3" : "p-4",
+      // Mobile: remove gap, full width
+      // Desktop: show avatar with gap
+      isMobile ? "gap-0" : (canvasModeActive ? "gap-0" : "gap-3")
+    )}>
+      {/* Hide avatar on mobile, show on desktop (unless canvas mode) */}
+      {!isMobile && !canvasModeActive && <AvatarIcon role="agent" />}
       
-      <div className={cn("flex flex-col gap-1", !isThinking && canvasModeActive ? "flex-1" : "max-w-[70%]")}>
+      <div className={cn(
+        "flex flex-col gap-1",
+        // Mobile: full width only when not thinking, otherwise max-width
+        // Desktop: max-width or flex-1 based on canvas mode
+        isMobile 
+          ? (isThinking ? "max-w-[70%]" : "flex-1") 
+          : (!isThinking && canvasModeActive ? "flex-1" : "max-w-[70%]")
+      )}>
         {/* Show insurance supervisor indicator if applicable */}
         {isInsuranceSupervisor && !isThinking && (
           <div className="mb-2">
