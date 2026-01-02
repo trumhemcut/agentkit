@@ -182,27 +182,18 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
             </DropdownMenu>
           </div>
           
-          <TooltipProvider>
-            {/* Send Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleSend}
-                  disabled={disabled || !message.trim()}
-                  size="icon"
-                  className={cn(
-                    "shrink-0",
-                    isMobile ? "h-8 w-8" : "h-9 w-9"
-                  )}
-                >
-                  <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Send message (Enter)</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* Send Button */}
+          <Button
+            onClick={handleSend}
+            disabled={disabled || !message.trim()}
+            size="icon"
+            className={cn(
+              "shrink-0",
+              isMobile ? "h-8 w-8" : "h-9 w-9"
+            )}
+          >
+            <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+          </Button>
         </div>
       </div>
       
