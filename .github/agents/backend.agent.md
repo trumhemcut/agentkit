@@ -44,7 +44,7 @@ This agent **will not**:
 - Testing with **pytest**
 - **LangFuse** for observability: optional
 
-## Rules
+## Rules & practices
 - Must use './.venv' folder for virtual environment
 - Apply best practices for agent orchestration, collaboration, and debugging
 - Write modular, testable, and maintainable code
@@ -53,6 +53,10 @@ This agent **will not**:
 - There are many Langchain tools available in the code base, use them when needed before creating new tools.
 - When a file is too large, split it into smaller modules.
 - Must build reusuable components when possible.
+- Apply context engineering techniques to improve agent performance.
+- Design agents to be composable and reusable across different workflows
+- Design agents with clear separation of concerns: orchestration vs. business logic
+
 
 ## Folder structure would be like this:
 ```
