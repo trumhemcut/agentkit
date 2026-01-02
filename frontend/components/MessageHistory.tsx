@@ -26,37 +26,31 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, 
   const isMobile = useIsMobile();
   
   if (messages.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center text-center">
-        <MessageSquare className="mb-4 h-12 w-12 text-muted-foreground" />
-        <h3 className="mb-2 text-lg font-semibold">No messages yet</h3>
-        <p className="text-sm text-muted-foreground">
-          Start a conversation by typing a message below
-        </p>
-      </div>
-    );
+    return null; // Empty state handled by ChatContainer
   }
 
   return (
     <div 
-      className={cn(
-        "h-full overflow-y-auto",
-        // Mobile: smaller padding and spacing
-        isMobile ? "p-2 space-y-1" : "p-4 space-y-4"
-      )}
+      className="h-full overflow-y-auto w-full"
       ref={scrollRef}
       onScroll={onScroll}
     >
-      {messages.map((message) => (
-        <MessageBubble 
-          key={message.id} 
-          message={message} 
-          onEnableCanvas={onEnableCanvas} 
-          canvasModeActive={canvasModeActive} 
-          threadId={threadId}
-          onActionEvent={onActionEvent}
-        />
-      ))}
+      <div className={cn(
+        // Mobile: smaller padding and spacing, full width
+        // Desktop: constrained width and centered
+        isMobile ? "p-2 space-y-1 w-full" : "p-4 space-y-4 max-w-[800px] mx-auto w-full"
+      )}>
+        {messages.map((message) => (
+          <MessageBubble 
+            key={message.id} 
+            message={message} 
+            onEnableCanvas={onEnableCanvas} 
+            canvasModeActive={canvasModeActive} 
+            threadId={threadId}
+            onActionEvent={onActionEvent}
+          />
+        ))}
+      </div>
     </div>
   );
 }

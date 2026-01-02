@@ -1,7 +1,6 @@
 'use client';
 
 import { Message, isArtifactMessage } from '@/types/chat';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AvatarIcon } from './AvatarIcon';
 import { cn } from '@/lib/utils';
@@ -152,20 +151,14 @@ export function AgentMessageBubble({
       // Mobile: smaller padding (py-2 px-3)
       // Desktop: normal padding (p-4)
       isMobile ? "py-2 px-3" : "p-4",
-      // Mobile: remove gap, full width
-      // Desktop: show avatar with gap
-      isMobile ? "gap-0" : (canvasModeActive ? "gap-0" : "gap-3")
+      // Full width for message content
+      "w-full"
     )}>
-      {/* Hide avatar on mobile, show on desktop (unless canvas mode) */}
-      {!isMobile && !canvasModeActive && <AvatarIcon role="agent" />}
       
       <div className={cn(
         "flex flex-col gap-1",
-        // Mobile: full width only when not thinking, otherwise max-width
-        // Desktop: max-width or flex-1 based on canvas mode
-        isMobile 
-          ? (isThinking ? "max-w-[70%]" : "flex-1") 
-          : (!isThinking && canvasModeActive ? "flex-1" : "max-w-[70%]")
+        // Full width for text content
+        isThinking ? (isMobile ? "max-w-[70%]" : "max-w-[70%]") : "w-full"
       )}>
         {/* Show insurance supervisor indicator if applicable */}
         {isInsuranceSupervisor && !isThinking && (
@@ -177,8 +170,8 @@ export function AgentMessageBubble({
           </div>
         )}
         
-        <Card className="bg-white border-0 py-0">
-          <CardContent className="p-3">
+        <div className="bg-transparent">
+          <div className="p-0">
             {isThinking ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -283,8 +276,8 @@ export function AgentMessageBubble({
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">

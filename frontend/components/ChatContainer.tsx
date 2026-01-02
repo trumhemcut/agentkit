@@ -487,33 +487,65 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     );
   }
 
+  // Check if we have messages to determine layout
+  const hasMessages = messages.length > 0;
+
   return (
     <div className={canvasModeActive ? "flex h-full flex-col chat-container-canvas-border" : "flex h-full flex-col"}>
-      <div className="flex-1 min-h-0">
-        <MessageHistory 
-          messages={messages} 
-          scrollRef={scrollRef} 
-          onEnableCanvas={onEnableCanvas}
-          onScroll={handleScroll}
-          canvasModeActive={canvasModeActive}
-          threadId={threadId}
-          onActionEvent={handleA2UIActionEvent}
-        />
-      </div>
-      <ChatInput 
-        ref={chatInputRef}
-        onSendMessage={handleSendMessage} 
-        disabled={isSending || !isConnected}
-        placeholder={
-          !isConnected 
-            ? "Connecting to agent..." 
-            : isSending 
-            ? "Agent is responding..." 
-            : canvasContext?.selectedTextForChat
-            ? "Ask about the selected text..."
-            : "Type your message..."
-        }
-      />
+      {hasMessages ? (
+        // Normal chat layout with messages
+        <>
+          <div className="flex-1 min-h-0">
+            <MessageHistory 
+              messages={messages} 
+              scrollRef={scrollRef} 
+              onEnableCanvas={onEnableCanvas}
+              onScroll={handleScroll}
+              canvasModeActive={canvasModeActive}
+              threadId={threadId}
+              onActionEvent={handleA2UIActionEvent}
+            />
+          </div>
+          <ChatInput 
+            ref={chatInputRef}
+            onSendMessage={handleSendMessage} 
+            disabled={isSending || !isConnected}
+            placeholder={
+              !isConnected 
+                ? "Connecting to agent..." 
+                : isSending 
+                ? "Agent is responding..." 
+                : canvasContext?.selectedTextForChat
+                ? "Ask about the selected text..."
+                : "Type your message..."
+            }
+          />
+        </>
+      ) : (
+        // Centered empty state layout
+        <div className="flex h-full flex-col items-center justify-center pb-32">
+          <div className="flex flex-col items-center justify-center max-w-4xl w-full px-4">
+            <h3 className="mb-3 text-2xl font-semibold">Start a conversation</h3>
+            <p className="text-sm text-muted-foreground mb-6 text-center">
+              Ask me anything or start with a simple question
+            </p>
+            <div className="w-full">
+              <ChatInput 
+                ref={chatInputRef}
+                onSendMessage={handleSendMessage} 
+                disabled={isSending || !isConnected}
+                placeholder={
+                  !isConnected 
+                    ? "Connecting to agent..." 
+                    : isSending 
+                    ? "Agent is responding..." 
+                    : "Type your message..."
+                }
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

@@ -1,9 +1,23 @@
 'use client';
 
 import { useState, KeyboardEvent, useRef, forwardRef, useImperativeHandle } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Plus, Wrench, Upload, Image, Code, FileText } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -18,7 +32,7 @@ export interface ChatInputRef {
 /**
  * Chat Input component
  * 
- * Message input box with send button
+ * Message input box with action buttons and send button
  */
 export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatInput({ 
   onSendMessage, 
@@ -27,6 +41,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
 }, ref) {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -49,9 +64,45 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
     }
   };
 
+  const handleFileUpload = () => {
+    // Placeholder for future file upload functionality
+    console.log('File upload clicked (placeholder)');
+  };
+
+  const handleTools = () => {
+    // Placeholder for future tools menu functionality
+    console.log('Tools clicked (placeholder)');
+  };
+
+  const handleUploadFile = () => {
+    console.log('Upload file clicked');
+    // TODO: Implement file upload
+  };
+
+  const handleCreateImage = () => {
+    console.log('Create image clicked');
+    // TODO: Implement image creation
+  };
+
+  const handleGenerateCode = () => {
+    console.log('Generate code clicked');
+    // TODO: Implement code generation
+  };
+
+  const handleAnalyzeDocument = () => {
+    console.log('Analyze document clicked');
+    // TODO: Implement document analysis
+  };
+
   return (
-    <div className="bg-background p-4">
-      <div className="flex gap-2">
+    <div className={cn(
+      "bg-background",
+      // Mobile: full width with smaller padding
+      // Desktop: constrained width and centered
+      isMobile ? "p-3 w-full" : "p-4 max-w-[800px] mx-auto w-full"
+    )}>
+      <div className="relative">
+        {/* Textarea */}
         <Textarea
           ref={textareaRef}
           value={message}
@@ -59,19 +110,106 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className="min-h-[60px] max-h-[200px] resize-none"
-          rows={2}
+          className={cn(
+            "resize-none w-full pr-3 rounded-3xl shadow-md hover:shadow-lg transition-shadow",
+            isMobile ? "min-h-[50px] max-h-[85px] pb-11 pl-3 pt-3" : "min-h-[60px] max-h-[120px] pb-11 pl-4 pt-3"
+          )}
+          rows={isMobile ? 1 : 2}
         />
-        <Button
-          onClick={handleSend}
-          disabled={disabled || !message.trim()}
-          size="icon"
-          className="h-[60px] w-[60px] shrink-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+        
+        {/* Action buttons container - positioned at bottom of textarea */}
+        <div className={cn(
+          "absolute left-0 right-0 flex items-center justify-between",
+          isMobile ? "bottom-1.5 px-2" : "bottom-2 px-3"
+        )}>
+          <div className="flex items-center gap-1">
+            {/* File Upload Button with Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={disabled}
+                  className={cn(
+                    "shrink-0",
+                    isMobile ? "h-8 w-8" : "h-9 w-9"
+                  )}
+                >
+                  <Plus className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={handleUploadFile}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  <span>Upload file</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCreateImage}>
+                  <Image className="mr-2 h-4 w-4" />
+                  <span>Upload image</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Tools Button with Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={disabled}
+                  className={cn(
+                    "shrink-0",
+                    isMobile ? "h-8 w-8" : "h-9 w-9"
+                  )}
+                >
+                  <Wrench className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={handleCreateImage}>
+                  <Image className="mr-2 h-4 w-4" />
+                  <span>Create image</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGenerateCode}>
+                  <Code className="mr-2 h-4 w-4" />
+                  <span>Generate code</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAnalyzeDocument}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Analyze document</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          <TooltipProvider>
+            {/* Send Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleSend}
+                  disabled={disabled || !message.trim()}
+                  size="icon"
+                  className={cn(
+                    "shrink-0",
+                    isMobile ? "h-8 w-8" : "h-9 w-9"
+                  )}
+                >
+                  <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Send message (Enter)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+      
+      <p className={cn(
+        "mt-2 text-muted-foreground",
+        isMobile ? "text-[10px]" : "text-xs"
+      )}>
         Press Enter to send, Shift+Enter for new line
       </p>
     </div>
