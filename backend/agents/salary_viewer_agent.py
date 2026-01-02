@@ -397,18 +397,20 @@ class SalaryViewerAgent(BaseAgent):
     
     async def _reveal_salary_info(self) -> AsyncGenerator[str, None]:
         """Send message revealing salary information"""
-        message_text = """✅ Verification successful!
+        message_text = """✅ Đã xác thực thành công!
 
-Here's your salary information:
+Đây là thông tin lương của bạn (tổng tài):
 
-💰 **Original Salary**: 5,000,000 VND
-📈 **Increase**: 5%
-✨ **New Salary**: 5,250,000 VND
-💵 **Increase Amount**: +250,000 VND
+💰 **Lương gốc**: 5,000,000 VND
+📈 **Lương tăng**: 5%
+✨ **Lương mới**: 5,250,000 VND
+💵 **Số tiền tăng**: +250,000 VND
 
-Congratulations on your raise! 🎉😄"""
+Chúc mừng anh đã được tăng lương đỉnh nhé! 🎉😄"""
         message_id = f"msg-{uuid.uuid4().hex[:8]}"
         
+        # wait 2 seconds to simulate processing
+        await asyncio.sleep(2)
         # Start message
         start_event = TextMessageStartEvent(
             type=EventType.TEXT_MESSAGE_START,
