@@ -30,6 +30,9 @@ export enum EventType {
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR',
   
+  // Stream control events
+  STREAM_ABORTED = 'STREAM_ABORTED',
+  
   // Custom events (for canvas and other extensions)
   CUSTOM = 'CUSTOM',
 }
@@ -63,6 +66,11 @@ export interface RunErrorEvent extends BaseEvent {
   type: EventType.RUN_ERROR;
   thread_id?: string;
   run_id?: string;
+  message?: string;
+}
+
+export interface StreamAbortedEvent extends BaseEvent {
+  type: EventType.STREAM_ABORTED;
   message?: string;
 }
 

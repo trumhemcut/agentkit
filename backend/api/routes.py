@@ -163,16 +163,16 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
     async def event_generator():
         import asyncio
         
-        # Send RUN_STARTED event
-        yield encoder.encode(
-            RunStartedEvent(
-                type=EventType.RUN_STARTED,
-                thread_id=input_data.thread_id,
-                run_id=input_data.run_id
-            )
-        )
-        
         try:
+            # Send RUN_STARTED event
+            yield encoder.encode(
+                RunStartedEvent(
+                    type=EventType.RUN_STARTED,
+                    thread_id=input_data.thread_id,
+                    run_id=input_data.run_id
+                )
+            )
+            
             # Create graph dynamically based on agent_id
             graph = graph_factory.create_graph(
                 agent_id=agent_id,
@@ -239,11 +239,17 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                 )
             )
         
+        except GeneratorExit:
+            # Client disconnected (e.g., user clicked Stop button)
+            logger.info(f"[ROUTES] Client disconnected for agent={agent_id}, run_id={input_data.run_id}, thread_id={input_data.thread_id}")
+            # FastAPI will handle cleanup automatically
+            # Graph execution will be cancelled when generator is closed
+        
         except Exception as e:
             # Log error for debugging
             import traceback
-            logger.error(f"Error occurred: {e}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"[ROUTES] Error occurred in agent={agent_id}, run_id={input_data.run_id}: {e}")
+            logger.error(f"[ROUTES] Traceback: {traceback.format_exc()}")
             
             # Send RUN_ERROR event
             yield encoder.encode(
@@ -318,16 +324,16 @@ async def handle_user_action(
     async def event_generator():
         import asyncio
         
-        # Send RUN_STARTED event
-        yield encoder.encode(
-            RunStartedEvent(
-                type=EventType.RUN_STARTED,
-                thread_id=request_data.thread_id,
-                run_id=request_data.run_id
-            )
-        )
-        
         try:
+            # Send RUN_STARTED event
+            yield encoder.encode(
+                RunStartedEvent(
+                    type=EventType.RUN_STARTED,
+                    thread_id=request_data.thread_id,
+                    run_id=request_data.run_id
+                )
+            )
+            
             # Get or create graph
             graph = graph_factory.create_graph(
                 agent_id=agent_id,
@@ -411,11 +417,16 @@ async def handle_user_action(
                 )
             )
         
+        except GeneratorExit:
+            # Client disconnected (e.g., user clicked Stop button)
+            logger.info(f"[ROUTES] Client disconnected for agent={agent_id}, action={request_data.user_action.name}, run_id={request_data.run_id}")
+            # FastAPI will handle cleanup automatically
+        
         except Exception as e:
             # Log error for debugging
             import traceback
-            logger.error(f"Error processing user action: {e}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"[ROUTES] Error processing user action for agent={agent_id}: {e}")
+            logger.error(f"[ROUTES] Traceback: {traceback.format_exc()}")
             
             # Send RUN_ERROR event
             yield encoder.encode(
@@ -458,16 +469,16 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
     encoder = EventEncoder(accept=accept_header)
     
     async def event_generator():
-        # Send RUN_STARTED event
-        yield encoder.encode(
-            RunStartedEvent(
-                type=EventType.RUN_STARTED,
-                thread_id=input_data.thread_id,
-                run_id=input_data.run_id
-            )
-        )
-        
         try:
+            # Send RUN_STARTED event
+            yield encoder.encode(
+                RunStartedEvent(
+                    type=EventType.RUN_STARTED,
+                    thread_id=input_data.thread_id,
+                    run_id=input_data.run_id
+                )
+            )
+            
             # Handle artifact retrieval: prioritize artifact_id over artifact
             artifact = None
             if input_data.artifact_id:
@@ -559,11 +570,16 @@ async def canvas_stream_endpoint(input_data: CanvasMessageRequest, request: Requ
                 )
             )
         
+        except GeneratorExit:
+            # Client disconnected (e.g., user clicked Stop button)
+            logger.info(f"[ROUTES] Client disconnected for canvas endpoint, run_id={input_data.run_id}")
+            # FastAPI will handle cleanup automatically
+        
         except Exception as e:
             # Log error for debugging
             import traceback
-            logger.error(f"Error occurred: {e}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"[ROUTES] Error occurred in canvas endpoint: {e}")
+            logger.error(f"[ROUTES] Traceback: {traceback.format_exc()}")
             
             # Send RUN_ERROR event
             yield encoder.encode(

@@ -1,0 +1,3 @@
+Hiện tại khi agent đang trả lời thì user không thể làm gì, không thể viết message mới, mà cũng không có cơ chế để "Stop" Agent lại. Sẽ khá bất tiện nếu agent trả lời thông điệp dài.
+
+Cần một tính năng giống Gemimi .docs/0-requirements/images/gemini-writing.png, khi agent đang trả lời, thì nút Send sẽ hiển thị trạng thái thành nút "Stop". Khi nhấn nút này thì agent sẽ stop sending message nữa. Ngoài ra trong thời gian đó, user vẫn có thể gõ message, nếu nhấn enter thì xem như là stop và gửi message mới.

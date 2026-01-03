@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom'
+import { TextEncoder, TextDecoder } from 'util';
+
+// Polyfill TextEncoder and TextDecoder for Jest
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
 
 // Mock ResizeObserver for Recharts
 global.ResizeObserver = class ResizeObserver {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, KeyboardEvent, useRef, forwardRef, useImperativeHandle } from 'react';
-import { Send, Plus, Wrench, Upload, Image, Code, FileText } from 'lucide-react';
+import { Send, Plus, Wrench, Upload, Image, Code, FileText, Square } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,9 @@ import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
+  onStopStreaming?: () => void;
   disabled?: boolean;
+  isStreaming?: boolean;
   placeholder?: string;
 }
 
@@ -35,8 +37,10 @@ export interface ChatInputRef {
  * Message input box with action buttons and send button
  */
 export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatInput({ 
-  onSendMessage, 
+  onSendMessage,
+  onStopStreaming,
   disabled = false,
+  isStreaming = false,
   placeholder = "Type your message..."
 }, ref) {
   const [message, setMessage] = useState('');
@@ -57,10 +61,24 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
     }
   };
 
+  const handleStop = () => {
+    if (onStopStreaming) {
+      onStopStreaming();
+    }
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      
+      // If streaming, stop and send new message
+      if (isStreaming) {
+        handleStop();
+        // Wait briefly then send
+        setTimeout(() => handleSend(), 150);
+      } else {
+        handleSend();
+      }
     }
   };
 
@@ -131,7 +149,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
                   size="icon"
                   disabled={disabled}
                   className={cn(
-                    "shrink-0",
+                    "shrink-0 rounded-full",
                     isMobile ? "h-8 w-8" : "h-9 w-9"
                   )}
                 >
@@ -158,7 +176,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
                   size="icon"
                   disabled={disabled}
                   className={cn(
-                    "shrink-0",
+                    "shrink-0 rounded-full",
                     isMobile ? "h-8 w-8" : "h-9 w-9"
                   )}
                 >
@@ -182,18 +200,41 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
             </DropdownMenu>
           </div>
           
-          {/* Send Button */}
-          <Button
-            onClick={handleSend}
-            disabled={disabled || !message.trim()}
-            size="icon"
-            className={cn(
-              "shrink-0",
-              isMobile ? "h-8 w-8" : "h-9 w-9"
-            )}
-          >
-            <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
-          </Button>
+          {/* Send/Stop Button */}
+          {isStreaming ? (
+            <Button
+              onClick={handleStop}
+              size="icon"
+              variant="secondary"
+              className={cn(
+                "shrink-0 rounded-full",
+                isMobile ? "h-8 w-8" : "h-9 w-9"
+              )}
+            >
+              <Square className={isMobile ? "h-4 w-4" : "h-5 w-5"} fill="currentColor" />
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleSend}
+                    disabled={disabled || !message.trim()}
+                    size="icon"
+                    className={cn(
+                      "shrink-0 rounded-full",
+                      isMobile ? "h-8 w-8" : "h-9 w-9"
+                    )}
+                  >
+                    <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Send message</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
       
@@ -201,7 +242,10 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
         "mt-2 text-muted-foreground",
         isMobile ? "text-[10px]" : "text-xs"
       )}>
-        Press Enter to send, Shift+Enter for new line
+        {isStreaming 
+          ? "Press Enter to stop and send new message" 
+          : "Press Enter to send, Shift+Enter for new line"
+        }
       </p>
     </div>
   );

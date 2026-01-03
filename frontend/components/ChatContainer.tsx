@@ -55,6 +55,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
   const currentAgentMessageRef = useRef<ChatMessage | null>(null);
   const threadIdRef = useRef<string | null>(threadId);
   const chatInputRef = useRef<ChatInputRef>(null);
+  const currentAbortControllerRef = useRef<AbortController | null>(null);
   
   // Get canvas context if available
   const canvasContext = useCanvasOptional();
@@ -225,6 +226,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         currentAgentMessageRef.current = null;
       }
       setIsSending(false);
+      currentAbortControllerRef.current = null; // Clear abort controller
       // Refresh threads to update sidebar with latest messages
       onRefreshThreads?.();
     });
@@ -326,10 +328,42 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     client.processEvent(event);
   }, [getClient]);
 
+  const handleStopStreaming = () => {
+    console.log('[ChatContainer] User requested stop streaming');
+    
+    if (currentAbortControllerRef.current) {
+      currentAbortControllerRef.current.abort();
+      currentAbortControllerRef.current = null;
+      setIsSending(false);
+      
+      // Update the current agent message to mark it as interrupted
+      const currentMsg = currentAgentMessageRef.current;
+      if (currentMsg && currentMsg.isStreaming) {
+        const interruptedMessage = {
+          ...currentMsg,
+          isStreaming: false,
+          content: currentMsg.content + '\n\n_[Response interrupted by user]_'
+        };
+        updateMessage(interruptedMessage.id, interruptedMessage);
+        currentAgentMessageRef.current = null;
+      }
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
-    if (!threadId || isSending) {
-      console.log('Cannot send: threadId=', threadId, 'isSending=', isSending);
+    if (!threadId) {
+      console.log('Cannot send: threadId=', threadId);
       return;
+    }
+
+    // If already streaming, stop first
+    if (isSending && currentAbortControllerRef.current) {
+      console.log('[ChatContainer] Stopping current stream before sending new message');
+      currentAbortControllerRef.current.abort();
+      currentAbortControllerRef.current = null;
+      
+      // Wait a brief moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     if (!selectedAgent) {
@@ -425,7 +459,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         
         console.log('[ChatContainer] Sending canvas message with artifactId:', artifactIdToSend);
         
-        await sendCanvasMessage(
+        currentAbortControllerRef.current = await sendCanvasMessage(
           apiMessages,
           threadId,
           runId,
@@ -444,7 +478,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         // Clear selected text after sending
         canvasContext?.setSelectedTextForChat?.(null);
       } else {
-        await sendChatMessage(
+        currentAbortControllerRef.current = await sendChatMessage(
           apiMessages,
           threadId,
           runId,
@@ -480,7 +514,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         <ChatInput 
           ref={chatInputRef}
           onSendMessage={() => {}} 
+          onStopStreaming={handleStopStreaming}
           disabled={true}
+          isStreaming={isSending}
           placeholder="Start a new chat to begin..."
         />
       </div>
@@ -509,7 +545,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
           <ChatInput 
             ref={chatInputRef}
             onSendMessage={handleSendMessage} 
+            onStopStreaming={handleStopStreaming}
             disabled={isSending || !isConnected}
+            isStreaming={isSending}
             placeholder={
               !isConnected 
                 ? "Connecting to agent..." 
@@ -533,7 +571,9 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
               <ChatInput 
                 ref={chatInputRef}
                 onSendMessage={handleSendMessage} 
+                onStopStreaming={handleStopStreaming}
                 disabled={isSending || !isConnected}
+                isStreaming={isSending}
                 placeholder={
                   !isConnected 
                     ? "Connecting to agent..." 

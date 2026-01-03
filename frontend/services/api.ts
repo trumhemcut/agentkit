@@ -43,6 +43,7 @@ export interface AgentStatusResponse {
  * @param model - Optional LLM model ID to use for this conversation
  * @param agent - Optional agent ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
+ * @returns AbortController that can be used to cancel the request
  */
 export async function sendChatMessage(
   messages: Message[],
@@ -52,7 +53,9 @@ export async function sendChatMessage(
   provider: string | undefined,
   agent: string | undefined,
   onEvent: (event: any) => void
-): Promise<void> {
+): Promise<AbortController> {
+  const abortController = new AbortController();
+  
   try {
     // Use the unified endpoint pattern: /chat/{agent_id}
     // Default to 'chat' if no agent specified (matches agent_registry IDs)
@@ -76,6 +79,7 @@ export async function sendChatMessage(
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify(chatRequest),
+      signal: abortController.signal, // Add abort signal
     });
 
     console.log('[API] Response status:', response.status);
@@ -132,6 +136,17 @@ export async function sendChatMessage(
       }
     }
   } catch (error) {
+    // Handle abort specifically
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('[API] Request aborted by user');
+      onEvent({
+        type: 'STREAM_ABORTED',
+        message: 'Request cancelled by user',
+        timestamp: Date.now(),
+      });
+      return abortController;
+    }
+    
     console.error('[API] Error sending chat message:', error);
     onEvent({
       type: 'ERROR',
@@ -139,6 +154,8 @@ export async function sendChatMessage(
       timestamp: Date.now(),
     });
   }
+  
+  return abortController;
 }
 
 /**
@@ -191,6 +208,7 @@ export interface CanvasRequest {
  * @param model - Optional LLM model ID to use for this conversation
  * @param agent - Optional agent ID to use for this conversation
  * @param onEvent - Callback function to handle each AG-UI event
+ * @returns AbortController that can be used to cancel the request
  */
 export async function sendCanvasMessage(
   messages: Message[],
@@ -204,7 +222,9 @@ export async function sendCanvasMessage(
   provider: string | undefined,
   agent: string | undefined,
   onEvent: (event: any) => void
-): Promise<void> {
+): Promise<AbortController> {
+  const abortController = new AbortController();
+  
   try {
     // Use the unified endpoint pattern: /chat/{agent_id}
     // Agent ID must be provided from the /agents discovery API
@@ -245,6 +265,7 @@ export async function sendCanvasMessage(
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify(canvasRequest),
+      signal: abortController.signal, // Add abort signal
     });
 
     console.log('[API] Canvas response status:', response.status);
@@ -301,6 +322,17 @@ export async function sendCanvasMessage(
       }
     }
   } catch (error) {
+    // Handle abort specifically
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('[API] Canvas request aborted by user');
+      onEvent({
+        type: 'STREAM_ABORTED',
+        message: 'Request cancelled by user',
+        timestamp: Date.now(),
+      });
+      return abortController;
+    }
+    
     console.error('[API] Error sending canvas message:', error);
     onEvent({
       type: 'ERROR',
@@ -308,6 +340,8 @@ export async function sendCanvasMessage(
       timestamp: Date.now(),
     });
   }
+  
+  return abortController;
 }
 
 /**
