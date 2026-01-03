@@ -130,7 +130,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
       if (newThread && newThread.id) {
         // Update URL without causing full navigation
         // This prevents component remount and sidebar state changes
-        window.history.pushState({}, '', `/thread/${newThread.id}`);
+        window.history.pushState({}, '', `/t/${newThread.id}`);
       }
       
       // Clear the flag after state updates complete
@@ -149,7 +149,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
   const handleSelectThread = useCallback((threadId: string) => {
     selectThread(threadId);
     // Navigate to thread URL
-    router.push(`/thread/${threadId}`);
+    router.push(`/t/${threadId}`);
   }, [selectThread, router]);
   
   const handleCloseCanvas = () => {

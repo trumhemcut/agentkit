@@ -24,7 +24,7 @@ export function useChatThreads(initialThreadId?: string) {
     // Auto-create first thread if no threads exist
     if (loadedThreads.length === 0) {
       const newThread: Thread = {
-        id: `thread-${Date.now()}`,
+        id: crypto.randomUUID(),
         title: 'New Chat',
         messages: [],
         createdAt: Date.now(),
@@ -50,7 +50,7 @@ export function useChatThreads(initialThreadId?: string) {
    */
   const createThread = useCallback(() => {
     const newThread: Thread = {
-      id: `thread-${Date.now()}`,
+      id: crypto.randomUUID(),
       title: 'New Chat',
       messages: [],
       createdAt: Date.now(),

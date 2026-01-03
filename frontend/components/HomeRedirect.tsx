@@ -13,18 +13,18 @@ export function HomeRedirect() {
     
     if (threads.length > 0) {
       // Redirect to most recent thread
-      router.replace(`/thread/${threads[0].id}`);
+      router.replace(`/t/${threads[0].id}`);
     } else {
       // Create new thread and redirect to it
       const newThread = {
-        id: `thread-${Date.now()}`,
+        id: crypto.randomUUID(),
         title: 'New Chat',
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
       StorageService.saveThread(newThread);
-      router.replace(`/thread/${newThread.id}`);
+      router.replace(`/t/${newThread.id}`);
     }
   }, [router]);
   
