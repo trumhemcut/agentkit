@@ -279,7 +279,7 @@ export function AgentMessageBubble({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 px-3">
           <span className="text-xs text-muted-foreground">
             {formatTime(message.timestamp)}
           </span>
