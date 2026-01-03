@@ -35,8 +35,8 @@ export function UserMessageBubble({ message, canvasModeActive }: UserMessageBubb
       canvasModeActive ? 'gap-0' : 'gap-3'
     )}>
       <div className="flex flex-col gap-1 max-w-[70%] items-end">
-        <Card className="border-0 py-0" style={{ backgroundColor: '#F4F4F4' }}>
-          <CardContent className="p-3">
+        <Card data-slot="card" className="border-0 py-0" style={{ backgroundColor: '#F4F4F4' }}>
+          <CardContent data-slot="card-content" className="p-3">
             <p className="text-sm whitespace-pre-wrap break-words">
               {message.content}
             </p>

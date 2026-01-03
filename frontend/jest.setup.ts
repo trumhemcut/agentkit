@@ -7,6 +7,21 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+// Mock matchMedia for media query hooks
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(), // deprecated
+    removeListener: jest.fn(), // deprecated
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 // Mock performance.getEntriesByType for performance tracking
 if (!global.performance.getEntriesByType) {
   global.performance.getEntriesByType = jest.fn(() => []);

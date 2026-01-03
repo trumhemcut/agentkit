@@ -170,8 +170,8 @@ export function AgentMessageBubble({
           </div>
         )}
         
-        <div className="bg-transparent">
-          <div className="p-0">
+        <div data-slot="card" className="flex flex-col bg-transparent py-0">
+          <div data-slot="card-content" className="p-3">
             {isThinking ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
