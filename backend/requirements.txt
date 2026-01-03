@@ -2,10 +2,11 @@ fastapi==0.115.0
 uvicorn[standard]==0.32.0
 pydantic>=2.11.2
 pydantic-settings==2.5.0
+langchain-core==0.3.29
 langgraph==0.2.74
 langchain-ollama==0.2.0
-langchain-google-genai
-langchain-openai>=0.2.0
+langchain-google-genai==2.0.8
+langchain-openai==0.2.14
 openai>=1.0.0
 azure-identity>=1.15.0
 python-dotenv==1.0.0
