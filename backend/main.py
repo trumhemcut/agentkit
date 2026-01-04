@@ -1,8 +1,10 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
 from config import settings
+
+# Import all routers
+from api.routers import agents, llm_models, chat, a2ui, threads, messages
 
 # Configure logging
 logging.basicConfig(
@@ -32,8 +34,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routes
-app.include_router(router, prefix="/api")
+# Register all routers with /api prefix
+app.include_router(agents.router, prefix="/api", tags=["agents"])
+app.include_router(llm_models.router, prefix="/api", tags=["models"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(a2ui.router, prefix="/api", tags=["a2ui"])
+app.include_router(threads.router, prefix="/api", tags=["threads"])
+app.include_router(messages.router, prefix="/api", tags=["messages"])
 
 
 @app.get("/health")
