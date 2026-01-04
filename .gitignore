@@ -30,6 +30,10 @@ wheels/
 .env.local
 .env*.local
 
+# Allow example env files to be committed
+!.env.example
+!.env.local.example
+
 # IDE
 .vscode/
 .idea/
