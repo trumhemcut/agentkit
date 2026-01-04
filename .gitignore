@@ -45,6 +45,10 @@ wheels/
 .DS_Store
 Thumbs.db
 
+# Database
+*.db
+agentkit.db
+
 # Logs
 *.log
 logs/

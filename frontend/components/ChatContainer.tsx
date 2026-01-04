@@ -343,6 +343,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
         const interruptedMessage = {
           ...currentMsg,
           isStreaming: false,
+          isInterrupted: true,
           content: currentMsg.content + '\n\n_[Response interrupted by user]_'
         };
         updateMessage(interruptedMessage.id, interruptedMessage);

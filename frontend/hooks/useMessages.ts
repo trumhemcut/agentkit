@@ -116,14 +116,14 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
       // Update in store
       updateMessageStore(threadId, messageId, updates);
       
-      // If agent message is complete, sync to database
+      // If agent message is complete OR interrupted, sync to database
       // Note: Only agent messages need this because they start as pending/streaming
       // User messages are already saved when first created
-      if (updates.isPending === false || updates.isStreaming === false) {
+      if (updates.isPending === false || updates.isStreaming === false || updates.isInterrupted === true) {
         const completedMessage = messages.find(m => m.id === messageId);
         if (completedMessage && completedMessage.role === 'agent') {
-          console.log('[useMessages] Syncing completed agent message to database:', messageId);
-          addMessageStore(threadId, { ...completedMessage, ...updates });
+          console.log('[useMessages] Syncing completed/interrupted agent message to database:', messageId);
+          addMessageStore(threadId, { ...completedMessage, ...updates }, updates.isInterrupted === true);
         }
       }
     }

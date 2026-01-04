@@ -80,26 +80,38 @@ export const useMessageStore = create<MessageState>((set, get) => ({
   /**
    * Add message (optimistic update + database sync)
    */
-  addMessage: async (threadId: string, message: Message) => {
+  addMessage: async (threadId: string, message: Message, forceSave: boolean = false) => {
     // Check for duplicate before adding
     const existingMessages = get().messagesByThread[threadId] || [];
     const isDuplicate = existingMessages.some(m => m.id === message.id);
     
-    if (isDuplicate) {
+    if (isDuplicate && !forceSave) {
       console.log('[MessageStore] Skipping duplicate message:', message.id);
       return message;
     }
     
-    // Optimistic update
-    set(state => ({
-      messagesByThread: {
-        ...state.messagesByThread,
-        [threadId]: [...existingMessages, message],
-      },
-    }));
+    // Optimistic update (only if not duplicate, or forceSave with update)
+    if (!isDuplicate) {
+      set(state => ({
+        messagesByThread: {
+          ...state.messagesByThread,
+          [threadId]: [...existingMessages, message],
+        },
+      }));
+    } else {
+      // Update existing message
+      set(state => ({
+        messagesByThread: {
+          ...state.messagesByThread,
+          [threadId]: state.messagesByThread[threadId].map(m =>
+            m.id === message.id ? { ...m, ...message } : m
+          ),
+        },
+      }));
+    }
     
-    // Skip backend sync for pending/streaming messages
-    if (message.isPending || message.isStreaming) {
+    // Skip backend sync for pending/streaming messages (unless forceSave)
+    if ((message.isPending || message.isStreaming) && !forceSave) {
       console.log('[MessageStore] Skipping backend sync for pending/streaming message');
       return message;
     }
@@ -109,6 +121,7 @@ export const useMessageStore = create<MessageState>((set, get) => ({
       const createRequest: any = {
         role: message.role === 'user' ? 'user' : 'assistant',
         content: message.content || '',
+        is_interrupted: message.isInterrupted || false,
       };
       
       // Add artifact data if it's an artifact message

@@ -5,12 +5,6 @@ import { Send, Plus, Wrench, Upload, Image, Code, FileText, Square } from 'lucid
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -214,26 +208,17 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatI
               <Square className={isMobile ? "h-4 w-4" : "h-5 w-5"} fill="currentColor" />
             </Button>
           ) : (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={handleSend}
-                    disabled={disabled || !message.trim()}
-                    size="icon"
-                    className={cn(
-                      "shrink-0 rounded-full",
-                      isMobile ? "h-8 w-8" : "h-9 w-9"
-                    )}
-                  >
-                    <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Send message</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button
+              onClick={handleSend}
+              disabled={disabled || !message.trim()}
+              size="icon"
+              className={cn(
+                "shrink-0 rounded-full",
+                isMobile ? "h-8 w-8" : "h-9 w-9"
+              )}
+            >
+              <Send className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+            </Button>
           )}
         </div>
       </div>

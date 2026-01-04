@@ -14,37 +14,9 @@ from api.models import RunAgentInput
 from api.utils.state_preparation import prepare_state_for_agent
 from agents.agent_registry import agent_registry
 from graphs.graph_factory import graph_factory
-from database.config import AsyncSessionLocal
-from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-@router.post("/chat")
-async def chat_endpoint_legacy(input_data: RunAgentInput, request: Request):
-    """
-    DEPRECATED: Legacy chat endpoint without agent_id in path.
-    
-    Use /chat/{agent_id} endpoint instead. This endpoint is maintained for backward compatibility
-    but will be removed in a future version.
-    
-    Redirects to appropriate agent based on input_data.agent field.
-    """
-    logger.warning("DEPRECATED: /chat endpoint called. Please migrate to /chat/{agent_id}")
-    
-    # Map old agent names to registry agent_id format
-    agent_mapping = {
-        "chat": "chat",
-        "canvas": "canvas",
-        "chat-agent": "chat",
-        "canvas-agent": "canvas"
-    }
-    
-    agent_id = agent_mapping.get(input_data.agent or "chat", "chat")
-    
-    # Forward to the new unified endpoint
-    return await chat_endpoint(agent_id, input_data, request)
 
 
 @router.post("/chat/{agent_id}")
@@ -183,34 +155,6 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
             if graph_error:
                 raise graph_error
             
-            # Persist assistant response to database
-            try:
-                async with AsyncSessionLocal() as db:
-                    if assistant_response_content:
-                        full_response = "".join(assistant_response_content)
-                        
-                        # Determine message type based on artifact detection
-                        message_type = "artifact" if has_artifact else "text"
-                        
-                        # Prepare artifact_data if artifact was created
-                        artifact_data = None
-                        if has_artifact and artifact_metadata:
-                            artifact_data = artifact_metadata
-                        
-                        await MessageService.create_message(
-                            db,
-                            input_data.thread_id,
-                            agent_id,
-                            "assistant",
-                            full_response,
-                            message_type,
-                            artifact_data
-                        )
-                        logger.info(f"Saved assistant response to thread {input_data.thread_id} with type={message_type}")
-            except Exception as e:
-                logger.error(f"Failed to save assistant response: {e}")
-                # Don't fail the request if save fails
-            
             # Send RUN_FINISHED event
             yield encoder.encode(
                 RunFinishedEvent(
@@ -219,40 +163,6 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                     run_id=input_data.run_id
                 )
             )
-        
-        except GeneratorExit:
-            # Client disconnected (e.g., user clicked Stop button)
-            logger.info(f"[CHAT_ROUTER] Client disconnected for agent={agent_id}, run_id={input_data.run_id}, thread_id={input_data.thread_id}")
-            
-            # Save interrupted message to database
-            try:
-                async with AsyncSessionLocal() as db:
-                    if assistant_response_content:
-                        full_response = "".join(assistant_response_content)
-                        
-                        # Determine message type
-                        message_type = "artifact" if has_artifact else "text"
-                        artifact_data = None
-                        if has_artifact and artifact_metadata:
-                            artifact_data = artifact_metadata
-                        
-                        await MessageService.create_message(
-                            db,
-                            input_data.thread_id,
-                            agent_id,
-                            "assistant",
-                            full_response,
-                            message_type,
-                            artifact_data,
-                            None,  # metadata
-                            True   # is_interrupted
-                        )
-                        logger.info(f"Saved interrupted assistant response to thread {input_data.thread_id}")
-            except Exception as e:
-                logger.error(f"Failed to save interrupted message: {e}")
-            
-            # FastAPI will handle cleanup automatically
-            # Graph execution will be cancelled when generator is closed
         
         except Exception as e:
             # Log error for debugging
