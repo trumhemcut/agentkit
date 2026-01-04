@@ -1,464 +1,220 @@
 # AgentKit
 
-**A modern multi-agent AI assistant built with LangGraph and AG-UI**
+**Modern multi-agent AI assistant with LangGraph & AG-UI**
 
-Experience powerful AI conversations with real-time streaming, multi-agent orchestration, and an intuitive canvas mode for complex interactions. Built for developers who want a flexible, extensible, and beautiful AI assistant.
+> 🌐 [Tiếng Việt](README_VI.md) | **English**
+
+Build powerful AI applications with real-time streaming, interactive UI components, and multi-agent orchestration.
 
 ![AgentKit Chat Interface](chat_screen.png)
-*Full-screen chat interface with canvas mode for enhanced AI interactions*
 
-## ✨ Why AgentKit?
+## ✨ Features
 
-- **�️ A2UI Protocol** ⭐ **NEW**: First framework to let agents generate interactive UI components (checkboxes, forms, buttons) directly in chat - the future of AI interaction
-- **�🎨 Beautiful Canvas Mode**: Visualize agent thinking and create complex workflows in an intuitive interface
-- **⚡ Real-time Streaming**: Watch agents think and respond in real-time with AG-UI protocol
-- **🧠 Multi-Agent Intelligence**: LangGraph orchestration for sophisticated task handling
-- **🎯 Built for Developers**: Type-safe, well-documented, and easy to extend
-- **🌐 Run Anywhere**: Local-first with Ollama, extensible to any LLM provider
+- **🎛️ A2UI Protocol**: Agents generate interactive UI components (checkboxes, forms, buttons) in chat
+- **🎨 Canvas Mode**: Full-screen workspace for complex agent workflows
+- **🔄 Multi-Agent Orchestration**: LangGraph-powered workflow management
+- **⚡ Real-time Streaming**: AG-UI protocol with instant agent feedback
+- **💬 Thread Management**: Persistent conversation threads with SQLite/PostgreSQL
+- **🎯 Modern Stack**: NextJS + Shadcn UI + FastAPI + LangGraph
+- **🔌 Multi-LLM Support**: Ollama, Azure OpenAI, Gemini, and more
+- **🛡️ Type-Safe**: TypeScript frontend, Python type hints backend
+- **📊 Observability**: Optional LangFuse integration
 
-## 🚀 Features
+## 🚀 Getting Started
 
-- **🎨 Canvas Mode**: Interactive full-screen canvas for visualizing agent workflows and complex interactions
-- **🎛️ A2UI Protocol** ⭐ **NEW**: Agents can generate dynamic, interactive UI components (checkboxes, forms, buttons) directly in the chat - letting AI create native UI elements on-the-fly
-- **🔄 Multi-Agent Orchestration**: Powered by LangGraph for complex workflow management
-- **⚡ Real-time Streaming**: AG-UI protocol for live agent communication with instant feedback
-- **💬 Thread Management**: Create and manage multiple conversation threads seamlessly
-- **🎯 Modern UI**: NextJS + Shadcn UI for a beautiful, responsive, and accessible interface
-- **🔌 Flexible LLM Integration**: Default Ollama support, easily extensible to OpenAI, Anthropic, Azure, and more
-- **🛡️ Type-Safe**: Full TypeScript support on frontend, Python type hints on backend
-- **📊 Observability**: Optional LangFuse integration for monitoring and debugging agents
-- **💾 Local Storage**: Client-side persistence for threads and messages
+### Prerequisites
 
-## ⚡ Quick Start
+1. **Python 3.10+** and **Node.js 18+**
+2. **Ollama** (or configure Azure OpenAI/Gemini):
+   ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   ollama pull qwen:7b
+   ```
 
-Get up and running in 5 minutes:
-
-### 1️⃣ Install Prerequisites
-
-```bash
-# Install Ollama (if not already installed)
-# macOS/Linux:
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull the default model
-ollama pull qwen:7b
-```
-
-### 2️⃣ Start Backend
+### Backend Setup
 
 ```bash
 cd backend
+
+# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Configure environment (optional)
+cp .env.example .env
+# Edit .env for Azure OpenAI, Gemini, or PostgreSQL
+
+# Run database migrations
+python migrate.py
+
+# Start server
 python main.py
 ```
 
 ✅ Backend running at `http://localhost:8000`
 
-### 3️⃣ Start Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-✅ Open `http://localhost:3000` and start chatting!
-
-## 🎨 Canvas Mode
-
-AgentKit includes a powerful canvas mode that provides a full-screen, interactive workspace for complex agent interactions. Perfect for:
-
-- **Visual Workflows**: See how agents break down and execute complex tasks
-- **Code Generation**: Interactive code editing and iteration with AI
-- **Artifact Creation**: Generate and refine documents, designs, or structured content
-- **Multi-step Planning**: Visualize agent reasoning across multiple steps
-
-The canvas mode seamlessly integrates with the chat interface, automatically activating when agents need to present complex, structured outputs.
-
-## 🎛️ A2UI Protocol - Dynamic UI Generation ⭐
-
-**The future of AI interaction is here.** AgentKit is one of the first frameworks to implement the A2UI (Agent-to-UI) protocol, enabling AI agents to generate native UI components in real-time during conversations.
-
-### What is A2UI?
-
-Instead of just returning text, agents can now:
-
-- 🎯 **Generate Interactive Components**: Create checkboxes, buttons, forms, and more directly in the chat
-- 🔄 **Update State Dynamically**: Components maintain their own state and respond to user interactions
-- 🎨 **Mix Text and UI**: Seamlessly combine conversational responses with interactive elements
-- ⚡ **Stream in Real-time**: UI components appear progressively as agents generate them
-
-### Example Use Cases
-
-```bash
-# Agent creates a terms acceptance checkbox
-User: "Create a terms and conditions agreement"
-→ Agent generates: Interactive checkbox + Text explanation
-
-# Agent builds a preference form
-User: "Help me set up my profile preferences"
-→ Agent generates: Multiple checkboxes + Submit button
-
-# Agent creates a progress tracker
-User: "Track my learning goals"
-→ Agent generates: Checklist with dynamic state updates
-```
-
-### Try It Now
-
-```bash
-# Test the A2UI agent
-curl -N http://localhost:8000/a2ui/stream?message=Show+me+an+interactive+checkbox
-```
-
-The A2UI protocol opens up entirely new possibilities for human-AI interaction, making conversations more interactive, intuitive, and powerful.
-
----
-
-## 📋 Full Setup Guide
-
-For more detailed setup instructions, see below.
-
-### System Requirements
-
-- **Python 3.10+** (for backend)
-- **Node.js 18+** (for frontend)
-- **Ollama** (for local LLM inference)
-
-## 🏗️ Architecture
-
-### Backend
-- **Framework**: FastAPI with streaming SSE endpoints
-- **Agent Orchestration**: LangGraph multi-agent workflows
-- **State Management**: LangGraph state graphs with conditional routing
-- **LLM Provider**: Ollama (`qwen:7b` model by default)
-- **Protocol**: AG-UI for real-time event streaming
-- **Observability**: LangFuse integration (optional)
-
-### Frontend
-- **Framework**: NextJS 14 with App Router
-- **UI Library**: Shadcn UI + Tailwind CSS
-- **Type Safety**: Full TypeScript implementation
-- **State Management**: React hooks
-- **Protocol**: AG-UI client for event stream handling
-- **Storage**: LocalStorage for thread persistence
-
-### Communication Flow
-
-```
-User Input → Frontend (AG-UI Client) → Backend (FastAPI) → LangGraph Agent
-                                                                    ↓
-                                                                LLM (Ollama)
-                                                                    ↓
-User Display ← Frontend ← AG-UI Events (SSE Stream) ← Backend ← Response
-```
-
-## � Detailed Setup
-
-### Backend Setup
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate     # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables (optional)
-cp .env.example .env
-# Edit .env with your settings
-
-# Ensure Ollama is running
-ollama serve
-ollama pull qwen:7b
-
-# Start backend server
-python main.py
-```
-
-Backend will be available at `http://localhost:8000`
-
 ### Frontend Setup
 
 ```bash
-# Navigate to frontend directory
 cd frontend
 
 # Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.local.example .env.local
-# Edit .env.local and set NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # Start development server
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:3000`
+✅ Frontend running at `http://localhost:3000`
 
-## 📁 Project Structure
+## 🗄️ Database Configuration
 
-```
-agenkit/
-├── backend/                 # Python backend
-│   ├── agents/             # Agent implementations
-│   │   ├── base_agent.py   # Base agent class with AG-UI integration
-│   │   └── chat_agent.py   # Chat agent implementation
-│   ├── api/                # API layer
-│   │   ├── models.py       # Pydantic models
-│   │   └── routes.py       # FastAPI endpoints
-│   ├── graphs/             # LangGraph workflows
-│   │   └── chat_graph.py   # Chat workflow definition
-│   ├── llm/                # LLM provider integrations
-│   │   ├── ollama_provider.py
-│   │   └── provider_factory.py
-│   ├── protocols/          # AG-UI protocol implementation
-│   │   ├── event_encoder.py
-│   │   └── event_types.py
-│   ├── config.py           # Configuration management
-│   └── main.py             # FastAPI application entry
-│
-├── frontend/               # NextJS frontend
-│   ├── app/               # NextJS app directory
-│   │   ├── globals.css    # Global styles
-│   │   ├── layout.tsx     # Root layout
-│   │   └── page.tsx       # Home page
-│   ├── components/        # React components
-│   │   ├── ChatContainer.tsx
-│   │   ├── ChatHistory.tsx
-│   │   ├── ChatInput.tsx
-│   │   ├── Header.tsx
-│   │   ├── Layout.tsx
-│   │   ├── MessageBubble.tsx
-│   │   ├── Sidebar.tsx
-│   │   └── ui/           # Shadcn UI components
-│   ├── hooks/            # Custom React hooks
-│   │   ├── useAGUI.ts    # AG-UI integration hook
-│   │   ├── useChatThreads.ts
-│   │   └── useMessages.ts
-│   ├── services/         # API and storage services
-│   │   ├── agui-client.ts
-│   │   ├── api.ts
-│   │   └── storage.ts
-│   └── types/            # TypeScript type definitions
-│       ├── agent.ts
-│       ├── agui.ts
-│       └── chat.ts
-│
-└── agents.md             # Development guidelines
-```
-
-## 🔌 API Reference
-
-### Backend Endpoints
-
-#### POST /api/chat
-Chat with the agent using AG-UI protocol.
-
-**Request:**
-```json
-{
-  "messages": [
-    {"role": "user", "content": "Hello, how can you help me?"}
-  ]
-}
-```
-
-**Response:** Server-Sent Events (SSE) stream with AG-UI events:
-- `RUN_STARTED`: Agent execution begins
-- `TEXT_MESSAGE_CHUNK`: Streaming text response
-- `RUN_FINISHED`: Agent execution complete
-- `ERROR`: Error occurred during execution
-
-**Example:**
+**SQLite** (default - zero config):
 ```bash
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
-  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
+DATABASE_URL=sqlite+aiosqlite:///./agentkit.db
 ```
 
-#### GET /health
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "status": "healthy"
-}
-```
-
-## 🧩 Key Components
-
-### Backend
-
-- **BaseAgent**: Abstract base class for agents with AG-UI event emission
-- **ChatAgent**: Main conversational agent implementation
-- **ChatGraph**: LangGraph workflow for chat orchestration
-- **LLMProviderFactory**: Factory for creating LLM provider instances
-- **AG-UI Event Encoder**: Custom JSON encoder for AG-UI events
-
-### Frontend
-
-- **useAGUI**: React hook for AG-UI event stream handling
-- **useChatThreads**: Hook for thread management
-- **useMessages**: Hook for message state management
-- **ChatContainer**: Main chat interface component
-- **MessageBubble**: Individual message display component
-- **AG-UI Client**: Service for SSE connection management
-
-## 🔧 Configuration
-
-### Backend Environment Variables
-
-Create a `.env` file in the `backend/` directory:
-
+**PostgreSQL** (production):
 ```bash
-# LLM Provider Settings
-LLM_PROVIDER=ollama
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/agentkit
+```
+
+Run migrations after any config change:
+```bash
+python migrate.py
+```
+
+## 🔌 LLM Provider Configuration
+
+Edit `.env` in backend directory:
+
+**Ollama** (default):
+```bash
+DEFAULT_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen:7b
-
-# Optional: LangFuse Observability
-LANGFUSE_PUBLIC_KEY=your_public_key
-LANGFUSE_SECRET_KEY=your_secret_key
-LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-### Frontend Environment Variables
-
-Create a `.env.local` file in the `frontend/` directory:
-
+**Azure OpenAI**:
 ```bash
-# Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:8000
+DEFAULT_PROVIDER=azure-openai
+AZURE_OPENAI_API_KEY=your_key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
 ```
 
-## 🧪 Development
+**Gemini**:
+```bash
+DEFAULT_PROVIDER=gemini
+GEMINI_API_KEY=your_key
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│   Frontend  │◄────────│   AG-UI      │────────►│   Backend   │
+│  (NextJS)   │  SSE    │   Protocol   │  HTTP   │  (FastAPI)  │
+└─────────────┘         └──────────────┘         └─────────────┘
+                                                          │
+                                                          ▼
+                                                   ┌─────────────┐
+                                                   │  LangGraph  │
+                                                   │   Agents    │
+                                                   └─────────────┘
+                                                          │
+                                                          ▼
+                                                   ┌─────────────┐
+                                                   │  LLM Provider│
+                                                   │  (Ollama/   │
+                                                   │   Azure/    │
+                                                   │   Gemini)   │
+                                                   └─────────────┘
+```
+
+**Backend Stack**:
+- FastAPI + LangGraph + AG-UI Protocol
+- SQLAlchemy (async) + SQLite/PostgreSQL
+- Ollama/Azure OpenAI/Gemini
+
+**Frontend Stack**:
+- NextJS 14 + TypeScript + Shadcn UI
+- AG-UI client for event streams
+- LocalStorage for thread persistence
+
+## 📚 Documentation
+
+- [Multi-Agent Architecture](agents.md)
+- [Database Setup](backend/DATABASE.md)
+- [A2UI Protocol](backend/A2UI_README.md)
+- [Canvas Mode](backend/CANVAS_README.md)
+- [Implementation Plans](.docs/1-implementation-plans/)
+- [Knowledge Base](.docs/2-knowledge-base/)
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+agentkit/
+├── backend/              # FastAPI + LangGraph backend
+│   ├── agents/          # Agent implementations
+│   ├── graphs/          # LangGraph workflows
+│   ├── api/             # REST endpoints
+│   ├── database/        # SQLAlchemy models & migrations
+│   ├── llm/             # LLM provider integrations
+│   ├── protocols/       # AG-UI protocol implementation
+│   └── main.py          # Entry point
+├── frontend/            # NextJS frontend
+│   ├── app/            # App router pages
+│   ├── components/     # React components
+│   ├── services/       # API client
+│   └── types/          # TypeScript types
+└── .docs/              # Documentation
+```
+
+### API Endpoints
+
+**Chat**: `POST /api/chat` - Stream agent responses
+**Threads**: `GET/POST /api/threads` - Manage conversations
+**Messages**: `GET /api/threads/{id}/messages` - Get thread history
+**Health**: `GET /health` - Server status
 
 ### Adding New Agents
 
-1. Create a new agent class in `backend/agents/` inheriting from `BaseAgent`
-2. Implement the `_execute()` method with your agent logic
-3. Emit AG-UI events for frontend visibility
-4. Register the agent in the LangGraph workflow
+1. Create agent in `backend/agents/`
+2. Define graph in `backend/graphs/`
+3. Register in `backend/agents/agent_registry.py`
+4. Update frontend components if needed
 
-Example:
-```python
-from agents.base_agent import BaseAgent
+See [agents.md](agents.md) for detailed guide.
 
-class MyCustomAgent(BaseAgent):
-    async def _execute(self, state: dict) -> dict:
-        await self.emit_thinking("Processing your request...")
-        
-        # Your agent logic here
-        result = await self.process(state)
-        
-        await self.emit_complete("Task completed!")
-        return {"result": result}
-```
+## 🧪 Testing
 
-### Adding New UI Components
-
-1. Create component in `frontend/components/`
-2. Use Shadcn UI primitives from `components/ui/`
-3. Integrate with AG-UI hooks for real-time updates
-4. Add TypeScript types in `types/`
-
-### Testing
-
-**Backend:**
+**Backend**:
 ```bash
 cd backend
-pytest tests/
+pytest
 ```
 
-**Frontend:**
+**Frontend**:
 ```bash
 cd frontend
 npm test
 ```
 
-## 📚 Documentation
-
-Detailed documentation available in the `.docs/` directory:
-
-- **Implementation Plans**: `.docs/1-implementation-plans/`
-- **Knowledge Base**: `.docs/2-knowledge-base/`
-- **Backend Guide**: [backend/README.md](backend/README.md)
-- **Frontend Guide**: [frontend/README.md](frontend/README.md)
-- **Development Guidelines**: [agents.md](agents.md)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## 📝 License
 
 MIT License - see LICENSE file for details
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- **LangGraph** for multi-agent orchestration
-- **AG-UI Protocol** for agent-frontend communication
-- **Shadcn UI** for beautiful UI components
-- **Ollama** for local LLM inference
-- **FastAPI** for the robust backend framework
-- **NextJS** for the modern frontend framework
+Contributions welcome! Please read our contributing guidelines first.
 
-## 🐛 Troubleshooting
+## 🌟 Show Your Support
 
-### Backend Issues
-
-**Ollama connection fails:**
-```bash
-# Ensure Ollama is running
-ollama serve
-
-# Verify model is available
-ollama list
-ollama pull qwen:7b
-```
-
-**Port 8000 already in use:**
-```bash
-# Find and kill the process
-lsof -ti:8000 | xargs kill -9
-```
-
-### Frontend Issues
-
-**API connection fails:**
-- Verify backend is running on `http://localhost:8000`
-- Check `NEXT_PUBLIC_API_URL` in `.env.local`
-- Check CORS settings in backend
-
-**Build errors:**
-```bash
-# Clean install
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## 📞 Support
-
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Check existing documentation in `.docs/`
-- Review [agents.md](agents.md) for development patterns
-
----
-
-Built with ❤️ using LangGraph, AG-UI, FastAPI, and NextJS
+If you find AgentKit useful, please consider giving it a star ⭐️
