@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # Agent settings
     DEFAULT_AGENT: str = "chat"
     
+    # Database settings (use async drivers)
+    DATABASE_URL: str = "sqlite+aiosqlite:///./agentkit.db"
+    # For PostgreSQL: "postgresql+asyncpg://user:pass@localhost/dbname"
+    
     class Config:
         env_file = ".env"
 

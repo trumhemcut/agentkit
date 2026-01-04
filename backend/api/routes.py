@@ -1,14 +1,23 @@
 import logging
-from fastapi import APIRouter, Request, HTTPException
+import json
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from ag_ui.core import EventType, RunStartedEvent, RunFinishedEvent, RunErrorEvent
 from ag_ui.encoder import EventEncoder
-from api.models import RunAgentInput, CanvasMessageRequest, ArtifactUpdate, UserActionRequest
+from api.models import (
+    RunAgentInput, CanvasMessageRequest, ArtifactUpdate, UserActionRequest,
+    ThreadCreate, ThreadUpdate, ThreadResponse, ThreadListResponse,
+    MessageCreate, MessageResponse, MessageListResponse, DeleteResponse
+)
 from graphs.graph_factory import graph_factory
 from llm.provider_client import provider_client
 from agents.agent_registry import agent_registry
 from config import settings
 from cache.artifact_cache import artifact_cache
+from database.config import get_db
+from services.thread_service import ThreadService
+from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -733,3 +742,257 @@ async def a2ui_stream_endpoint(
             "X-Accel-Buffering": "no"  # Disable nginx buffering
         }
     )
+
+
+# ============================================================================
+# Database Persistence Endpoints
+# ============================================================================
+
+# Thread Endpoints
+@router.post("/threads", response_model=ThreadResponse)
+async def create_thread(
+    data: ThreadCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new conversation thread.
+    
+    Request body:
+        agent_type: str - Type of agent ("chat", "canvas", "salary_viewer")
+        model: str - LLM model name
+        provider: str - LLM provider name
+        title: str (optional) - Thread title
+    
+    Returns:
+        Thread object with id, title, agent_type, model, provider, timestamps
+    """
+    try:
+        thread = await ThreadService.create_thread(
+            db, data.agent_type, data.model, data.provider, data.title
+        )
+        return ThreadResponse.model_validate(thread)
+    except Exception as e:
+        logger.error(f"Error creating thread: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/threads", response_model=ThreadListResponse)
+async def list_threads(
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all conversation threads.
+    
+    Query params:
+        limit: int - Maximum number of threads to return (default: 50)
+        offset: int - Number of threads to skip (default: 0)
+    
+    Returns:
+        List of thread objects ordered by updated_at DESC
+    """
+    try:
+        threads = await ThreadService.list_threads(db, limit, offset)
+        return ThreadListResponse(
+            threads=[ThreadResponse.model_validate(t) for t in threads]
+        )
+    except Exception as e:
+        logger.error(f"Error listing threads: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/threads/{thread_id}", response_model=ThreadResponse)
+async def get_thread(
+    thread_id: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get a specific thread by ID.
+    
+    Path params:
+        thread_id: str - Thread identifier
+    
+    Returns:
+        Thread object with full details
+    """
+    try:
+        thread = await ThreadService.get_thread(db, thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        return ThreadResponse.model_validate(thread)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/threads/{thread_id}", response_model=ThreadResponse)
+async def update_thread(
+    thread_id: str,
+    data: ThreadUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update thread metadata.
+    
+    Path params:
+        thread_id: str - Thread identifier
+    
+    Request body:
+        title: str (optional) - New thread title
+    
+    Returns:
+        Updated thread details
+    """
+    try:
+        thread = await ThreadService.update_thread(db, thread_id, data.title)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        return ThreadResponse.model_validate(thread)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/threads/{thread_id}", response_model=DeleteResponse)
+async def delete_thread(
+    thread_id: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a thread and all associated messages.
+    
+    Path params:
+        thread_id: str - Thread identifier
+    
+    Returns:
+        Success message
+    """
+    try:
+        success = await ThreadService.delete_thread(db, thread_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        return DeleteResponse(message="Thread deleted successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Message Endpoints
+@router.post("/threads/{thread_id}/messages", response_model=MessageResponse)
+async def create_message(
+    thread_id: str,
+    data: MessageCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new message in a thread.
+    
+    Path params:
+        thread_id: str - Thread identifier
+    
+    Request body:
+        role: str - Message role ("user" or "assistant")
+        content: str (optional) - Text content
+        artifact_data: dict (optional) - A2UI artifact data
+        metadata: dict (optional) - Additional metadata
+    
+    Returns:
+        Created message object
+    """
+    try:
+        # Verify thread exists
+        thread = await ThreadService.get_thread(db, thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        message = await MessageService.create_message(
+            db, thread_id, data.role, data.content, data.artifact_data, data.metadata
+        )
+        
+        # Convert to response model
+        return MessageResponse(
+            id=message.id,
+            thread_id=message.thread_id,
+            role=message.role,
+            content=message.content,
+            artifact_data=json.loads(message.artifact_data) if message.artifact_data else None,
+            metadata=json.loads(message.message_metadata) if message.message_metadata else None,
+            created_at=message.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating message in thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/threads/{thread_id}/messages", response_model=MessageListResponse)
+async def list_messages(
+    thread_id: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all messages in a thread.
+    
+    Path params:
+        thread_id: str - Thread identifier
+    
+    Returns:
+        List of message objects ordered by created_at ASC
+    """
+    try:
+        messages = await MessageService.list_messages(db, thread_id)
+        return MessageListResponse(
+            messages=[
+                MessageResponse(
+                    id=m.id,
+                    thread_id=m.thread_id,
+                    role=m.role,
+                    content=m.content,
+                    artifact_data=json.loads(m.artifact_data) if m.artifact_data else None,
+                    metadata=json.loads(m.message_metadata) if m.message_metadata else None,
+                    created_at=m.created_at
+                )
+                for m in messages
+            ]
+        )
+    except Exception as e:
+        logger.error(f"Error listing messages for thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/messages/{message_id}", response_model=DeleteResponse)
+async def delete_message(
+    message_id: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a message.
+    
+    Path params:
+        message_id: str - Message identifier
+    
+    Returns:
+        Success message
+    """
+    try:
+        success = await MessageService.delete_message(db, message_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return DeleteResponse(message="Message deleted successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting message {message_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -2,6 +2,7 @@ import uuid
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict, Any
 from protocols.a2ui_types import UserAction
+from datetime import datetime
 
 
 class Message(BaseModel):
@@ -82,4 +83,72 @@ class UserActionRequest(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+# ============================================================================
+# Database Persistence Models
+# ============================================================================
+
+class ThreadCreate(BaseModel):
+    """Request model for creating a thread"""
+    agent_type: str = Field(..., description="Type of agent (chat, canvas, salary_viewer)")
+    model: str = Field(..., description="LLM model name")
+    provider: str = Field(..., description="LLM provider name")
+    title: Optional[str] = Field(None, description="Thread title")
+
+
+class ThreadUpdate(BaseModel):
+    """Request model for updating a thread"""
+    title: Optional[str] = Field(None, description="New thread title")
+
+
+class ThreadResponse(BaseModel):
+    """Response model for thread data"""
+    id: str
+    title: str
+    agent_type: str
+    model: str
+    provider: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class ThreadListResponse(BaseModel):
+    """Response model for listing threads"""
+    threads: List[ThreadResponse]
+
+
+class MessageCreate(BaseModel):
+    """Request model for creating a message"""
+    role: Literal["user", "assistant"] = Field(..., description="Message role")
+    content: Optional[str] = Field(None, description="Text content")
+    artifact_data: Optional[Dict[str, Any]] = Field(None, description="A2UI artifact data")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+class MessageResponse(BaseModel):
+    """Response model for message data"""
+    id: str
+    thread_id: str
+    role: str
+    content: Optional[str]
+    artifact_data: Optional[Dict[str, Any]]
+    metadata: Optional[Dict[str, Any]]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class MessageListResponse(BaseModel):
+    """Response model for listing messages"""
+    messages: List[MessageResponse]
+
+
+class DeleteResponse(BaseModel):
+    """Response model for delete operations"""
+    message: str
 

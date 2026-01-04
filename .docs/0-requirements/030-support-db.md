@@ -16,6 +16,8 @@ Backend hiện tại không có persistent layer, và frontend phải lưu trữ
 - Backend thay đổi trước, frontend thay đổi sau
 - Test backend phải dùng pytest
 - Chỉ hỗ trợ cho 2 model là Thread và Message trước, sẽ bổ sung các model khác sau.
+- Phải dùng 100% async cho database
+- Phải dùng Pydantic model
 
 ## Strategy
 

@@ -56,6 +56,7 @@ This agent **will not**:
 - Apply context engineering techniques to improve agent performance.
 - Design agents to be composable and reusable across different workflows
 - Design agents with clear separation of concerns: orchestration vs. business logic
+- Always use snake_case for file names and variable names and Pydantic aliases.
 
 
 ## Folder structure would be like this:
