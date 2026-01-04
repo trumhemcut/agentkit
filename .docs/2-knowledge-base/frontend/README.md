@@ -12,6 +12,7 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 - [Components](components/overview.md) - UI component documentation
 - [Hooks](hooks/overview.md) - React hooks for state management
 - [Services](services/overview.md) - API and storage services
+- [Database Persistence](persistence/database-integration.md) - Server-side persistence (NEW)
 - [AG-UI Integration](hooks/useAGUI.md) - Real-time agent events
 - [A2UI Integration](a2ui-integration.md) - Declarative UI rendering from agents
 - [A2UI Quick Reference](a2ui-quick-reference.md) - Quick start guide for A2UI
@@ -45,9 +46,9 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 │   ├── useAGUI.ts          # AG-UI integration
 │   └── useA2UIEvents.ts    # A2UI event processing (NEW)
 ├── services/           # Service layer
-│   ├── storage.ts          # LocalStorage
+│   ├── storage.ts          # LocalStorage with server sync
 │   ├── agui-client.ts      # SSE client
-│   └── api.ts              # Backend API
+│   └── api.ts              # Backend API (includes DB endpoints)
 ├── stores/             # Zustand stores
 │   ├── modelStore.ts       # Model selection
 │   ├── agentStore.ts       # Agent selection
@@ -56,6 +57,7 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 │   ├── agent.ts            # Agent types
 │   ├── agui.ts             # AG-UI event types
 │   ├── a2ui.ts             # A2UI types (NEW)
+│   ├── database.ts         # Database persistence types (NEW)
 │   └── chat.ts             # Chat types
 └── lib/                # Utilities
     └── utils.ts            # Helper functions
@@ -114,11 +116,13 @@ The frontend is a **NextJS 14 application** built with **TypeScript** and **Shad
 - [`api.ts`](services/api.md) - Backend API client
   - HTTP requests
   - SSE streaming
+  - Database persistence endpoints (NEW)
   - Error handling
   
-- [`storage.ts`](services/overview.md#storage) - LocalStorage abstraction
-  - Thread persistence
-  - Message storage
+- [`storage.ts`](services/overview.md#storage) - LocalStorage with server sync
+  - Thread persistence (local + server)
+  - Message storage (local + server)
+  - Background sync (Phase 1)
   - Data serialization
 
 ### 4. Types (`/types`)

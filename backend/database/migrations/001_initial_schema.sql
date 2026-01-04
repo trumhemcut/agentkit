@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS threads (
     id VARCHAR(36) PRIMARY KEY,
     title VARCHAR(255),
-    agent_type VARCHAR(50) NOT NULL,
+    agent_id VARCHAR(50) NOT NULL,
     model VARCHAR(100) NOT NULL,
     provider VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -153,7 +153,7 @@ describe('ChatApp - New Chat Functionality', () => {
       replace: mockReplace,
     });
 
-    mockCreateThread.mockReturnValue({
+    mockCreateThread.mockResolvedValue({
       id: 'new-thread-456',
       title: 'New Chat',
       messages: [],
@@ -330,7 +330,7 @@ describe('ChatApp - New Chat Functionality', () => {
       const user = userEvent.setup();
       
       const customThreadId = 'custom-thread-789';
-      mockCreateThread.mockReturnValue({
+      mockCreateThread.mockResolvedValue({
         id: customThreadId,
         title: 'New Chat',
         messages: [],
@@ -425,7 +425,7 @@ describe('ChatApp - New Chat Functionality', () => {
     it('should handle createThread returning undefined gracefully', async () => {
       const user = userEvent.setup();
       
-      mockCreateThread.mockReturnValue(undefined);
+      mockCreateThread.mockResolvedValue(undefined);
 
       (useChatThreads as jest.Mock).mockReturnValue({
         threads: [mockThreadWithMessages],

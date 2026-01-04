@@ -11,6 +11,8 @@ import { useChatThreads } from '@/hooks/useChatThreads';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useCanvasMode } from '@/hooks/useCanvasMode';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { useModelStore } from '@/stores/modelStore';
+import { useAgentStore } from '@/stores/agentStore';
 import { Message } from '@/types/chat';
 import { useCanvas } from '@/contexts/CanvasContext';
 
@@ -41,6 +43,12 @@ interface ChatAppProps {
 
 export function ChatApp({ initialThreadId }: ChatAppProps) {
   const router = useRouter();
+  
+  // Get current model and agent selection for thread creation
+  const selectedModel = useModelStore((state) => state.selectedModel);
+  const selectedProvider = useModelStore((state) => state.selectedProvider);
+  const selectedAgent = useAgentStore((state) => state.selectedAgent);
+  
   const {
     threads,
     currentThread,
@@ -50,7 +58,12 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     selectThread,
     updateThreadTitle,
     refreshThreads,
-  } = useChatThreads(initialThreadId);
+  } = useChatThreads(
+    initialThreadId,
+    selectedAgent || 'chat',
+    selectedModel || 'qwen:7b',
+    selectedProvider || 'ollama'
+  );
 
   const { isCollapsed, toggleCollapse, setCollapsed, isMobileOpen, openMobileDrawer, closeMobileDrawer, toggleMobileDrawer } = useSidebar();
   const { 
@@ -112,7 +125,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     }
   }, [activateCanvas, setArtifactId, loadArtifactById, setCollapsed, isMobile]);
   
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback(async () => {
     // Mark that we're creating a new thread
     isCreatingNewThreadRef.current = true;
     
@@ -124,7 +137,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     const hasMessages = currentThread && currentThread.messages.length > 0;
     
     if (hasNoThread || hasMessages) {
-      const newThread = createThread();
+      const newThread = await createThread();
       
       // Only update URL if thread was created successfully
       if (newThread && newThread.id) {

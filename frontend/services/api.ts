@@ -8,6 +8,16 @@
 import { Artifact, SelectedText } from '@/types/canvas';
 import { LLMModel, ModelsResponse } from '@/types/chat';
 import { AgentsResponse } from '@/types/agent';
+import {
+  Thread,
+  Message as DBMessage,
+  CreateThreadRequest,
+  UpdateThreadRequest,
+  CreateMessageRequest,
+  ListThreadsResponse,
+  ListMessagesResponse,
+  DeleteResponse,
+} from '@/types/database';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -555,3 +565,150 @@ export async function sendSalaryViewerMessage(
     throw error;
   }
 }
+
+/**
+ * Database Persistence API
+ * 
+ * Thread and Message CRUD operations for persistent storage
+ */
+
+/**
+ * Thread API - CRUD operations for conversation threads
+ */
+export const threadsApi = {
+  /**
+   * Create a new thread
+   */
+  create: async (data: CreateThreadRequest): Promise<Thread> => {
+    const response = await fetch(`${API_BASE_URL}/api/threads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create thread: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * List all threads with pagination
+   */
+  list: async (limit = 50, offset = 0): Promise<ListThreadsResponse> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/threads?limit=${limit}&offset=${offset}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to list threads: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Get a single thread by ID
+   */
+  get: async (threadId: string): Promise<Thread> => {
+    const response = await fetch(`${API_BASE_URL}/api/threads/${threadId}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to get thread: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Update thread metadata (e.g., title)
+   */
+  update: async (threadId: string, data: UpdateThreadRequest): Promise<Thread> => {
+    const response = await fetch(`${API_BASE_URL}/api/threads/${threadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update thread: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Delete a thread and all its messages
+   */
+  delete: async (threadId: string): Promise<DeleteResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/threads/${threadId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete thread: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+};
+
+/**
+ * Message API - CRUD operations for messages within threads
+ */
+export const messagesApi = {
+  /**
+   * Create a new message in a thread
+   */
+  create: async (
+    threadId: string,
+    data: CreateMessageRequest
+  ): Promise<DBMessage> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/threads/${threadId}/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create message: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * List all messages in a thread
+   */
+  list: async (threadId: string): Promise<ListMessagesResponse> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/threads/${threadId}/messages`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to list messages: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Delete a message
+   */
+  delete: async (messageId: string): Promise<DeleteResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/messages/${messageId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete message: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+};
+

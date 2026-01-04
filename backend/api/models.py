@@ -91,7 +91,7 @@ class UserActionRequest(BaseModel):
 
 class ThreadCreate(BaseModel):
     """Request model for creating a thread"""
-    agent_type: str = Field(..., description="Type of agent (chat, canvas, salary_viewer)")
+    agent_id: str = Field(..., description="Agent identifier (chat, canvas, salary_viewer)")
     model: str = Field(..., description="LLM model name")
     provider: str = Field(..., description="LLM provider name")
     title: Optional[str] = Field(None, description="Thread title")
@@ -106,7 +106,7 @@ class ThreadResponse(BaseModel):
     """Response model for thread data"""
     id: str
     title: str
-    agent_type: str
+    agent_id: str
     model: str
     provider: str
     created_at: datetime

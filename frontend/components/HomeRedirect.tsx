@@ -3,29 +3,56 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageService } from '@/services/storage';
+import { threadsApi } from '@/services/api';
 
 export function HomeRedirect() {
   const router = useRouter();
   
   useEffect(() => {
-    // Get threads from localStorage
-    const threads = StorageService.getThreads();
+    const initializeThread = async () => {
+      // Get threads from localStorage
+      const threads = StorageService.getThreads();
+      
+      if (threads.length > 0) {
+        // Redirect to most recent thread
+        router.replace(`/t/${threads[0].id}`);
+      } else {
+        // Create new thread with server-authoritative ID
+        try {
+          const serverThread = await threadsApi.create({
+            agent_id: 'chat',
+            model: 'qwen:7b',
+            provider: 'ollama',
+            title: 'New Chat',
+          });
+          
+          // Save to localStorage with server ID
+          const newThread = {
+            id: serverThread.id,
+            title: serverThread.title,
+            messages: [],
+            createdAt: new Date(serverThread.created_at).getTime(),
+            updatedAt: new Date(serverThread.updated_at).getTime(),
+          };
+          StorageService.saveThread(newThread);
+          router.replace(`/t/${serverThread.id}`);
+        } catch (error) {
+          console.error('Failed to create thread:', error);
+          // Fallback to temp thread if server fails
+          const tempThread = {
+            id: crypto.randomUUID(),
+            title: 'New Chat',
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          StorageService.saveThread(tempThread);
+          router.replace(`/t/${tempThread.id}`);
+        }
+      }
+    };
     
-    if (threads.length > 0) {
-      // Redirect to most recent thread
-      router.replace(`/t/${threads[0].id}`);
-    } else {
-      // Create new thread and redirect to it
-      const newThread = {
-        id: crypto.randomUUID(),
-        title: 'New Chat',
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      StorageService.saveThread(newThread);
-      router.replace(`/t/${newThread.id}`);
-    }
+    initializeThread();
   }, [router]);
   
   // Show loading while redirecting

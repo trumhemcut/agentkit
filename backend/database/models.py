@@ -14,7 +14,7 @@ class Thread(Base):
     Attributes:
         id: Unique thread identifier (UUID)
         title: Optional thread title
-        agent_type: Type of agent (e.g., "chat", "canvas", "salary_viewer")
+        agent_id: Agent identifier (e.g., "chat", "canvas", "salary_viewer")
         model: LLM model name (e.g., "gpt-5-mini", "gemini-2.5-flash")
         provider: LLM provider (e.g., "azure-openai", "gemini", "ollama")
         created_at: Timestamp when thread was created
@@ -25,7 +25,7 @@ class Thread(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(255), nullable=True)
-    agent_type = Column(String(50), nullable=False)  # "chat", "canvas", "salary_viewer"
+    agent_id = Column(String(50), nullable=False)  # "chat", "canvas", "salary_viewer"
     model = Column(String(100), nullable=False)  # "gpt-5-mini", "gemini-2.5-flash"
     provider = Column(String(50), nullable=False)  # "azure-openai", "gemini", "ollama"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -35,7 +35,7 @@ class Thread(Base):
     messages = relationship("Message", back_populates="thread", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Thread(id={self.id}, title={self.title}, agent_type={self.agent_type})>"
+        return f"<Thread(id={self.id}, title={self.title}, agent_id={self.agent_id})>"
 
 
 class Message(Base):

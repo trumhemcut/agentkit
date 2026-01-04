@@ -16,7 +16,7 @@ class ThreadService:
     @staticmethod
     async def create_thread(
         db: AsyncSession, 
-        agent_type: str, 
+        agent_id: str, 
         model: str, 
         provider: str, 
         title: str = None
@@ -26,7 +26,7 @@ class ThreadService:
         
         Args:
             db: Database session
-            agent_type: Type of agent (e.g., "chat", "canvas")
+            agent_id: Agent identifier (e.g., "chat", "canvas")
             model: LLM model name
             provider: LLM provider name
             title: Optional thread title
@@ -35,16 +35,16 @@ class ThreadService:
             Created thread instance
         """
         thread = Thread(
-            agent_type=agent_type,
+            agent_id=agent_id,
             model=model,
             provider=provider,
-            title=title or f"New {agent_type} conversation"
+            title=title or f"New {agent_id} conversation"
         )
         db.add(thread)
         await db.commit()
         await db.refresh(thread)
         
-        logger.info(f"Created thread {thread.id} with agent_type={agent_type}")
+        logger.info(f"Created thread {thread.id} with agent_id={agent_id}")
         return thread
     
     @staticmethod

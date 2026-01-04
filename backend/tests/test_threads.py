@@ -8,13 +8,13 @@ from services.thread_service import ThreadService
 async def test_create_thread_via_api(client):
     """Test creating a thread via API endpoint"""
     response = await client.post("/api/threads", json={
-        "agent_type": "chat",
+        "agent_id": "chat",
         "model": "gpt-5-mini",
         "provider": "azure-openai"
     })
     assert response.status_code == 200
     data = response.json()
-    assert data["agent_type"] == "chat"
+    assert data["agent_id"] == "chat"
     assert data["model"] == "gpt-5-mini"
     assert data["provider"] == "azure-openai"
     assert "id" in data
@@ -25,7 +25,7 @@ async def test_create_thread_via_api(client):
 async def test_create_thread_with_title(client):
     """Test creating a thread with custom title"""
     response = await client.post("/api/threads", json={
-        "agent_type": "canvas",
+        "agent_id": "canvas",
         "model": "gemini-2.5-flash",
         "provider": "gemini",
         "title": "My Canvas Thread"
@@ -33,14 +33,14 @@ async def test_create_thread_with_title(client):
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "My Canvas Thread"
-    assert data["agent_type"] == "canvas"
+    assert data["agent_id"] == "canvas"
 
 
 @pytest.mark.asyncio
 async def test_create_thread_missing_fields(client):
     """Test creating thread with missing required fields"""
     response = await client.post("/api/threads", json={
-        "agent_type": "chat"
+        "agent_id": "chat"
         # Missing model and provider
     })
     assert response.status_code == 422  # Pydantic validation error
@@ -157,7 +157,7 @@ async def test_thread_service_create(db_session):
     )
     
     assert thread.id is not None
-    assert thread.agent_type == "salary_viewer"
+    assert thread.agent_id == "salary_viewer"
     assert thread.model == "qwen:7b"
     assert thread.provider == "ollama"
     assert thread.title == "Salary Analysis"

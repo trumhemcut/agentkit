@@ -171,6 +171,10 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
     
     async def event_generator():
         import asyncio
+        from database.config import AsyncSessionLocal
+        
+        # Variables to track messages for persistence
+        assistant_response_content = []
         
         try:
             # Send RUN_STARTED event
@@ -181,6 +185,24 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                     run_id=input_data.run_id
                 )
             )
+            
+            # Persist user message to database
+            try:
+                async with AsyncSessionLocal() as db:
+                    # Get last user message from input
+                    if input_data.messages and len(input_data.messages) > 0:
+                        last_message = input_data.messages[-1]
+                        if last_message.role == "user":
+                            await MessageService.create_message(
+                                db, 
+                                input_data.thread_id, 
+                                "user", 
+                                last_message.content
+                            )
+                            logger.info(f"Saved user message to thread {input_data.thread_id}")
+            except Exception as e:
+                logger.error(f"Failed to save user message: {e}")
+                # Continue even if save fails - don't block the response
             
             # Create graph dynamically based on agent_id
             graph = graph_factory.create_graph(
@@ -221,6 +243,11 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                     # Wait for event with timeout to check if graph is done
                     event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
                     
+                    # Track assistant response content for persistence
+                    if hasattr(event, 'type') and event.type == EventType.TEXT_MESSAGE_CONTENT:
+                        if hasattr(event, 'delta'):
+                            assistant_response_content.append(event.delta)
+                    
                     # Check if event is already encoded (string) or needs encoding
                     if isinstance(event, str):
                         # Already encoded (e.g., from A2UI agent)
@@ -238,6 +265,22 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
             # Check if there was an error during graph execution
             if graph_error:
                 raise graph_error
+            
+            # Persist assistant response to database
+            try:
+                async with AsyncSessionLocal() as db:
+                    if assistant_response_content:
+                        full_response = "".join(assistant_response_content)
+                        await MessageService.create_message(
+                            db,
+                            input_data.thread_id,
+                            "assistant",
+                            full_response
+                        )
+                        logger.info(f"Saved assistant response to thread {input_data.thread_id}")
+            except Exception as e:
+                logger.error(f"Failed to save assistant response: {e}")
+                # Don't fail the request if save fails
             
             # Send RUN_FINISHED event
             yield encoder.encode(
@@ -758,17 +801,17 @@ async def create_thread(
     Create a new conversation thread.
     
     Request body:
-        agent_type: str - Type of agent ("chat", "canvas", "salary_viewer")
+        agent_id: str - Agent identifier ("chat", "canvas", "salary_viewer")
         model: str - LLM model name
         provider: str - LLM provider name
         title: str (optional) - Thread title
     
     Returns:
-        Thread object with id, title, agent_type, model, provider, timestamps
+        Thread object with id, title, agent_id, model, provider, timestamps
     """
     try:
         thread = await ThreadService.create_thread(
-            db, data.agent_type, data.model, data.provider, data.title
+            db, data.agent_id, data.model, data.provider, data.title
         )
         return ThreadResponse.model_validate(thread)
     except Exception as e:

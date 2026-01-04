@@ -1,4 +1,6 @@
 import { Thread, Message } from '@/types/chat';
+import { Thread as ServerThread } from '@/types/database';
+import { threadsApi, messagesApi } from './api';
 
 const STORAGE_KEY = 'agentkit_threads';
 
@@ -112,6 +114,28 @@ export class StorageService {
   }
 
   /**
+   * Update message ID (replace temp frontend ID with backend ID)
+   * Phase 1: Updates message ID in localStorage after backend sync
+   */
+  static updateMessageId(threadId: string, tempId: string, backendId: string): void {
+    console.log('[StorageService] updateMessageId:', tempId, '→', backendId);
+    const thread = this.getThread(threadId);
+    if (!thread) {
+      console.error('[StorageService] Thread not found for ID update:', threadId);
+      return;
+    }
+    
+    const messageIndex = thread.messages.findIndex(m => m.id === tempId);
+    if (messageIndex >= 0) {
+      thread.messages[messageIndex] = { ...thread.messages[messageIndex], id: backendId };
+      this.saveThread(thread);
+      console.log('[StorageService] Message ID updated in localStorage');
+    } else {
+      console.warn('[StorageService] Message with temp ID not found:', tempId);
+    }
+  }
+
+  /**
    * Clear all threads (useful for testing/debugging)
    */
   static clearAll(): void {
@@ -133,5 +157,95 @@ export class StorageService {
     thread.artifactId = artifactId;
     this.saveThread(thread);
     console.log('[StorageService] Artifact ID saved to thread');
+  }
+
+  /**
+   * Phase 1: Background sync to server
+   * 
+   * These methods persist data to the server in the background while
+   * maintaining LocalStorage as the primary data source.
+   */
+
+  /**
+   * Sync a thread to the server and get server-generated ID
+   * Returns the server thread with authoritative ID
+   * Throws error if sync fails to enable proper error handling
+   */
+  static async syncThreadToServer(thread: Thread, agentId: string, model: string, provider: string): Promise<ServerThread> {
+    const serverThread = await threadsApi.create({
+      agent_id: agentId,
+      model: model,
+      provider: provider,
+      title: thread.title,
+    });
+    console.log('[StorageService] ✅ Thread created on server with ID:', serverThread.id);
+    return serverThread;
+  }
+
+  /**
+   * Sync a message to the server in the background
+   * Returns the backend message with server-generated ID
+   * Phase 1: Non-blocking operation that enables ID synchronization
+   */
+  static async syncMessageToServer(threadId: string, message: Message): Promise<{ id: string } | null> {
+    // Skip sync for pending or streaming messages
+    if (message.isPending || message.isStreaming) {
+      console.log('[StorageService] ⏭️ Skipping sync for pending/streaming message:', message.id);
+      return null;
+    }
+
+    // Skip sync for messages with empty content (unless they have artifacts)
+    if (!message.content && !message.artifactType) {
+      console.log('[StorageService] ⏭️ Skipping sync for empty message:', message.id);
+      return null;
+    }
+
+    try {
+      const backendMessage = await messagesApi.create(threadId, {
+        role: message.role === 'agent' ? 'assistant' : message.role,
+        content: message.content || undefined,
+        artifact_data: message.artifactType ? {
+          type: message.artifactType,
+          language: message.language,
+          title: message.title,
+          artifactId: message.artifactId,
+        } : undefined,
+        metadata: message.metadata || undefined,
+      });
+      console.log('[StorageService] ✅ Message synced to server with ID:', backendMessage.id);
+      return backendMessage;
+    } catch (error) {
+      console.error('[StorageService] ⚠️ Failed to sync message to server (non-blocking):', error);
+      // Don't throw - this is a background operation
+      return null;
+    }
+  }
+
+  /**
+   * Update thread title on server
+   * Does not block or affect the UI if update fails
+   */
+  static async syncThreadTitleToServer(threadId: string, title: string): Promise<void> {
+    try {
+      await threadsApi.update(threadId, { title });
+      console.log('[StorageService] ✅ Thread title synced to server:', threadId);
+    } catch (error) {
+      console.error('[StorageService] ⚠️ Failed to sync thread title to server (non-blocking):', error);
+      // Don't throw - this is a background operation
+    }
+  }
+
+  /**
+   * Delete thread from server
+   * Does not block or affect the UI if delete fails
+   */
+  static async syncThreadDeleteToServer(threadId: string): Promise<void> {
+    try {
+      await threadsApi.delete(threadId);
+      console.log('[StorageService] ✅ Thread deletion synced to server:', threadId);
+    } catch (error) {
+      console.error('[StorageService] ⚠️ Failed to sync thread deletion to server (non-blocking):', error);
+      // Don't throw - this is a background operation
+    }
   }
 }
