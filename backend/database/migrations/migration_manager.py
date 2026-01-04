@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 
 # List of migration files in order
 MIGRATIONS = [
-    "001_initial_schema.sql",
-    # 002_rename_agent_type_to_agent_id.sql - Not needed for fresh installs, only for upgrades
+    "001_initial_schema_consolidated.sql",  # Consolidated schema with all features
 ]
 
 

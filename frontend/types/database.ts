@@ -24,10 +24,13 @@ export interface Thread {
 export interface Message {
   id: string;
   thread_id: string;
+  agent_id: string;    // "chat" | "canvas" | "salary_viewer" - denormalized for easier querying
   role: "user" | "assistant";
+  message_type: "text" | "artifact";  // Message type for easy identification
   content: string | null;
   artifact_data: Record<string, any> | null;
   metadata: Record<string, any> | null;
+  is_interrupted: boolean;  // True if user clicked Stop button
   created_at: string;  // ISO 8601 timestamp
 }
 

@@ -13,6 +13,7 @@ import { useCanvasMode } from '@/hooks/useCanvasMode';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useModelStore } from '@/stores/modelStore';
 import { useAgentStore } from '@/stores/agentStore';
+import { useMessageStore } from '@/stores/messageStore';
 import { Message } from '@/types/chat';
 import { useCanvas } from '@/contexts/CanvasContext';
 
@@ -86,6 +87,9 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
   // Get canvas context to load and set artifactId
   const { setArtifactId, loadArtifactById } = useCanvas();
   
+  // Get message store to check if thread has messages
+  const { getMessages } = useMessageStore();
+  
   // Performance tracking
   useEffect(() => {
     if (typeof window !== 'undefined' && 'performance' in window) {
@@ -134,7 +138,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
     
     // Create a new thread if there's no current thread or if the current thread has messages
     const hasNoThread = !currentThread;
-    const hasMessages = currentThread && currentThread.messages.length > 0;
+    const hasMessages = currentThreadId && getMessages(currentThreadId).length > 0;
     
     if (hasNoThread || hasMessages) {
       const newThread = await createThread();
@@ -157,7 +161,7 @@ export function ChatApp({ initialThreadId }: ChatAppProps) {
       isCreatingNewThreadRef.current = false;
       chatContainerRef.current?.focusInput();
     }
-  }, [currentThread, createThread, deactivateCanvas]);
+  }, [currentThread, currentThreadId, getMessages, createThread, deactivateCanvas]);
 
   const handleSelectThread = useCallback((threadId: string) => {
     selectThread(threadId);

@@ -125,6 +125,7 @@ class MessageCreate(BaseModel):
     """Request model for creating a message"""
     role: Literal["user", "assistant"] = Field(..., description="Message role")
     content: Optional[str] = Field(None, description="Text content")
+    message_type: Optional[Literal["text", "artifact"]] = Field("text", description="Message type")
     artifact_data: Optional[Dict[str, Any]] = Field(None, description="A2UI artifact data")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
@@ -133,10 +134,13 @@ class MessageResponse(BaseModel):
     """Response model for message data"""
     id: str
     thread_id: str
+    agent_id: str
     role: str
+    message_type: str
     content: Optional[str]
     artifact_data: Optional[Dict[str, Any]]
     metadata: Optional[Dict[str, Any]]
+    is_interrupted: bool
     created_at: datetime
     
     class Config:

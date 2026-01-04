@@ -17,10 +17,13 @@ class MessageService:
     async def create_message(
         db: AsyncSession,
         thread_id: str,
+        agent_id: str,
         role: str,
         content: str = None,
+        message_type: str = "text",
         artifact_data: dict = None,
-        metadata: dict = None
+        metadata: dict = None,
+        is_interrupted: bool = False
     ) -> Message:
         """
         Create a new message in a thread.
@@ -28,26 +31,32 @@ class MessageService:
         Args:
             db: Database session
             thread_id: Parent thread identifier
+            agent_id: Agent identifier (e.g., "chat", "canvas", "salary_viewer")
             role: Message role ("user" or "assistant")
             content: Text content of the message
+            message_type: Message type ("text" or "artifact"), defaults to "text"
             artifact_data: A2UI artifact data (will be JSON-encoded)
             metadata: Additional metadata (will be JSON-encoded)
+            is_interrupted: Whether message was interrupted by user
             
         Returns:
             Created message instance
         """
         message = Message(
             thread_id=thread_id,
+            agent_id=agent_id,
             role=role,
+            message_type=message_type,
             content=content,
             artifact_data=json.dumps(artifact_data) if artifact_data else None,
-            message_metadata=json.dumps(metadata) if metadata else None
+            message_metadata=json.dumps(metadata) if metadata else None,
+            is_interrupted=is_interrupted
         )
         db.add(message)
         await db.commit()
         await db.refresh(message)
         
-        logger.info(f"Created message {message.id} in thread {thread_id} with role={role}")
+        logger.info(f"Created message {message.id} in thread {thread_id} with role={role}, agent_id={agent_id}, type={message_type}, interrupted={is_interrupted}")
         return message
     
     @staticmethod
@@ -83,6 +92,30 @@ class MessageService:
             .order_by(Message.created_at.asc())
         )
         return list(result.scalars().all())
+    
+    @staticmethod
+    async def update_message_interrupted(db: AsyncSession, message_id: str, is_interrupted: bool = True) -> bool:
+        """
+        Update message interrupted status.
+        
+        Args:
+            db: Database session
+            message_id: Message identifier
+            is_interrupted: Interrupted status
+            
+        Returns:
+            True if message was updated, False if not found
+        """
+        result = await db.execute(select(Message).filter(Message.id == message_id))
+        message = result.scalar_one_or_none()
+        
+        if message:
+            message.is_interrupted = is_interrupted
+            await db.commit()
+            logger.info(f"Updated message {message_id} interrupted status to {is_interrupted}")
+            return True
+        
+        return False
     
     @staticmethod
     async def delete_message(db: AsyncSession, message_id: str) -> bool:

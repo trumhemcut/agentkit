@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Thread } from '@/types/chat';
+import { Thread } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface ChatHistoryProps {
@@ -34,8 +34,8 @@ function ChatHistoryItem({
   onSelect,
   onDelete,
 }: ChatHistoryItemProps) {
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     

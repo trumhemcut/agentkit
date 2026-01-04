@@ -10,10 +10,11 @@ import { isA2UIMessage } from '@/types/a2ui';
 import { useModelStore } from '@/stores/modelStore';
 import { useAgentStore } from '@/stores/agentStore';
 import { Message as ChatMessage } from '@/types/chat';
-import { Message as APIMessage, sendChatMessage, sendCanvasMessage } from '@/services/api';
+import { Message as APIMessage, sendChatMessage, sendCanvasMessage, messagesApi } from '@/services/api';
 import { EventType, CanvasEventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
 import { useCanvasOptional } from '@/contexts/CanvasContext';
+import { generateUniqueId } from '@/lib/utils';
 
 interface ChatContainerProps {
   threadId: string | null;
@@ -90,7 +91,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
   // Handle AG-UI events - register once, not per thread
   useEffect(() => {
-    console.log('[ChatContainer] Registering AG-UI event handlers');
+    // console.log('[ChatContainer] Registering AG-UI event handlers');
     
     // Handle all events to check for A2UI messages
     const unsubscribeAll = on('*', (event) => {
@@ -149,7 +150,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       
       // Create new agent message
       const newMessage: ChatMessage = {
-        id: typedEvent.message_id || `msg-agent-${Date.now()}`,
+        id: typedEvent.message_id || generateUniqueId('msg-agent'),
         threadId: currentThreadId,
         role: 'agent',
         content: '',
@@ -305,7 +306,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     });
 
     return () => {
-      console.log('[ChatContainer] Unsubscribing all event handlers');
+      // console.log('[ChatContainer] Unsubscribing all event handlers');
       unsubscribeAll();
       unsubscribeStart();
       unsubscribeMessageStart();
@@ -382,7 +383,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     // Create user message
     const userMessage: ChatMessage = {
-      id: `msg-user-${Date.now()}`,
+      id: generateUniqueId('msg-user'),
       threadId: threadId,
       role: 'user',
       content: content,
@@ -397,7 +398,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
 
     // Add pending agent message immediately
     const pendingMessage: ChatMessage = {
-      id: `msg-agent-pending-${Date.now()}`,
+      id: generateUniqueId('msg-agent-pending'),
       threadId: threadId,
       role: 'agent',
       content: '',
@@ -446,7 +447,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     }
 
     // Generate unique run ID
-    const runId = `run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const runId = generateUniqueId('run');
 
     // Send message to backend and process streaming response
     try {

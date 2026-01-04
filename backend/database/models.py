@@ -1,6 +1,6 @@
 """Database models for AgentKit persistence layer."""
 
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from database.config import Base
 from datetime import datetime
@@ -45,10 +45,13 @@ class Message(Base):
     Attributes:
         id: Unique message identifier (UUID)
         thread_id: Foreign key to parent thread
+        agent_id: Agent identifier (e.g., "chat", "canvas", "salary_viewer") - denormalized for easier querying
         role: Message role ("user" or "assistant")
+        message_type: Message type ("text" or "artifact")
         content: Text content of the message
         artifact_data: JSON string for A2UI artifacts
         metadata: JSON string for additional metadata
+        is_interrupted: Whether message was interrupted by user (Stop button)
         created_at: Timestamp when message was created
         thread: Relationship to parent thread
     """
@@ -56,10 +59,13 @@ class Message(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     thread_id = Column(String(36), ForeignKey("threads.id"), nullable=False)
+    agent_id = Column(String(50), nullable=False)  # "chat", "canvas", "salary_viewer" - denormalized from thread
     role = Column(String(20), nullable=False)  # "user", "assistant"
+    message_type = Column(String(20), nullable=False, default="text")  # "text", "artifact"
     content = Column(Text, nullable=True)  # Text content
     artifact_data = Column(Text, nullable=True)  # JSON string for A2UI artifacts
     message_metadata = Column(Text, nullable=True)  # JSON string for additional metadata (renamed from 'metadata')
+    is_interrupted = Column(Boolean, default=False, nullable=False)  # True if user clicked Stop button
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Relationships

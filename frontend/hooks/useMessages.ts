@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Message, isArtifactMessage } from '@/types/chat';
-import { StorageService } from '@/services/storage';
+import { useMessageStore } from '@/stores/messageStore';
 import { useAutoScroll } from './useAutoScroll';
 
 export interface UseMessagesOptions {
@@ -10,23 +10,28 @@ export interface UseMessagesOptions {
 }
 
 /**
- * Hook for managing messages in a thread
- * 
- * Handles message state, updates, and auto-scrolling.
- * Detects artifact messages and triggers canvas mode.
- * Phase 1: Syncs messages to server in background while maintaining LocalStorage as primary source.
+ * Hook for managing messages in a thread (now database-first)
  */
 export function useMessages(threadId: string | null, options?: UseMessagesOptions) {
+  const {
+    messagesByThread,
+    isLoadingMessages,
+    loadMessages,
+    addMessage: addMessageStore,
+    updateMessage: updateMessageStore,
+    getMessages,
+  } = useMessageStore();
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  // Use auto-scroll hook with messages as dependency
+  
+  // Use auto-scroll hook
   const { scrollRef, handleScroll, scrollToBottom, shouldAutoScroll } = useAutoScroll(
     [messages],
     { isInitialLoad }
   );
-
+  
   // Load messages when thread changes
   useEffect(() => {
     if (!threadId) {
@@ -34,93 +39,69 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
       setIsInitialLoad(true);
       return;
     }
-
-    // Mark as initial load when loading thread messages
+    
     setIsInitialLoad(true);
+    setIsLoading(true);
     
-    const thread = StorageService.getThread(threadId);
-    if (thread) {
-      setMessages(thread.messages);
-    } else {
-      setMessages([]);
+    // Load from store
+    loadMessages(threadId).then(() => {
+      const threadMessages = getMessages(threadId);
+      setMessages(threadMessages);
+      setIsLoading(false);
+      
+      setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 100);
+    });
+  }, [threadId, loadMessages, getMessages]);
+  
+  // Update local messages when store changes
+  useEffect(() => {
+    if (threadId && messagesByThread[threadId]) {
+      setMessages(messagesByThread[threadId]);
     }
-    
-    // After messages are loaded and rendered, mark initial load as complete
-    // Use a small delay to allow rendering to complete
-    setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 100);
-  }, [threadId]);
-
-  /**
-   * Update message ID (replace temp frontend ID with backend ID)
-   * Phase 1: Updates message ID in state and localStorage after backend sync
-   */
-  const updateMessageId = useCallback((tempId: string, backendId: string) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === tempId ? { ...msg, id: backendId } : msg
-    ));
-    
-    if (threadId) {
-      console.log('[useMessages] Updating message ID:', tempId, '→', backendId);
-      StorageService.updateMessageId(threadId, tempId, backendId);
-    }
-  }, [threadId]);
-
+  }, [threadId, messagesByThread]);
+  
   /**
    * Add a new message
-   * Phase 1: Adds locally and syncs to server in background, then updates with backend ID
    */
   const addMessage = useCallback((message: Message) => {
-    const tempId = message.id;
-    setMessages(prev => [...prev, message]);
+    console.log('[useMessages] Adding message:', message.id, message.role, message.isPending);
     
-    // Detect artifact messages and defer callback to avoid setState during render
+    // Update local state for immediate UI
+    setMessages(prev => {
+      // Check if message already exists in local state
+      if (prev.some(m => m.id === message.id)) {
+        console.warn('[useMessages] Message already exists in local state:', message.id);
+        return prev;
+      }
+      return [...prev, message];
+    });
+    
+    // Detect artifact messages
     if (isArtifactMessage(message) && options?.onArtifactDetected) {
-      // Use queueMicrotask to defer execution until after render
       queueMicrotask(() => {
         options.onArtifactDetected?.(message);
       });
     }
     
     if (threadId) {
-      console.log('[useMessages] Adding message to thread:', threadId, message);
-      StorageService.addMessage(threadId, message);
-      console.log('[useMessages] Message added to localStorage');
-      
-      // Phase 1: Sync to server in background (non-blocking)
-      // If message is ready (not pending/streaming), sync immediately and update ID
-      if (!message.isPending && !message.isStreaming) {
-        StorageService.syncMessageToServer(threadId, message)
-          .then(backendMessage => {
-            if (backendMessage && backendMessage.id !== tempId) {
-              console.log('[useMessages] Updating message ID after sync:', tempId, '→', backendMessage.id);
-              updateMessageId(tempId, backendMessage.id);
-            }
-          })
-          .catch(error => {
-            console.error('[useMessages] Failed to sync message:', error);
-            // Keep temp ID on error
-          });
-      }
-    } else {
-      console.warn('[useMessages] Cannot add message - threadId is null');
+      // Sync to database
+      addMessageStore(threadId, message);
     }
-  }, [threadId, options, updateMessageId]); // Include updateMessageId as dependency
-
+  }, [threadId, addMessageStore, options]);
+  
   /**
-   * Update an existing message
-   * Phase 1: Updates locally and syncs to server when message is complete, then updates ID
+   * Update message (for streaming)
    */
   const updateMessage = useCallback((messageId: string, updates: Partial<Message>) => {
-    const tempId = messageId;
+    // Update local state
     setMessages(prev => prev.map(msg => {
       if (msg.id === messageId) {
         const updatedMsg = { ...msg, ...updates };
         
-        // If this is an artifact message being updated, defer callback to avoid setState during render
+        // Detect artifact messages
         if (isArtifactMessage(updatedMsg) && options?.onArtifactDetected) {
-          // Use queueMicrotask to defer execution until after render
           queueMicrotask(() => {
             options.onArtifactDetected?.(updatedMsg);
           });
@@ -132,34 +113,35 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
     }));
     
     if (threadId) {
-      console.log('[useMessages] Updating message in thread:', threadId, messageId, updates);
-      StorageService.updateMessage(threadId, messageId, updates);
+      // Update in store
+      updateMessageStore(threadId, messageId, updates);
       
-      // Phase 1: Sync to server if message is now complete (no longer pending/streaming)
+      // If agent message is complete, sync to database
+      // Note: Only agent messages need this because they start as pending/streaming
+      // User messages are already saved when first created
       if (updates.isPending === false || updates.isStreaming === false) {
-        // Get the updated message to sync
-        const thread = StorageService.getThread(threadId);
-        const updatedMsg = thread?.messages.find(m => m.id === messageId);
-        if (updatedMsg && !updatedMsg.isPending && !updatedMsg.isStreaming) {
-          console.log('[useMessages] Message completed, syncing to server');
-          StorageService.syncMessageToServer(threadId, updatedMsg)
-            .then(backendMessage => {
-              if (backendMessage && backendMessage.id !== tempId) {
-                console.log('[useMessages] Updating message ID after sync:', tempId, '→', backendMessage.id);
-                updateMessageId(tempId, backendMessage.id);
-              }
-            })
-            .catch(error => {
-              console.error('[useMessages] Failed to sync message:', error);
-              // Keep temp ID on error
-            });
+        const completedMessage = messages.find(m => m.id === messageId);
+        if (completedMessage && completedMessage.role === 'agent') {
+          console.log('[useMessages] Syncing completed agent message to database:', messageId);
+          addMessageStore(threadId, { ...completedMessage, ...updates });
         }
       }
-    } else {
-      console.warn('[useMessages] Cannot update message - threadId is null');
     }
-  }, [threadId, options, updateMessageId]); // Include updateMessageId as dependency
-
+  }, [threadId, messages, updateMessageStore, addMessageStore, options]);
+  
+  /**
+   * Update message ID (for backend sync)
+   */
+  const updateMessageId = useCallback((tempId: string, backendId: string) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === tempId ? { ...msg, id: backendId } : msg
+    ));
+    
+    if (threadId) {
+      updateMessageStore(threadId, tempId, { id: backendId });
+    }
+  }, [threadId, updateMessageStore]);
+  
   /**
    * Remove a message
    */
@@ -167,17 +149,12 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
     setMessages(prev => prev.filter(msg => msg.id !== messageId));
     
     if (threadId) {
-      console.log('[useMessages] Removing message from thread:', threadId, messageId);
-      const thread = StorageService.getThread(threadId);
-      if (thread) {
-        thread.messages = thread.messages.filter(msg => msg.id !== messageId);
-        StorageService.saveThread(thread);
-      }
-    } else {
-      console.warn('[useMessages] Cannot remove message - threadId is null');
+      // Filter from store
+      const filtered = getMessages(threadId).filter(m => m.id !== messageId);
+      updateMessageStore(threadId, messageId, { id: '' }); // Mark for removal
     }
-  }, [threadId]);
-
+  }, [threadId, getMessages, updateMessageStore]);
+  
   /**
    * Clear all messages (for current thread)
    */

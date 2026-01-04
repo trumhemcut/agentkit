@@ -1,3 +1,11 @@
+/**
+ * @deprecated StorageService is deprecated. Use Zustand stores instead:
+ * - useThreadStore for threads (frontend/stores/threadStore.ts)
+ * - useMessageStore for messages (frontend/stores/messageStore.ts)
+ * 
+ * This file is kept temporarily for backward compatibility but should not be used in new code.
+ */
+
 import { Thread, Message } from '@/types/chat';
 import { Thread as ServerThread } from '@/types/database';
 import { threadsApi, messagesApi } from './api';
@@ -6,6 +14,7 @@ const STORAGE_KEY = 'agentkit_threads';
 
 /**
  * LocalStorage service for chat thread persistence
+ * @deprecated Use useThreadStore and useMessageStore instead
  */
 export class StorageService {
   /**

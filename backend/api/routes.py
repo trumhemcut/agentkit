@@ -175,6 +175,8 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
         
         # Variables to track messages for persistence
         assistant_response_content = []
+        has_artifact = False  # Track if an artifact was created
+        artifact_metadata = {}  # Store artifact metadata
         
         try:
             # Send RUN_STARTED event
@@ -186,23 +188,8 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                 )
             )
             
-            # Persist user message to database
-            try:
-                async with AsyncSessionLocal() as db:
-                    # Get last user message from input
-                    if input_data.messages and len(input_data.messages) > 0:
-                        last_message = input_data.messages[-1]
-                        if last_message.role == "user":
-                            await MessageService.create_message(
-                                db, 
-                                input_data.thread_id, 
-                                "user", 
-                                last_message.content
-                            )
-                            logger.info(f"Saved user message to thread {input_data.thread_id}")
-            except Exception as e:
-                logger.error(f"Failed to save user message: {e}")
-                # Continue even if save fails - don't block the response
+            # Note: User messages are saved by frontend via /threads/{thread_id}/messages endpoint
+            # Backend only needs to save assistant responses
             
             # Create graph dynamically based on agent_id
             graph = graph_factory.create_graph(
@@ -239,14 +226,41 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
             
             # Stream events as they arrive
             while not graph_done.is_set() or not event_queue.empty():
+                # Check disconnect BEFORE waiting for event
+                if await request.is_disconnected():
+                    logger.info(f"Client disconnected for run_id={input_data.run_id}, cancelling graph")
+                    graph_task.cancel()
+                    break
+                
                 try:
-                    # Wait for event with timeout to check if graph is done
-                    event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
+                    # Wait for event with shorter timeout for faster disconnect detection
+                    event = await asyncio.wait_for(event_queue.get(), timeout=0.05)
                     
                     # Track assistant response content for persistence
-                    if hasattr(event, 'type') and event.type == EventType.TEXT_MESSAGE_CONTENT:
-                        if hasattr(event, 'delta'):
-                            assistant_response_content.append(event.delta)
+                    if hasattr(event, 'type'):
+                        if event.type == EventType.TEXT_MESSAGE_CONTENT:
+                            if hasattr(event, 'delta'):
+                                assistant_response_content.append(event.delta)
+                        
+                        # Detect artifact creation (TEXT_MESSAGE_START with artifact metadata)
+                        elif event.type == EventType.TEXT_MESSAGE_START:
+                            event_dict = event if isinstance(event, dict) else (event.model_dump() if hasattr(event, 'model_dump') else {})
+                            metadata = event_dict.get('metadata', {})
+                            if metadata.get('message_type') == 'artifact':
+                                has_artifact = True
+                                artifact_metadata = {
+                                    'type': metadata.get('artifact_type'),
+                                    'language': metadata.get('language'),
+                                    'title': metadata.get('title'),
+                                    'id': metadata.get('artifact_id')
+                                }
+                                logger.info(f"Detected artifact creation: {artifact_metadata.get('id')}")
+                    
+                    # Check disconnect again BEFORE yielding
+                    if await request.is_disconnected():
+                        logger.info(f"Client disconnected before yielding event, cancelling graph")
+                        graph_task.cancel()
+                        break
                     
                     # Check if event is already encoded (string) or needs encoding
                     if isinstance(event, str):
@@ -256,7 +270,7 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                         # Needs encoding (AG-UI BaseEvent)
                         yield encoder.encode(event)
                 except asyncio.TimeoutError:
-                    # No event yet, check if graph is done
+                    # No event yet, continue to check disconnect in next iteration
                     continue
             
             # Wait for graph to complete
@@ -271,13 +285,25 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
                 async with AsyncSessionLocal() as db:
                     if assistant_response_content:
                         full_response = "".join(assistant_response_content)
+                        
+                        # Determine message type based on artifact detection
+                        message_type = "artifact" if has_artifact else "text"
+                        
+                        # Prepare artifact_data if artifact was created
+                        artifact_data = None
+                        if has_artifact and artifact_metadata:
+                            artifact_data = artifact_metadata
+                        
                         await MessageService.create_message(
                             db,
                             input_data.thread_id,
+                            agent_id,
                             "assistant",
-                            full_response
+                            full_response,
+                            message_type,
+                            artifact_data
                         )
-                        logger.info(f"Saved assistant response to thread {input_data.thread_id}")
+                        logger.info(f"Saved assistant response to thread {input_data.thread_id} with type={message_type}")
             except Exception as e:
                 logger.error(f"Failed to save assistant response: {e}")
                 # Don't fail the request if save fails
@@ -294,6 +320,34 @@ async def chat_endpoint(agent_id: str, input_data: RunAgentInput, request: Reque
         except GeneratorExit:
             # Client disconnected (e.g., user clicked Stop button)
             logger.info(f"[ROUTES] Client disconnected for agent={agent_id}, run_id={input_data.run_id}, thread_id={input_data.thread_id}")
+            
+            # Save interrupted message to database
+            try:
+                async with AsyncSessionLocal() as db:
+                    if assistant_response_content:
+                        full_response = "".join(assistant_response_content)
+                        
+                        # Determine message type
+                        message_type = "artifact" if has_artifact else "text"
+                        artifact_data = None
+                        if has_artifact and artifact_metadata:
+                            artifact_data = artifact_metadata
+                        
+                        await MessageService.create_message(
+                            db,
+                            input_data.thread_id,
+                            agent_id,
+                            "assistant",
+                            full_response,
+                            message_type,
+                            artifact_data,
+                            None,  # metadata
+                            True   # is_interrupted
+                        )
+                        logger.info(f"Saved interrupted assistant response to thread {input_data.thread_id}")
+            except Exception as e:
+                logger.error(f"Failed to save interrupted message: {e}")
+            
             # FastAPI will handle cleanup automatically
             # Graph execution will be cancelled when generator is closed
         
@@ -426,9 +480,21 @@ async def handle_user_action(
             
             # Stream events as they arrive
             while not graph_done.is_set() or not event_queue.empty():
+                # Check disconnect BEFORE waiting for event
+                if await http_request.is_disconnected():
+                    logger.info(f"Client disconnected for action={request_data.user_action.name}, run_id={request_data.run_id}, cancelling graph")
+                    graph_task.cancel()
+                    break
+                
                 try:
-                    # Wait for event with timeout to check if graph is done
-                    event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
+                    # Wait for event with shorter timeout for faster disconnect detection
+                    event = await asyncio.wait_for(event_queue.get(), timeout=0.05)
+                    
+                    # Check disconnect again BEFORE yielding
+                    if await http_request.is_disconnected():
+                        logger.info(f"Client disconnected before yielding event, cancelling graph")
+                        graph_task.cancel()
+                        break
                     
                     # Check if event is already encoded (string) or needs encoding
                     if isinstance(event, str):
@@ -450,7 +516,7 @@ async def handle_user_action(
                         else:
                             yield encoder.encode(event)
                 except asyncio.TimeoutError:
-                    # No event yet, check if graph is done
+                    # No event yet, continue to check disconnect in next iteration
                     continue
             
             # Wait for graph to complete
@@ -958,18 +1024,26 @@ async def create_message(
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
         
+        # Auto-detect message_type if not provided
+        message_type = data.message_type
+        if message_type == "text" and data.artifact_data:
+            message_type = "artifact"
+        
         message = await MessageService.create_message(
-            db, thread_id, data.role, data.content, data.artifact_data, data.metadata
+            db, thread_id, thread.agent_id, data.role, data.content, message_type, data.artifact_data, data.metadata
         )
         
         # Convert to response model
         return MessageResponse(
             id=message.id,
             thread_id=message.thread_id,
+            agent_id=message.agent_id,
             role=message.role,
+            message_type=message.message_type,
             content=message.content,
             artifact_data=json.loads(message.artifact_data) if message.artifact_data else None,
             metadata=json.loads(message.message_metadata) if message.message_metadata else None,
+            is_interrupted=message.is_interrupted,
             created_at=message.created_at
         )
     except HTTPException:
@@ -1000,10 +1074,13 @@ async def list_messages(
                 MessageResponse(
                     id=m.id,
                     thread_id=m.thread_id,
+                    agent_id=m.agent_id,
                     role=m.role,
+                    message_type=m.message_type,
                     content=m.content,
                     artifact_data=json.loads(m.artifact_data) if m.artifact_data else None,
                     metadata=json.loads(m.message_metadata) if m.message_metadata else None,
+                    is_interrupted=m.is_interrupted,
                     created_at=m.created_at
                 )
                 for m in messages
@@ -1011,6 +1088,33 @@ async def list_messages(
         )
     except Exception as e:
         logger.error(f"Error listing messages for thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/messages/{message_id}/interrupted")
+async def update_message_interrupted(
+    message_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mark a message as interrupted by user.
+    
+    Path params:
+        message_id: str - Message identifier
+    
+    Returns:
+        Success message
+    """
+    try:
+        success = await MessageService.update_message_interrupted(db, message_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"message": "Message marked as interrupted", "message_id": message_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating message {message_id} interrupted status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -11,6 +11,7 @@ export interface Message {
   agentId?: string; // Agent ID (e.g., 'insurance-supervisor')
   isStreaming?: boolean;
   isPending?: boolean; // True when waiting for server response
+  isInterrupted?: boolean; // True if user clicked Stop button
   
   // Message type field
   messageType?: MessageType; // Defaults to 'text' if not specified

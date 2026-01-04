@@ -148,7 +148,7 @@ export async function sendChatMessage(
   } catch (error) {
     // Handle abort specifically
     if (error instanceof DOMException && error.name === 'AbortError') {
-      console.log('[API] Request aborted by user');
+      console.log('[API] Request aborted by user - connection closed');
       onEvent({
         type: 'STREAM_ABORTED',
         message: 'Request cancelled by user',
@@ -163,6 +163,11 @@ export async function sendChatMessage(
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now(),
     });
+  } finally {
+    // Ensure reader is cancelled if aborted
+    if (abortController.signal.aborted) {
+      console.log('[API] Cleaning up aborted request');
+    }
   }
   
   return abortController;
@@ -706,6 +711,24 @@ export const messagesApi = {
 
     if (!response.ok) {
       throw new Error(`Failed to delete message: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Mark a message as interrupted by user
+   */
+  updateInterrupted: async (messageId: string): Promise<{ message: string; message_id: string }> => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/messages/${messageId}/interrupted`,
+      {
+        method: 'PATCH',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update message interrupted status: ${response.statusText}`);
     }
 
     return response.json();

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Thread } from '@/types/chat';
+import { Thread } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { ChatHistory } from './ChatHistory';
 import { useIsMobile } from '@/hooks/useMediaQuery';

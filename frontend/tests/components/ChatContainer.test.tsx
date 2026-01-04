@@ -244,4 +244,28 @@ describe('ChatContainer - Stop Streaming', () => {
       expect(textareas.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Message ID Uniqueness', () => {
+    it('should generate unique message IDs when called rapidly', () => {
+      const { generateUniqueId } = require('@/lib/utils');
+      const ids = new Set<string>();
+      const count = 100;
+      
+      // Generate many IDs in rapid succession (simulating rapid message creation)
+      for (let i = 0; i < count; i++) {
+        ids.add(generateUniqueId('msg-agent-pending'));
+        ids.add(generateUniqueId('msg-user'));
+        ids.add(generateUniqueId('msg-agent'));
+      }
+      
+      // All IDs should be unique
+      expect(ids.size).toBe(count * 3);
+      
+      // Verify all IDs match expected pattern
+      Array.from(ids).forEach((id: any) => {
+        expect(id).toMatch(/^msg-(agent-pending|user|agent)-\d+-\d+-[a-z0-9]+$/);
+      });
+    });
+  });
 });
+

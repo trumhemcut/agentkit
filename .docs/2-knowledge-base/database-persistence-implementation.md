@@ -18,14 +18,18 @@ Successfully implemented a database persistence layer for the AgentKit backend f
 - Default: `sqlite+aiosqlite:///./agentkit.db`
 
 #### Models (`models.py`)
-- **Thread Model**: Stores conversation threads with agent_type, model, provider, timestamps
-- **Message Model**: Stores messages with role, content, artifact_data, message_metadata
+- **Thread Model**: Stores conversation threads with agent_id, model, provider, timestamps
+- **Message Model**: Stores messages with agent_id (denormalized), message_type, role, content, artifact_data, message_metadata
 - Proper relationships with cascade delete
 - Note: Renamed `metadata` column to `message_metadata` to avoid SQLAlchemy reserved keyword conflict
+- **Update (Jan 4, 2026)**: Added `agent_id` column to messages table for easier querying without JOIN
+- **Update (Jan 4, 2026)**: Added `message_type` column ('text' or 'artifact') for explicit message type identification
 
 #### Migrations (`migrations/`)
 - **Migration Manager**: Tracks and applies schema migrations
 - **001_initial_schema.sql**: Creates threads and messages tables with indexes
+- **003_add_agent_id_to_messages.sql**: Adds agent_id column to messages table with data migration
+- **004_add_message_type_to_messages.sql**: Adds message_type column to messages table with auto-detection
 - Migrations tracked in `schema_migrations` table
 - Handles SQLite's "one statement at a time" limitation
 
@@ -39,10 +43,12 @@ Successfully implemented a database persistence layer for the AgentKit backend f
 - `delete_thread()` - Delete thread and cascade messages
 
 #### MessageService (`message_service.py`)
-- `create_message()` - Create message with optional artifact_data and metadata
+- `create_message()` - Create message with agent_id, message_type, optional artifact_data and metadata
 - `get_message()` - Get message by ID
 - `list_messages()` - List all messages in thread (ordered by created_at ASC)
 - `delete_message()` - Delete message
+- **Update (Jan 4, 2026)**: Now requires `agent_id` parameter to denormalize agent type
+- **Update (Jan 4, 2026)**: Now accepts `message_type` parameter ('text' or 'artifact') with 'text' as default
 
 ### 3. API Endpoints (`backend/api/routes.py`)
 
@@ -127,7 +133,7 @@ Standalone migration script for manual migration execution
 CREATE TABLE threads (
     id VARCHAR(36) PRIMARY KEY,
     title VARCHAR(255),
-    agent_type VARCHAR(50) NOT NULL,
+    agent_id VARCHAR(50) NOT NULL,
     model VARCHAR(100) NOT NULL,
     provider VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -138,7 +144,9 @@ CREATE TABLE threads (
 CREATE TABLE messages (
     id VARCHAR(36) PRIMARY KEY,
     thread_id VARCHAR(36) NOT NULL,
+    agent_id VARCHAR(50) NOT NULL,  -- Denormalized from thread for easier querying
     role VARCHAR(20) NOT NULL,
+    message_type VARCHAR(20) NOT NULL DEFAULT 'text',  -- 'text' or 'artifact'
     content TEXT,
     artifact_data TEXT,
     message_metadata TEXT,
@@ -149,8 +157,14 @@ CREATE TABLE messages (
 -- Indexes
 CREATE INDEX idx_messages_thread_id ON messages(thread_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX idx_messages_agent_id ON messages(agent_id);  -- For filtering by agent
+CREATE INDEX idx_messages_type ON messages(message_type);  -- For filtering by type
 CREATE INDEX idx_threads_created_at ON threads(created_at);
 ```
+
+**Schema Updates:**
+- **(Jan 4, 2026)**: Added `agent_id` column to messages table with corresponding index. This denormalization allows messages to be queried by agent type (chat, canvas, salary_viewer) without requiring a JOIN with the threads table.
+- **(Jan 4, 2026)**: Added `message_type` column to messages table. This explicitly identifies whether a message is 'text' or 'artifact', making queries easier and more explicit than checking if `artifact_data` is null.
 
 ## Testing Results
 

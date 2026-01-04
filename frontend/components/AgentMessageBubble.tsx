@@ -3,7 +3,7 @@
 import { Message, isArtifactMessage } from '@/types/chat';
 import { Button } from '@/components/ui/button';
 import { AvatarIcon } from './AvatarIcon';
-import { cn } from '@/lib/utils';
+import { cn, generateUniqueId } from '@/lib/utils';
 import { Loader2, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -79,7 +79,7 @@ export function AgentMessageBubble({
       console.log('[AgentMessageBubble] User action triggered:', action);
       
       // Generate new run ID for this action
-      const runId = `run-${Date.now()}`;
+      const runId = generateUniqueId('run');
       
       try {
         // Send action to backend and process SSE stream
@@ -179,6 +179,11 @@ export function AgentMessageBubble({
               </div>
             ) : (
               <div className="text-sm markdown-content">
+                {message.isInterrupted && (
+                  <div className="mb-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md text-yellow-800 dark:text-yellow-200 text-xs">
+                    ⚠️ Response interrupted by user
+                  </div>
+                )}
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeHighlight]}
