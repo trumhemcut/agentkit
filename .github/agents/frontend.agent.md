@@ -56,7 +56,7 @@ This agent **will not**:
 - **AG-UI Client** - Receives real-time event streams from backend (RUN_STARTED, TEXT_MESSAGE_CHUNK, RUN_FINISHED, etc.)
 - **TypeScript** - Full type safety for all components and data structures
 - **Tailwind CSS** - Utility-first CSS framework, used with Shadcn UI components
-- Testing with React Testing Library and Jest
+- Testing with React Testing Library and Jest, you must write tests for all components and run it successfully before submit the code
 - Make sure you follow the guidance, configs of Tailwind CSS v4 to and Shadcn UI compatible components, use context7 if needed.
 
 **Architecture Flow:**
