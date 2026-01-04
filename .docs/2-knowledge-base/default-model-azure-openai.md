@@ -187,15 +187,61 @@ agent = SalaryViewerAgent()  # Uses defaults
 5. **✅ Fast**: Quick response times for better UX
 6. **✅ Cost Effective**: Lower cost than gpt-4 models
 
+## Known Issues & Fixes
+
+### Temperature Compatibility (Fixed: January 4, 2026)
+
+**Issue**: `gpt-5-mini` only supports `temperature=1.0` (default value), not `0.7`
+
+**Error**:
+```
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0.7 with this model. Only the default (1) value is supported."}}
+```
+
+**Solution**: Updated `AzureOpenAIProvider` to use `temperature=1.0` as default
+
+**File**: [`backend/llm/azure_openai_provider.py`](../../backend/llm/azure_openai_provider.py)
+
+```python
+class AzureOpenAIProvider:
+    def __init__(self, model: str = None, deployment: str = None, temperature: float = None):
+        """
+        Args:
+            temperature: Sampling temperature (0.0-2.0). Defaults to 1.0 for compatibility
+        """
+        # Default temperature to 1.0 for compatibility with models like gpt-5-mini
+        # that only support default temperature
+        if temperature is None:
+            temperature = 1.0
+        
+        self.model = AzureChatOpenAI(
+            # ... other config
+            temperature=temperature  # Now uses 1.0 instead of hardcoded 0.7
+        )
+```
+
+**Key Changes**:
+- Added `temperature` parameter to `__init__`
+- Changed default from `0.7` to `1.0`
+- Allows custom temperature when needed for other models
+- Maintains compatibility with `gpt-5-mini` restrictions
+
+**Impact**: 
+- ✅ No more 400 errors during chat
+- ✅ Works with all Azure OpenAI models (gpt-5-mini, gpt-4, etc.)
+- ✅ Flexible temperature control for other models
+
 ## Notes
 
 - Ollama is still available as an alternative provider
 - Other models (Gemini, etc.) can still be used by explicitly setting provider/model
 - The default ensures all features work out of the box
 - Tool calling support is essential for A2UI components and multi-agent workflows
+- Some Azure OpenAI models have specific temperature restrictions - check model documentation
 
 ## Related Documentation
 
 - [LLM Model Selection](.docs/2-knowledge-base/llm-model-selection.md)
 - [Salary Viewer Agent](backend/agents/salary_viewer_agent.py)
+- [Azure OpenAI Provider](backend/llm/azure_openai_provider.py)
 - [A2UI Tool Loop Pattern](.docs/2-knowledge-base/a2ui-tool-calling-loop-pattern.md)

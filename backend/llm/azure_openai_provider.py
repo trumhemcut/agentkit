@@ -16,13 +16,14 @@ class AzureOpenAIProvider:
     Azure OpenAI requires an endpoint, API key, deployment name, and API version.
     """
     
-    def __init__(self, model: str = None, deployment: str = None):
+    def __init__(self, model: str = None, deployment: str = None, temperature: float = None):
         """
         Initialize Azure OpenAI provider
         
         Args:
             model: Model name (e.g., "gpt-4", "gpt-35-turbo", "gpt-4o")
             deployment: Azure deployment name (overrides settings)
+            temperature: Sampling temperature (0.0-2.0). Defaults to 1.0 for compatibility
         """
         try:
             # Use provided deployment or fall back to settings
@@ -38,7 +39,12 @@ class AzureOpenAIProvider:
             if not deployment_name:
                 raise ValueError("AZURE_OPENAI_DEPLOYMENT is not configured")
             
-            logger.info(f"Initializing Azure OpenAI with deployment: {deployment_name}, model: {model_name}")
+            # Default temperature to 1.0 for compatibility with models like gpt-5-mini
+            # that only support default temperature
+            if temperature is None:
+                temperature = 1.0
+            
+            logger.info(f"Initializing Azure OpenAI with deployment: {deployment_name}, model: {model_name}, temperature: {temperature}")
             
             self.model = AzureChatOpenAI(
                 azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
@@ -47,7 +53,7 @@ class AzureOpenAIProvider:
                 openai_api_key=settings.AZURE_OPENAI_API_KEY,
                 model=model_name,
                 streaming=True,
-                temperature=0.7
+                temperature=temperature
             )
             
         except Exception as e:
