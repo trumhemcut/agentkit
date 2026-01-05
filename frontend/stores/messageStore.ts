@@ -10,7 +10,7 @@ interface MessageState {
   
   // Actions
   loadMessages: (threadId: string) => Promise<void>;
-  addMessage: (threadId: string, message: Message) => Promise<Message | null>;
+  addMessage: (threadId: string, message: Message, forceSave?: boolean) => Promise<Message | null>;
   updateMessageContent: (threadId: string, messageId: string, content: string) => void;
   updateMessage: (threadId: string, messageId: string, updates: Partial<Message>) => void;
   getMessages: (threadId: string) => Message[];
