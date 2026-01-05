@@ -1,0 +1,1 @@
+Với các response của agent, user có thể tương tác bằng cách Copy, Like, Dislike hoặc Retry. Hãy thêm các icon phía dưới message để người dùng tương tác. Bắt chước giống ChatGPT nhé.
