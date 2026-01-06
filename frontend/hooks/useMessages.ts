@@ -95,6 +95,8 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
    * Update message (for streaming)
    */
   const updateMessage = useCallback((messageId: string, updates: Partial<Message>) => {
+    console.log('[useMessages.updateMessage] Called with:', messageId, updates);
+    
     // Update local state
     setMessages(prev => prev.map(msg => {
       if (msg.id === messageId) {
@@ -123,7 +125,7 @@ export function useMessages(threadId: string | null, options?: UseMessagesOption
         const completedMessage = messages.find(m => m.id === messageId);
         if (completedMessage && completedMessage.role === 'agent') {
           console.log('[useMessages] Syncing completed/interrupted agent message to database:', messageId);
-          addMessageStore(threadId, { ...completedMessage, ...updates }, updates.isInterrupted === true);
+          addMessageStore(threadId, { ...completedMessage, ...updates }, updates.isInterrupted === true || updates.isStreaming === false);
         }
       }
     }

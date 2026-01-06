@@ -174,20 +174,25 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     // Handle TEXT_MESSAGE_CONTENT - streaming chunks
     const unsubscribeContent = on(EventType.TEXT_MESSAGE_CONTENT, (event) => {
       const chunk = (event as any).delta || '';
-      console.log('[ChatContainer] Text message content chunk');
+      console.log('[ChatContainer] Text message content chunk, length:', chunk.length);
       
       const currentMsg = currentAgentMessageRef.current;
+      console.log('[ChatContainer] Current msg ref:', currentMsg?.id);
+      
       if (currentMsg) {
         // Update existing message
         const updatedContent = currentMsg.content + chunk;
         const updatedMessage = { ...currentMsg, content: updatedContent };
         currentAgentMessageRef.current = updatedMessage;
+        console.log('[ChatContainer] Calling updateMessage with content length:', updatedContent.length);
         updateMessage(currentMsg.id, { content: updatedContent });
+      } else {
+        console.warn('[ChatContainer] No current message ref when receiving content chunk!');
       }
     });
 
     // Handle TEXT_MESSAGE_END - message complete
-    const unsubscribeMessageEnd = on(EventType.TEXT_MESSAGE_END, (event) => {
+    const unsubscribeMessageEnd = on(EventType.TEXT_MESSAGE_END, async (event) => {
       console.log('[ChatContainer] Text message end:', event);
       const currentMsg = currentAgentMessageRef.current;
       if (currentMsg) {
@@ -391,7 +396,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
       timestamp: Date.now(),
     };
 
-    // Add user message to chat
+    // Add user message to chat (will be automatically saved to server by messageStore)
     addMessage(userMessage);
     
     // Force scroll to bottom when user sends a message
