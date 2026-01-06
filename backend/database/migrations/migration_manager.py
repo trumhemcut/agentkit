@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 # List of migration files in order
 MIGRATIONS = [
     "001_initial_schema_consolidated.sql",  # Consolidated schema with all features
+    "002_add_message_feedback.sql",  # Add message_feedbacks table
 ]
 
 

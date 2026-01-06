@@ -15,6 +15,7 @@ import { EventType, CanvasEventType } from '@/types/agui';
 import { MessageSquare } from 'lucide-react';
 import { useCanvasOptional } from '@/contexts/CanvasContext';
 import { generateUniqueId } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ChatContainerProps {
   threadId: string | null;
@@ -357,6 +358,84 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
     }
   };
 
+  const handleRetry = async (messageId: string) => {
+    if (!threadId || !selectedAgent) {
+      console.error('Cannot retry: missing threadId or selectedAgent');
+      return;
+    }
+    
+    setIsSending(true);
+    
+    try {
+      // Call retry endpoint which returns SSE stream
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/agents/${selectedAgent}/retry/${threadId}/${messageId}`,
+        { method: 'POST' }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Retry failed');
+      }
+      
+      // Remove the old message from UI
+      removeMessage(messageId);
+      
+      // Process the new SSE stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream');
+      }
+      
+      // Create new pending agent message
+      const pendingMessage: ChatMessage = {
+        id: generateUniqueId('msg-agent-pending'),
+        threadId: threadId,
+        role: 'agent',
+        content: '',
+        timestamp: Date.now(),
+        agentName: 'Agent',
+        isPending: true,
+        isStreaming: false,
+      };
+      currentAgentMessageRef.current = pendingMessage;
+      addMessage(pendingMessage);
+      
+      // Process stream events through AGUI client
+      const client = getClient();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            
+            try {
+              const event = JSON.parse(data);
+              client.processEvent(event);
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e);
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('Retry failed:', error);
+      toast.error('Failed to retry. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     if (!threadId) {
       console.log('Cannot send: threadId=', threadId);
@@ -547,6 +626,7 @@ export const ChatContainer = forwardRef<ChatContainerRef, ChatContainerProps>(fu
               canvasModeActive={canvasModeActive}
               threadId={threadId}
               onActionEvent={handleA2UIActionEvent}
+              onRetry={handleRetry}
             />
           </div>
           <ChatInput 

@@ -735,3 +735,54 @@ export const messagesApi = {
   },
 };
 
+/**
+ * Message Feedback API
+ * 
+ * Functions for submitting and managing message feedback (like/dislike)
+ */
+
+/**
+ * Submit feedback for a message
+ */
+export async function submitMessageFeedback(
+  messageId: string,
+  feedbackType: 'like' | 'dislike'
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/messages/${messageId}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedback_type: feedbackType }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to submit feedback');
+  }
+}
+
+/**
+ * Remove feedback for a message
+ */
+export async function removeMessageFeedback(messageId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/messages/${messageId}/feedback`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to remove feedback');
+  }
+}
+
+/**
+ * Get feedback for a message
+ */
+export async function getMessageFeedback(
+  messageId: string
+): Promise<{ feedback_type: 'like' | 'dislike' | null }> {
+  const response = await fetch(`${API_BASE_URL}/api/messages/${messageId}/feedback`);
+  
+  if (!response.ok) {
+    throw new Error('Failed to get feedback');
+  }
+  
+  return response.json();
+}

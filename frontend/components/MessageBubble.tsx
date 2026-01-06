@@ -10,6 +10,7 @@ interface MessageBubbleProps {
   canvasModeActive?: boolean;
   threadId?: string | null;
   onActionEvent?: (event: any) => void;
+  onRetry?: (messageId: string) => void;
 }
 
 /**
@@ -17,7 +18,7 @@ interface MessageBubbleProps {
  * 
  * Routes to appropriate message bubble component based on message role
  */
-export function MessageBubble({ message, onEnableCanvas, canvasModeActive, threadId, onActionEvent }: MessageBubbleProps) {
+export function MessageBubble({ message, onEnableCanvas, canvasModeActive, threadId, onActionEvent, onRetry }: MessageBubbleProps) {
   if (message.role === 'user') {
     return <UserMessageBubble message={message} canvasModeActive={canvasModeActive} />;
   }
@@ -29,6 +30,7 @@ export function MessageBubble({ message, onEnableCanvas, canvasModeActive, threa
       canvasModeActive={canvasModeActive} 
       threadId={threadId}
       onActionEvent={onActionEvent}
+      onRetry={onRetry}
     />
   );
 }

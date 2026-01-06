@@ -156,3 +156,25 @@ class DeleteResponse(BaseModel):
     """Response model for delete operations"""
     message: str
 
+
+# ============================================================================
+# Message Feedback Models
+# ============================================================================
+
+class MessageFeedbackRequest(BaseModel):
+    """Request model for submitting message feedback"""
+    feedback_type: Literal["like", "dislike"] = Field(..., description="Type of feedback")
+
+
+class MessageFeedbackResponse(BaseModel):
+    """Response model for feedback submission"""
+    success: bool
+    message_id: str
+    feedback_type: str
+
+
+class MessageFeedbackData(BaseModel):
+    """Response model for feedback data"""
+    feedback_type: Optional[Literal["like", "dislike"]] = None
+
+

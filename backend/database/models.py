@@ -70,6 +70,32 @@ class Message(Base):
     
     # Relationships
     thread = relationship("Thread", back_populates="messages")
+    feedbacks = relationship("MessageFeedback", back_populates="message", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Message(id={self.id}, thread_id={self.thread_id}, role={self.role})>"
+
+
+class MessageFeedback(Base):
+    """
+    Message feedback model for tracking user reactions (like/dislike).
+    
+    Attributes:
+        id: Unique feedback identifier (UUID)
+        message_id: Foreign key to the message
+        feedback_type: Type of feedback ("like" or "dislike")
+        created_at: Timestamp when feedback was given
+        message: Relationship to the message
+    """
+    __tablename__ = "message_feedbacks"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(String(36), ForeignKey("messages.id"), nullable=False)
+    feedback_type = Column(String(20), nullable=False)  # "like", "dislike"
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    message = relationship("Message", back_populates="feedbacks")
+    
+    def __repr__(self):
+        return f"<MessageFeedback(id={self.id}, message_id={self.message_id}, feedback_type={self.feedback_type})>"

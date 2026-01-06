@@ -14,6 +14,7 @@ import { useModelStore } from '@/stores/modelStore';
 import { a2uiManager } from '@/lib/a2ui/A2UIManager';
 import { A2UIUserActionService } from '@/services/a2uiActionService';
 import { InsuranceSupervisorIndicator } from './InsuranceSupervisorIndicator';
+import { MessageActions } from './MessageActions';
 import { useEffect, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { UserAction } from '@/types/a2ui';
@@ -25,6 +26,7 @@ interface AgentMessageBubbleProps {
   threadId?: string | null;
   agentId?: string;
   onActionEvent?: (event: any) => void;
+  onRetry?: (messageId: string) => void;
 }
 
 /**
@@ -38,7 +40,8 @@ export function AgentMessageBubble({
   canvasModeActive, 
   threadId,
   agentId, // Can be passed explicitly, but will use message.agentId if available
-  onActionEvent
+  onActionEvent,
+  onRetry
 }: AgentMessageBubbleProps) {
   // Subscribe to surfaces map to trigger re-renders when surfaces change
   const surfaces = useA2UIStore((state) => state.surfaces);
@@ -137,6 +140,12 @@ export function AgentMessageBubble({
   
   const handleEnableCanvas = () => {
     onEnableCanvas?.(message);
+  };
+
+  const handleRetry = () => {
+    if (onRetry) {
+      onRetry(message.id);
+    }
   };
 
   const isThinking = (message.isPending || message.isStreaming) && message.content === '';
@@ -284,12 +293,19 @@ export function AgentMessageBubble({
           </div>
         </div>
         
-        <div className="flex items-center gap-2 px-3">
-          <span className="text-xs text-muted-foreground">
-            {formatTime(message.timestamp)}
-          </span>
-          
-          {isArtifactMessage(message) && !message.isStreaming && (
+        {/* Show actions only for completed messages */}
+        {!message.isPending && !message.isStreaming && (
+          <div className="px-3">
+            <MessageActions
+              messageId={message.id}
+              messageContent={message.content}
+              onRetry={threadId ? handleRetry : undefined}
+            />
+          </div>
+        )}
+        
+        {isArtifactMessage(message) && !message.isStreaming && (
+          <div className="px-3 pb-2">
             <Button
               variant="ghost"
               size="sm"
@@ -299,8 +315,8 @@ export function AgentMessageBubble({
               <Edit className="h-3 w-3" />
               Edit in Canvas
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

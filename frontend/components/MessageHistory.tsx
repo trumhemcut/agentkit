@@ -15,6 +15,7 @@ interface MessageHistoryProps {
   canvasModeActive?: boolean;
   threadId?: string | null;
   onActionEvent?: (event: any) => void;
+  onRetry?: (messageId: string) => void;
 }
 
 /**
@@ -22,7 +23,7 @@ interface MessageHistoryProps {
  * 
  * Displays list of messages with auto-scroll and A2UI surfaces
  */
-export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive, threadId, onActionEvent }: MessageHistoryProps) {
+export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, canvasModeActive, threadId, onActionEvent, onRetry }: MessageHistoryProps) {
   const isMobile = useIsMobile();
   
   if (messages.length === 0) {
@@ -48,6 +49,7 @@ export function MessageHistory({ messages, scrollRef, onEnableCanvas, onScroll, 
             canvasModeActive={canvasModeActive} 
             threadId={threadId}
             onActionEvent={onActionEvent}
+            onRetry={onRetry}
           />
         ))}
       </div>

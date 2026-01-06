@@ -7,10 +7,19 @@ import logging
 import json
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.models import MessageCreate, MessageResponse, MessageListResponse, DeleteResponse
+from api.models import (
+    MessageCreate, 
+    MessageResponse, 
+    MessageListResponse, 
+    DeleteResponse,
+    MessageFeedbackRequest,
+    MessageFeedbackResponse,
+    MessageFeedbackData
+)
 from database.config import get_db
 from services.thread_service import ThreadService
 from services.message_service import MessageService
+from services.feedback_service import FeedbackService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -162,3 +171,95 @@ async def delete_message(
     except Exception as e:
         logger.error(f"Error deleting message {message_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Message Feedback Endpoints
+# ============================================================================
+
+@router.post("/messages/{message_id}/feedback", response_model=MessageFeedbackResponse)
+async def submit_feedback(
+    message_id: str,
+    request: MessageFeedbackRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Submit or update feedback for a message.
+    
+    Path params:
+        message_id: str - Message identifier
+    
+    Request body:
+        feedback_type: str - Type of feedback ("like" or "dislike")
+    
+    Returns:
+        Feedback submission result
+    """
+    try:
+        feedback = await FeedbackService.add_feedback(
+            db=db,
+            message_id=message_id,
+            feedback_type=request.feedback_type
+        )
+        return MessageFeedbackResponse(
+            success=True,
+            message_id=message_id,
+            feedback_type=feedback.feedback_type
+        )
+    except ValueError as e:
+        logger.error(f"Feedback submission failed: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error submitting feedback for message {message_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit feedback")
+
+
+@router.delete("/messages/{message_id}/feedback")
+async def remove_feedback(
+    message_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Remove feedback for a message.
+    
+    Path params:
+        message_id: str - Message identifier
+    
+    Returns:
+        Success message
+    """
+    try:
+        success = await FeedbackService.remove_feedback(db=db, message_id=message_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Feedback not found")
+        return {"success": True, "message": "Feedback removed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing feedback for message {message_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove feedback")
+
+
+@router.get("/messages/{message_id}/feedback", response_model=MessageFeedbackData)
+async def get_feedback(
+    message_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get feedback for a message.
+    
+    Path params:
+        message_id: str - Message identifier
+    
+    Returns:
+        Feedback data (feedback_type or null)
+    """
+    try:
+        feedback = await FeedbackService.get_feedback(db=db, message_id=message_id)
+        if not feedback:
+            return MessageFeedbackData(feedback_type=None)
+        return MessageFeedbackData(feedback_type=feedback.feedback_type)
+    except Exception as e:
+        logger.error(f"Error getting feedback for message {message_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get feedback")
+
