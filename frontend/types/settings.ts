@@ -44,16 +44,4 @@ export interface AgentSettingsFormData {
   systemPrompt?: string;
 }
 
-export interface SettingsStore {
-  // State
-  agents: AgentSettings[];
-  loading: boolean;
-  error: string | null;
-  selectedAgentId: string | null;
-  
-  // Actions
-  loadAgents: () => Promise<void>;
-  updateAgent: (id: string, settings: Partial<AgentSettings>) => Promise<void>;
-  setSelectedAgent: (id: string | null) => void;
-  reset: () => void;
-}
+

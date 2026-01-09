@@ -4,7 +4,7 @@
  * Provides mock data for agent settings until backend API is ready
  */
 
-import { AgentSettings, AgentType } from '@/types/settings';
+import { AgentSettings } from '@/types/settings';
 
 /**
  * Mock agent settings data

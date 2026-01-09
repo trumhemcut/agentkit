@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { ChevronDown, ChevronUp, Settings, Bot } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgentSettingsForm } from './agent-settings-form';
 import { useSettingsStore } from '@/stores/settingsStore';

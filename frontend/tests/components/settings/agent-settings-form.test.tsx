@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AgentSettingsForm } from '@/components/settings/agent-settings-form';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -20,7 +20,6 @@ jest.mock('sonner', () => ({
 
 describe('AgentSettingsForm', () => {
   const mockUpdateAgent = jest.fn();
-  const mockOnClose = jest.fn();
 
   const mockAgent: AgentSettings = {
     id: 'test-agent',

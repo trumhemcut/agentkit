@@ -105,11 +105,15 @@ export function AgentSettingsForm({ agent, onClose }: AgentSettingsFormProps) {
           <Label htmlFor="provider">LLM Provider</Label>
           <Select
             value={formData.provider}
-            onValueChange={(value) => setFormData({ 
-              ...formData, 
-              provider: value as AgentSettingsFormData['provider'],
-              model: undefined // Reset model when provider changes
-            })}
+            onValueChange={(value) => {
+              const newProvider = value as AgentSettingsFormData['provider'];
+              const modelsForNewProvider = newProvider ? (AVAILABLE_MODELS[newProvider] || []) : [];
+              setFormData({ 
+                ...formData, 
+                provider: newProvider,
+                model: modelsForNewProvider.length > 0 ? modelsForNewProvider[0] : ''
+              });
+            }}
           >
             <SelectTrigger id="provider">
               <SelectValue placeholder="Select provider" />

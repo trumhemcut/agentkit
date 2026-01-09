@@ -12,7 +12,7 @@ import {
 } from '@/services/settings-mock';
 import { toast } from 'sonner';
 
-interface SettingsStore {
+export interface SettingsStore {
   // State
   agents: AgentSettings[];
   loading: boolean;
@@ -111,18 +111,3 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     });
   },
 }));
-
-// Auto-load settings on first access (client-side only)
-let hasInitialized = false;
-export const initializeSettingsStore = () => {
-  // Only run on client-side
-  if (typeof window === 'undefined') return;
-  if (hasInitialized) return;
-  
-  hasInitialized = true;
-  
-  // Small delay to ensure component is mounted
-  setTimeout(() => {
-    useSettingsStore.getState().loadAgents();
-  }, 0);
-};

@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { AgentSettingsList } from '@/components/settings/agent-settings-list';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { AgentSettings } from '@/types/settings';
