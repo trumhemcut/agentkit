@@ -1,7 +1,8 @@
 'use client';
 
-import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Search, Sparkles, X } from 'lucide-react';
+import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Search, Sparkles, X, Settings } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -11,6 +12,7 @@ import { ChatHistory } from './ChatHistory';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useHorizontalSwipe } from '@/hooks/useSwipeGesture';
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface SidebarProps {
   threads: Thread[];
@@ -43,6 +45,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const isMobile = useIsMobile();
+  const pathname = usePathname();
 
   // Swipe gesture for mobile drawer
   const swipeHandlers = useHorizontalSwipe(
@@ -181,6 +184,22 @@ export function Sidebar({
                 />
               </div>
             )}
+          </div>
+
+          {/* Settings Link - Mobile */}
+          <div className="p-2 shrink-0 border-t">
+            <Link href="/settings" onClick={onCloseMobile}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2 h-10 px-3 hover:bg-gray-200 text-gray-900",
+                  pathname === '/settings' && "bg-gray-200"
+                )}
+              >
+                <Settings className="h-4 w-4" />
+                <span className="font-medium">Settings</span>
+              </Button>
+            </Link>
           </div>
         </aside>
       </>
@@ -325,6 +344,43 @@ export function Sidebar({
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Settings Link - Desktop */}
+      {!isCollapsed && (
+        <div className="p-2 shrink-0 border-t">
+          <Link href="/settings">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-2 h-10 px-3 hover:bg-gray-200 text-gray-900",
+                pathname === '/settings' && "bg-gray-200"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              <span className="font-medium">Settings</span>
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Settings Link - Collapsed Desktop */}
+      {isCollapsed && (
+        <div className="p-2 shrink-0 border-t">
+          <Link href="/settings">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "size-10 hover:bg-gray-200",
+                pathname === '/settings' && "bg-gray-200"
+              )}
+              title="Settings"
+            >
+              <Settings className="size-5" />
+            </Button>
+          </Link>
         </div>
       )}
     </aside>
