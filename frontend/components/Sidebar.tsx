@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Search, Sparkles, X } from 'lucide-react';
+import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Search, Sparkles, X, Settings } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,7 @@ import { ChatHistory } from './ChatHistory';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useHorizontalSwipe } from '@/hooks/useSwipeGesture';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
   threads: Thread[];
@@ -43,6 +44,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const isMobile = useIsMobile();
+  const router = useRouter();
 
   // Swipe gesture for mobile drawer
   const swipeHandlers = useHorizontalSwipe(
@@ -181,6 +183,21 @@ export function Sidebar({
                 />
               </div>
             )}
+          </div>
+
+          {/* Settings Button */}
+          <div className="p-2 shrink-0 border-t border-gray-200">
+            <Button
+              onClick={() => {
+                router.push('/settings');
+                if (onCloseMobile) onCloseMobile();
+              }}
+              variant="ghost"
+              className="w-full justify-start gap-2 h-10 px-3 hover:bg-gray-200 text-gray-900"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="font-medium">Settings</span>
+            </Button>
           </div>
         </aside>
       </>
@@ -327,6 +344,30 @@ export function Sidebar({
           )}
         </div>
       )}
+
+      {/* Settings Button */}
+      <div className="p-2 shrink-0 border-t border-gray-200">
+        {!isCollapsed ? (
+          <Button
+            onClick={() => router.push('/settings')}
+            variant="ghost"
+            className="w-full justify-start gap-2 h-10 px-3 hover:bg-gray-200 text-gray-900"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="font-medium">Settings</span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => router.push('/settings')}
+            variant="ghost"
+            size="icon"
+            className="size-10 hover:bg-gray-200"
+            title="Settings"
+          >
+            <Settings className="size-5" />
+          </Button>
+        )}
+      </div>
     </aside>
   );
 }
